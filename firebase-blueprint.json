@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "CloudPreset": {
+      "title": "CloudPreset",
+      "description": "A user-saved custom loop preset on sampleMONK",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "genre": { "type": "string" },
+        "bpm": { "type": "number" },
+        "key": { "type": "string" },
+        "description": { "type": "string" },
+        "patterns": {
+          "type": "object",
+          "properties": {
+            "kick": { "type": "array" },
+            "hat": { "type": "array" },
+            "clap": { "type": "array" },
+            "synth": { "type": "array" }
+          }
+        },
+        "synthNotes": { "type": "array" },
+        "cutoff": { "type": "number" },
+        "resonance": { "type": "number" },
+        "delayTime": { "type": "number" },
+        "decay": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "bpm", "patterns", "synthNotes"]
+    }
+  },
+  "firestore": {
+    "presets": {
+      "schema": "CloudPreset",
+      "description": "Global user-created audio presets and sequences"
+    }
+  }
+}
