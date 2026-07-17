@@ -22,7 +22,11 @@ import {
   Plus,
   PlusCircle,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Cloud,
+  UploadCloud,
+  RefreshCw,
+  CloudLightning
 } from 'lucide-react';
 import { TrackPreset, TrackType, MUSIC_SCALES } from './types';
 import { TECHNO_PRESETS } from './presets';
@@ -30,10 +34,12 @@ import { audioEngine } from './utils/audioEngine';
 import { BeatVisualizer } from './components/BeatVisualizer';
 import { SampleMonkLogo } from './components/SampleMonkLogo';
 import { PRESET_SAMPLE_DATABASE, AudioSample } from './data/samples';
+import { savePresetToCloud, fetchPresetsFromCloud } from './utils/firebase';
 
 export default function App() {
   // Preset state
   const [activePreset, setActivePreset] = useState<TrackPreset>(TECHNO_PRESETS[0]);
+  const [presetTab, setPresetTab] = useState<'studio' | 'cloud'>('studio');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   
@@ -76,6 +82,62 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successGlow, setSuccessGlow] = useState(false);
+
+  // Cloud Presets state
+  const [cloudPresets, setCloudPresets] = useState<TrackPreset[]>([]);
+  const [isLoadingCloud, setIsLoadingCloud] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+  const [newPresetGenre, setNewPresetGenre] = useState('Techno');
+  const [newPresetDesc, setNewPresetDesc] = useState('');
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const [cloudSuccessMsg, setCloudSuccessMsg] = useState('');
+
+  const loadCloudPresets = async () => {
+    setIsLoadingCloud(true);
+    try {
+      const data = await fetchPresetsFromCloud();
+      setCloudPresets(data);
+    } catch (err) {
+      console.error("Error fetching cloud presets:", err);
+    } finally {
+      setIsLoadingCloud(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCloudPresets();
+  }, []);
+
+  const handleSaveToCloud = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPresetName.trim()) return;
+    setIsSavingCloud(true);
+    try {
+      const presetToSave = {
+        name: newPresetName,
+        genre: newPresetGenre,
+        bpm: bpm,
+        key: scale,
+        description: newPresetDesc || `Custom ${newPresetGenre} loop created by sampleMONK user.`,
+        patterns: patterns,
+        synthNotes: synthNotes,
+        cutoff: cutoff,
+        resonance: resonance,
+        delayTime: 0.25,
+        decay: decay
+      };
+      await savePresetToCloud(presetToSave);
+      setCloudSuccessMsg("Loop successfully uploaded to sampleMONK Cloud!");
+      setNewPresetName('');
+      setNewPresetDesc('');
+      await loadCloudPresets();
+      setTimeout(() => setCloudSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error("Error saving loop to cloud:", err);
+    } finally {
+      setIsSavingCloud(false);
+    }
+  };
 
   // Initialize and bind audio callback
   useEffect(() => {
@@ -449,30 +511,173 @@ export default function App() {
             <BeatVisualizer isPlaying={isPlaying} />
           </section>
 
-          {/* Quick Style Presets Selector */}
+          {/* Quick Style Presets Selector & Cloud Storage */}
           <section className="bg-[#0c0c0e] p-5 rounded-xl border border-neutral-800/80 shadow-xl flex flex-col gap-4">
-            <h3 className="text-xs font-mono text-neutral-400 tracking-wider uppercase flex items-center gap-2">
-              <ListMusic className="w-4 h-4 text-sky-400" /> Load Ambient Studio Loops
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {TECHNO_PRESETS.map((preset) => {
-                const isActive = activePreset.id === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    onClick={() => handleLoadPreset(preset)}
-                    className={`p-3 rounded-lg text-left transition border font-mono ${
-                      isActive 
-                        ? 'bg-sky-500/10 border-sky-500/50 text-sky-300' 
-                        : 'bg-[#121215] border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-neutral-200'
-                    }`}
-                  >
-                    <div className="text-xs font-bold truncate">{preset.name}</div>
-                    <div className="text-[10px] opacity-75 mt-0.5">{preset.genre} • {preset.bpm} BPM</div>
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-mono text-neutral-400 tracking-wider uppercase flex items-center gap-2">
+                <ListMusic className="w-4 h-4 text-sky-400" /> Presets & Cloud Library
+              </h3>
+              <div className="flex bg-[#121215] p-0.5 rounded-lg border border-neutral-800/60 text-[10px] font-mono">
+                <button
+                  onClick={() => setPresetTab('studio')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${presetTab === 'studio' ? 'bg-sky-500/15 text-sky-400 font-bold' : 'text-neutral-500 hover:text-neutral-300'}`}
+                >
+                  Studio
+                </button>
+                <button
+                  onClick={() => {
+                    setPresetTab('cloud');
+                    loadCloudPresets();
+                  }}
+                  className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${presetTab === 'cloud' ? 'bg-sky-500/15 text-sky-400 font-bold' : 'text-neutral-500 hover:text-neutral-300'}`}
+                >
+                  Cloud
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                </button>
+              </div>
             </div>
+
+            {presetTab === 'studio' ? (
+              <div className="grid grid-cols-2 gap-2">
+                {TECHNO_PRESETS.map((preset) => {
+                  const isActive = activePreset.id === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => handleLoadPreset(preset)}
+                      className={`p-3 rounded-lg text-left transition border font-mono ${
+                        isActive 
+                          ? 'bg-sky-500/10 border-sky-500/50 text-sky-300' 
+                          : 'bg-[#121215] border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      <div className="text-xs font-bold truncate">{preset.name}</div>
+                      <div className="text-[10px] opacity-75 mt-0.5">{preset.genre} • {preset.bpm} BPM</div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                  <span>Community Firestore Loops</span>
+                  <button 
+                    onClick={loadCloudPresets}
+                    disabled={isLoadingCloud}
+                    className="p-1 hover:bg-neutral-800 rounded text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1"
+                    title="Refresh Library"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCloud ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
+                </div>
+
+                {isLoadingCloud ? (
+                  <div className="py-8 flex flex-col items-center justify-center gap-2">
+                    <Cloud className="w-8 h-8 text-sky-500/30 animate-bounce" />
+                    <span className="text-xs font-mono text-neutral-500">Querying identitymonk Firestore...</span>
+                  </div>
+                ) : cloudPresets.length === 0 ? (
+                  <div className="py-8 border border-dashed border-neutral-800/80 rounded-lg flex flex-col items-center justify-center text-center p-4">
+                    <CloudLightning className="w-8 h-8 text-neutral-600 mb-2" />
+                    <p className="text-xs font-mono text-neutral-400 font-bold">No Cloud Loops Found</p>
+                    <p className="text-[10px] text-neutral-500 mt-1 max-w-[200px]">Be the first to save your current sequence parameters to the cloud database!</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1">
+                    {cloudPresets.map((preset) => {
+                      const isActive = activePreset.id === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          onClick={() => handleLoadPreset(preset)}
+                          className={`p-3 rounded-lg text-left transition border font-mono ${
+                            isActive 
+                              ? 'bg-sky-500/10 border-sky-500/50 text-sky-300' 
+                              : 'bg-[#121215] border-neutral-800 hover:border-neutral-700 text-neutral-400 hover:text-neutral-200'
+                          }`}
+                        >
+                          <div className="text-xs font-bold truncate">{preset.name}</div>
+                          <div className="text-[10px] opacity-75 mt-0.5">{preset.genre} • {preset.bpm} BPM</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Cloud Upload Form */}
+                <form onSubmit={handleSaveToCloud} className="mt-2 bg-[#121215] p-3.5 rounded-lg border border-neutral-800/85 flex flex-col gap-2.5">
+                  <div className="text-[10px] font-mono text-sky-400/90 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <UploadCloud className="w-3.5 h-3.5" /> Save Current Preset to Cloud
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-mono text-neutral-500 uppercase">Preset Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={newPresetName}
+                        onChange={(e) => setNewPresetName(e.target.value)}
+                        placeholder="e.g. Acid Sunrise" 
+                        className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-sky-500/60 font-mono"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-mono text-neutral-500 uppercase">Subgenre</label>
+                      <select
+                        value={newPresetGenre}
+                        onChange={(e) => setNewPresetGenre(e.target.value)}
+                        className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-sky-500/60 font-mono"
+                      >
+                        <option value="Acid Techno">Acid Techno</option>
+                        <option value="Peak Time">Peak Time</option>
+                        <option value="Psy Trance">Psy Trance</option>
+                        <option value="Goa Trance">Goa Trance</option>
+                        <option value="Hardtekk">Hardtekk</option>
+                        <option value="Schranz">Schranz</option>
+                        <option value="Ambient">Ambient</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-mono text-neutral-500 uppercase">Short Description (Vibe)</label>
+                    <input 
+                      type="text" 
+                      value={newPresetDesc}
+                      onChange={(e) => setNewPresetDesc(e.target.value)}
+                      placeholder="e.g. Hypnotic bass line with aggressive delay" 
+                      className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-sky-500/60 font-mono"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSavingCloud || !newPresetName.trim()}
+                    className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-neutral-800 disabled:text-neutral-500 text-black font-bold font-mono text-xs py-2 px-3 rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {isSavingCloud ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        Uploading to Firestore...
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="w-3.5 h-3.5" />
+                        Upload Current Setup
+                      </>
+                    )}
+                  </button>
+
+                  {cloudSuccessMsg && (
+                    <div className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 justify-center mt-1 bg-emerald-500/10 py-1.5 rounded border border-emerald-500/25">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {cloudSuccessMsg}
+                    </div>
+                  )}
+                </form>
+              </div>
+            )}
           </section>
 
           {/* Preset Metadata details card */}
