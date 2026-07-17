@@ -1,0 +1,6 @@
+{
+  "name": "sampleMONK",
+  "description": "Sound, Samples & Effektmaschine",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
