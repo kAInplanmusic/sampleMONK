@@ -1,0 +1,187 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, Activity, Power, Sliders, AudioLines, Radio, Flame, Cpu } from 'lucide-react';
+
+export function FXEngineTerminal() {
+  const [power, setPower] = useState(true);
+  const [activeFx, setActiveFx] = useState('REVERB');
+  const [wetDry, setWetDry] = useState(50);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  const fxList = [
+    { id: 'DELAY', label: 'TAPE ECHO' },
+    { id: 'REVERB', label: 'SPACE HALL' },
+    { id: 'FLANGER', label: 'JET FLANGER' },
+    { id: 'PHASER', label: 'ANALOG PHASER' },
+    { id: 'DISTORTION', label: 'SATURATOR' },
+    { id: 'BITCRUSHER', label: 'DECIMATOR' },
+    { id: 'CHORUS', label: 'DIMENSION D' },
+    { id: 'FILTER', label: 'VCF CUT' },
+  ];
+
+  // Visualizer loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let frameId: number;
+    let phase = 0;
+
+    const draw = () => {
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      if (power) {
+        ctx.beginPath();
+        const amplitude = activeFx === 'REVERB' ? 20 : activeFx === 'DELAY' ? 40 : activeFx === 'DISTORTION' ? 60 : 30;
+        const frequency = activeFx === 'DISTORTION' ? 0.2 : 0.05;
+        
+        for (let i = 0; i < canvas.width; i++) {
+          const y = canvas.height / 2 + 
+                    Math.sin(i * frequency + phase) * amplitude * (wetDry/100) * (Math.random() > 0.8 && activeFx === 'BITCRUSHER' ? 0.5 : 1) + 
+                    (activeFx === 'DISTORTION' ? (Math.random() - 0.5) * 10 * (wetDry/100) : 0);
+          
+          if (i === 0) ctx.moveTo(i, y);
+          else ctx.lineTo(i, y);
+        }
+        
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Shadow/glow
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#f43f5e';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+      
+      phase -= 0.1;
+      frameId = requestAnimationFrame(draw);
+    };
+    
+    draw();
+    return () => cancelAnimationFrame(frameId);
+  }, [power, activeFx, wetDry]);
+
+  return (
+    <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl relative">
+      
+      {/* Background Texture */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-rose-900/20 to-[#111] border-b border-rose-900/30">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
+            <Sparkles className="w-5 h-5 text-rose-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black tracking-widest text-neutral-100 uppercase flex items-center gap-2">
+              Effektmaschine <span className="text-[10px] font-mono text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-sm">RACK V4</span>
+            </h2>
+            <p className="text-xs text-neutral-500 font-mono">Advanced Algorithms & Routing</p>
+          </div>
+        </div>
+        
+        <button 
+          onClick={() => setPower(!power)}
+          className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all ${power ? 'bg-rose-500 border-rose-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.6)]' : 'bg-[#222] border-[#333] text-neutral-500 hover:bg-[#333]'}`}
+        >
+          <Power className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Main Body */}
+      <div className={`flex-1 p-8 grid grid-cols-12 gap-8 relative transition-opacity duration-1000 ${power ? 'opacity-100' : 'opacity-40 grayscale pointer-events-none'}`}>
+         
+         {/* Left Column: Isolator / Routing */}
+         <div className="col-span-3 bg-[#1a1a1a] rounded-2xl border border-neutral-800 p-6 flex flex-col shadow-inner">
+            <div className="flex items-center gap-2 mb-6 border-b border-neutral-800 pb-4">
+               <Activity className="w-4 h-4 text-rose-500" />
+               <h3 className="font-bold text-sm tracking-widest uppercase text-neutral-400">ISOLATOR</h3>
+            </div>
+            
+            <div className="flex flex-col gap-8 flex-1 justify-center">
+              {['HIGH', 'MID', 'LOW'].map(band => (
+                <div key={band} className="flex flex-col items-center gap-3">
+                  <div className="w-20 h-20 rounded-full border-[6px] border-[#111] bg-neutral-800 flex items-center justify-center relative cursor-pointer hover:border-rose-900 transition-colors shadow-xl">
+                    <div className="absolute top-2 left-1/2 w-1.5 h-4 bg-rose-500 -translate-x-1/2 rounded-full shadow-[0_0_5px_rgba(244,63,94,0.8)]"></div>
+                  </div>
+                  <span className="text-xs font-bold text-neutral-500">{band}</span>
+                </div>
+              ))}
+            </div>
+         </div>
+
+         {/* Center Column: FX Selection & Params */}
+         <div className="col-span-6 flex flex-col gap-6">
+            
+            {/* Visualizer Display */}
+            <div className="h-32 bg-black rounded-xl border-4 border-neutral-800 shadow-inner p-2 relative overflow-hidden">
+               <canvas ref={canvasRef} width={600} height={100} className="w-full h-full opacity-80" />
+               <div className="absolute top-2 left-3 bg-black/50 px-2 py-1 rounded text-[10px] font-mono text-rose-500 border border-rose-500/30">
+                 {activeFx} : DSP ACTIVE
+               </div>
+            </div>
+            
+            {/* FX Grid */}
+            <div className="grid grid-cols-4 gap-3 bg-[#1a1a1a] p-4 rounded-xl border border-neutral-800 shadow-inner">
+               {fxList.map(fx => (
+                 <button
+                   key={fx.id}
+                   onClick={() => setActiveFx(fx.id)}
+                   className={`h-16 flex flex-col items-center justify-center gap-1 rounded-lg border-2 transition-all ${activeFx === fx.id ? 'bg-rose-900/40 border-rose-500 text-rose-400 shadow-[inset_0_0_15px_rgba(244,63,94,0.2)]' : 'bg-[#222] border-transparent text-neutral-500 hover:bg-[#333] hover:text-neutral-400'}`}
+                 >
+                   <span className="text-xs font-black tracking-wider">{fx.id}</span>
+                   <span className="text-[8px] font-mono opacity-60 uppercase">{fx.label}</span>
+                 </button>
+               ))}
+            </div>
+            
+            {/* Main Parameters */}
+            <div className="flex-1 bg-[#1a1a1a] rounded-xl border border-neutral-800 p-6 flex items-center justify-between px-10">
+               {['TIME/FREQ', 'FEEDBACK', 'RESONANCE'].map(param => (
+                 <div key={param} className="flex flex-col items-center gap-3">
+                   <div className="w-16 h-16 rounded-full border-4 border-[#111] bg-neutral-800 relative cursor-pointer hover:border-neutral-700 transition-colors shadow-lg">
+                      <div className="absolute top-1.5 left-1/2 w-1 h-3 bg-neutral-400 -translate-x-1/2 rounded-full"></div>
+                   </div>
+                   <span className="text-[10px] font-mono font-bold text-neutral-500 tracking-widest">{param}</span>
+                 </div>
+               ))}
+            </div>
+         </div>
+
+         {/* Right Column: X-Pad / Depth */}
+         <div className="col-span-3 bg-[#1a1a1a] rounded-2xl border border-neutral-800 p-6 flex flex-col shadow-inner">
+            <div className="flex items-center gap-2 mb-6 border-b border-neutral-800 pb-4">
+               <Sliders className="w-4 h-4 text-rose-500" />
+               <h3 className="font-bold text-sm tracking-widest uppercase text-neutral-400">MASTER DEPTH</h3>
+            </div>
+            
+            <div className="flex-1 flex justify-center items-center relative py-4">
+               {/* Large Master Wet/Dry Slider */}
+               <div className="w-12 h-full bg-black rounded-full border-4 border-neutral-800 flex justify-center relative p-1 shadow-inner">
+                  <div className="absolute w-1 h-full bg-gradient-to-t from-neutral-800 via-rose-900 to-rose-500 rounded-full opacity-50"></div>
+                  <div 
+                    className="w-14 h-24 bg-[#2a2a2a] rounded-xl border border-neutral-700 shadow-xl cursor-ns-resize absolute flex items-center justify-center flex-col gap-2 hover:bg-[#333] transition-colors"
+                    style={{ bottom: `${Math.max(0, Math.min(100, wetDry))}%`, transform: 'translateY(50%)' }}
+                  >
+                     <div className="w-8 h-1 bg-white/20 rounded-full"></div>
+                     <div className="w-8 h-1 bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.8)] rounded-full"></div>
+                     <div className="w-8 h-1 bg-white/20 rounded-full"></div>
+                  </div>
+               </div>
+            </div>
+            
+            <div className="text-center mt-4">
+              <span className="text-3xl font-black text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)] font-mono">{Math.round(wetDry)}%</span>
+              <p className="text-[10px] font-bold text-neutral-500 tracking-widest mt-1">WET/DRY</p>
+            </div>
+         </div>
+
+      </div>
+    </div>
+  );
+}

@@ -16,18 +16,18 @@ import { TrackPreset } from '../types';
 
 // Web App configuration loaded from our auto-provisioned JSON
 const firebaseConfig = {
-  apiKey: "AIzaSyA_PfT8h83F9s0REeiKU-uXX-jQqaR2Lzo",
-  authDomain: "identitymonk.firebaseapp.com",
-  projectId: "identitymonk",
-  storageBucket: "identitymonk.firebasestorage.app",
-  messagingSenderId: "959327717347",
-  appId: "1:959327717347:web:b1fd8b5c642483329502d6"
+  apiKey: "AIzaSyBfDgWQfRone3xQuYisWCmCi-aJJOmp2o8",
+  authDomain: "sample-monk.firebaseapp.com",
+  projectId: "sample-monk",
+  storageBucket: "sample-monk.firebasestorage.app",
+  messagingSenderId: "293043362808",
+  appId: "1:293043362808:web:ae5f422a4ad04b7ae3540d"
 };
 
 // Database ID configured in the blueprint
-const DATABASE_ID = "ai-studio-tonetechnostatio-66b72757-3896-4550-bc13-f8d649b1796c";
+const DATABASE_ID = "ai-studio-samplemonk-66b72757-3896-4550-bc13-f8d649b1796c";
 
-let db: Firestore;
+export let db: Firestore;
 let storage: FirebaseStorage;
 
 try {

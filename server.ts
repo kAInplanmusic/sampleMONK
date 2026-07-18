@@ -106,7 +106,7 @@ try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     initializeApp({
       credential: cert(serviceAccount),
-      storageBucket: 'sample-monk-samples'
+      storageBucket: 'sample-monk.firebasestorage.app'
     });
     bucket = getStorage().bucket();
     db = getFirestore('ai-studio-samplemonk-66b72757-3896-4550-bc13-f8d649b1796c');
@@ -120,6 +120,34 @@ try {
 
 // Global background task registry
 const activeImportTasks: Record<string, { url: string; status: string; progress: string }> = {};
+
+
+// API: HuggingFace Text-to-Audio (Placeholder for MusicGen / similar)
+app.post('/api/huggingface/generate', async (req, res) => {
+  try {
+    const key = process.env.HUGGINGFACE_API_KEY;
+    if (!key) {
+      return res.status(500).json({ error: 'HUGGINGFACE_API_KEY is not defined in the environment.' });
+    }
+    const { prompt } = req.body;
+    
+    // Example fetch to a Hugging Face Inference API (e.g. MusicGen)
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/facebook/musicgen-small',
+      { inputs: prompt },
+      {
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        responseType: 'arraybuffer'
+      }
+    );
+    
+    res.setHeader('Content-Type', 'audio/wav');
+    return res.send(response.data);
+  } catch (error: any) {
+    console.error('HuggingFace API Error:', error?.message);
+    return res.status(500).json({ error: 'Failed to generate audio via HuggingFace' });
+  }
+});
 
 app.post('/api/import-zip', async (req, res) => {
   const { urls } = req.body;

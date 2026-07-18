@@ -10,6 +10,10 @@ export interface TrackPreset {
     hat: boolean[];
     clap: boolean[];
     synth: boolean[];
+    snare: boolean[];
+    tom: boolean[];
+    perc: boolean[];
+    bass: boolean[];
   };
   synthNotes: number[]; // Index maps to step, value represents pitch index in scale
   cutoff: number;
@@ -18,7 +22,7 @@ export interface TrackPreset {
   decay: number;
 }
 
-export type TrackType = 'kick' | 'hat' | 'clap' | 'synth';
+export type TrackType = 'kick' | 'hat' | 'clap' | 'synth' | 'snare' | 'tom' | 'perc' | 'bass';
 
 export interface AudioElement {
   id: string;
