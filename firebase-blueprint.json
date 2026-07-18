@@ -5,60 +5,202 @@
       "description": "A user-saved custom loop preset on sampleMONK",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "genre": { "type": "string" },
-        "bpm": { "type": "number" },
-        "key": { "type": "string" },
-        "description": { "type": "string" },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "genre": {
+          "type": "string"
+        },
+        "bpm": {
+          "type": "number"
+        },
+        "key": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
         "patterns": {
           "type": "object",
           "properties": {
-            "kick": { "type": "array" },
-            "hat": { "type": "array" },
-            "clap": { "type": "array" },
-            "synth": { "type": "array" }
+            "kick": {
+              "type": "array"
+            },
+            "hat": {
+              "type": "array"
+            },
+            "clap": {
+              "type": "array"
+            },
+            "synth": {
+              "type": "array"
+            }
           }
         },
-        "synthNotes": { "type": "array" },
-        "cutoff": { "type": "number" },
-        "resonance": { "type": "number" },
-        "delayTime": { "type": "number" },
-        "decay": { "type": "number" },
-        "createdAt": { "type": "string" }
+        "synthNotes": {
+          "type": "array"
+        },
+        "cutoff": {
+          "type": "number"
+        },
+        "resonance": {
+          "type": "number"
+        },
+        "delayTime": {
+          "type": "number"
+        },
+        "decay": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string"
+        }
       },
-      "required": ["id", "name", "bpm", "patterns", "synthNotes"]
+      "required": [
+        "id",
+        "name",
+        "bpm",
+        "patterns",
+        "synthNotes"
+      ]
     },
     "AudioElement": {
       "title": "AudioElement",
       "description": "Represents samples, songs, and noises",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "type": { "type": "string", "enum": ["sample", "song", "noise"] },
-        "source": { "type": "string" },
-        "tags": { "type": "array", "items": { "type": "string" } },
-        "frequency": { "type": "number" },
-        "duration": { "type": "number" },
-        "url": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "sample",
+            "song",
+            "noise"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "frequency": {
+          "type": "number"
+        },
+        "duration": {
+          "type": "number"
+        },
+        "url": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        }
       },
-      "required": ["id", "name", "type", "tags"]
+      "required": [
+        "id",
+        "name",
+        "type",
+        "tags"
+      ]
     },
     "MotionSequence": {
       "title": "MotionSequence",
       "description": "Represents movement patterns, automations, and rhythm matrices",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "type": { "type": "string" },
-        "tags": { "type": "array", "items": { "type": "string" } },
-        "data": { "type": "object" },
-        "createdAt": { "type": "string" }
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "data": {
+          "type": "object"
+        },
+        "createdAt": {
+          "type": "string"
+        }
       },
-      "required": ["id", "name", "type", "tags", "data"]
+      "required": [
+        "id",
+        "name",
+        "type",
+        "tags",
+        "data"
+      ]
+    },
+    "CollaborationSession": {
+      "title": "CollaborationSession",
+      "description": "A real-time multiplayer music collaboration session",
+      "type": "object",
+      "properties": {
+        "locks": {
+          "type": "object"
+        },
+        "playback": {
+          "type": "object",
+          "properties": {
+            "isPlaying": {
+              "type": "boolean"
+            },
+            "bpm": {
+              "type": "number"
+            }
+          }
+        },
+        "sequencer": {
+          "type": "object",
+          "properties": {
+            "patterns": {
+              "type": "object"
+            },
+            "synthNotes": {
+              "type": "array"
+            }
+          }
+        },
+        "mastering": {
+          "type": "object",
+          "properties": {
+            "cutoff": {
+              "type": "number"
+            },
+            "resonance": {
+              "type": "number"
+            },
+            "delayTime": {
+              "type": "number"
+            },
+            "decay": {
+              "type": "number"
+            }
+          }
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
     }
   },
   "firestore": {
@@ -73,6 +215,10 @@
     "motionSequences": {
       "schema": "MotionSequence",
       "description": "Database of automation and rhythm patterns"
+    },
+    "sessions": {
+      "schema": "CollaborationSession",
+      "description": "Global multiplayer session states"
     }
   }
 }
