@@ -1,4 +1,4 @@
-# sampleMONK - App 1 (PRAIN Hub & Net-Gateway)
+# sampleMONK
 
 Master orchestrator for the collaborative audio platform. All functionality is fully operational and adheres to zero-trust LLM routing and ultra-low latency architecture.
 
