@@ -694,22 +694,64 @@ export default function App() {
       <HypergraphVisualizer />
       {/* Top Header / Nav */}
       <header className="border-b border-neutral-800/60 bg-[#0c0c0e]/80 backdrop-blur-md px-4 py-3 sticky top-0 z-50">
-        <div className="w-full flex items-center justify-between gap-4">
+        <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-4">
           
-          {/* Collab Users */}
-          <div className="flex -space-x-2">
-            {collab.session && Object.values(collab.session.activeUsers || {}).filter((u: any) => u && u.name).map((u: any) => (
-              <div key={u.name} 
-                   title={u.name}
-                   className="w-8 h-8 rounded-full border-2 border-[#0c0c0e] flex items-center justify-center text-xs font-bold shadow-sm"
-                   style={{ backgroundColor: u.color || '#fff', color: '#000' }}>
-                {u.name.substring(0, 2).toUpperCase()}
-              </div>
-            ))}
+          <div className="w-full lg:w-auto flex items-center justify-between lg:justify-start">
+            {/* Collab Users */}
+            <div className="flex -space-x-2">
+              {collab.session && Object.values(collab.session.activeUsers || {}).filter((u: any) => u && u.name).map((u: any) => (
+                <div key={u.name} 
+                     title={u.name}
+                     className="w-8 h-8 rounded-full border-2 border-[#0c0c0e] flex items-center justify-center text-xs font-bold shadow-sm"
+                     style={{ backgroundColor: u.color || '#fff', color: '#000' }}>
+                  {u.name.substring(0, 2).toUpperCase()}
+                </div>
+              ))}
+            </div>
+
+            {/* Playback Controls (Mobile/Tablet Only) */}
+            <div className="flex lg:hidden items-center gap-2 bg-[#121215] p-1.5 rounded-lg border border-neutral-800">
+              {isPlaying ? (
+                <button 
+                  id="pause-btn-mobile"
+                  onClick={handlePause}
+                  className="p-2 rounded-md bg-amber-500/15 hover:bg-amber-500/20 text-amber-400 transition"
+                  title="Pause"
+                >
+                  <Pause className="w-4 h-4 fill-amber-400" />
+                </button>
+              ) : (
+                <button 
+                  id="play-btn-mobile"
+                  onClick={handlePlay}
+                  className="p-2 rounded-md bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 transition flex items-center gap-1.5 font-mono text-xs font-bold"
+                  title="Play Sequence"
+                >
+                  <Play className="w-3.5 h-3.5 fill-sky-400" />
+                </button>
+              )}
+              <button 
+                id="stop-btn-mobile"
+                onClick={handleStop}
+                className="p-2 rounded-md hover:bg-neutral-800 text-neutral-400 transition"
+                title="Stop"
+              >
+                <Square className="w-4 h-4 fill-neutral-400" />
+              </button>
+              <div className="h-4 w-[1px] bg-neutral-800 mx-1"></div>
+              <button 
+                id="clear-btn-mobile"
+                onClick={handleClearPatterns}
+                className="p-2 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-red-400 transition"
+                title="Clear Sequence Grid"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* The 16 Logos */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-4 md:grid-cols-8 lg:flex lg:flex-row items-center gap-2 lg:gap-1.5 xl:gap-2">
             {PLUGIN_REGISTRY.map(plugin => {
                const isActive = modules[plugin.id] !== 'inactive';
                const isLocked = collab.isLocked(plugin.id);
@@ -745,17 +787,17 @@ export default function App() {
                    key={plugin.id}
                    onClick={() => toggleModule(plugin.id)}
                    disabled={isLocked}
-                   className={`p-2 rounded-lg border transition-all ${classes} ${lockedClasses}`}
+                   className={`p-2 rounded-lg border transition-all flex items-center justify-center ${classes} ${lockedClasses}`}
                    title={plugin.name}
                  >
-                   <Icon className="w-5 h-5" />
+                   <Icon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5" />
                  </button>
                );
             })}
           </div>
 
-          {/* Playback Controls */}
-          <div className="flex items-center gap-2 bg-[#121215] p-1.5 rounded-lg border border-neutral-800">
+          {/* Playback Controls (Desktop Only) */}
+          <div className="hidden lg:flex items-center gap-2 bg-[#121215] p-1.5 rounded-lg border border-neutral-800">
             {isPlaying ? (
               <button 
                 id="pause-btn"
