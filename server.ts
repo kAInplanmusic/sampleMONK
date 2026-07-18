@@ -91,6 +91,182 @@ app.post('/api/generate-preset', async (req, res) => {
   }
 });
 
+import fs from 'fs';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getStorage } from 'firebase-admin/storage';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import axios from 'axios';
+import unzipper from 'unzipper';
+
+// Initialize Firebase Admin
+let bucket: any = null;
+let db: any = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    initializeApp({
+      credential: cert(serviceAccount),
+      storageBucket: 'sample-monk-samples'
+    });
+    bucket = getStorage().bucket();
+    db = getFirestore('ai-studio-samplemonk-66b72757-3896-4550-bc13-f8d649b1796c');
+    console.log("Firebase Admin initialized successfully.");
+  } else {
+    console.warn("FIREBASE_SERVICE_ACCOUNT env var is missing. Zip importing to Firebase Storage will not work.");
+  }
+} catch (e) {
+  console.error("Failed to initialize Firebase Admin:", e);
+}
+
+// Global background task registry
+const activeImportTasks: Record<string, { url: string; status: string; progress: string }> = {};
+
+app.post('/api/import-zip', async (req, res) => {
+  const { urls } = req.body;
+  if (!urls || !Array.isArray(urls)) {
+    return res.status(400).json({ error: 'Please provide an array of URLs' });
+  }
+  if (!bucket || !db) {
+    return res.status(500).json({ error: 'Firebase Admin not configured. Please add FIREBASE_SERVICE_ACCOUNT to env vars.' });
+  }
+
+  const taskId = Date.now().toString();
+  
+  // Start background process
+  processUrlsInBackground(taskId, urls);
+  
+  return res.json({ message: 'Import started in background', taskId });
+});
+
+app.get('/api/import-status/:taskId', (req, res) => {
+  const taskId = req.params.taskId;
+  return res.json({ status: activeImportTasks[taskId] || { status: 'unknown' } });
+});
+
+async function processUrlsInBackground(taskId: string, urls: string[]) {
+  activeImportTasks[taskId] = { url: '', status: 'processing', progress: `0 / ${urls.length} files processed` };
+  
+  let totalProcessed = 0;
+  for (const url of urls) {
+    activeImportTasks[taskId].url = url;
+    try {
+      console.log(`Starting download for ${url}`);
+      const response = await axios({
+        method: 'get',
+        url: url,
+        responseType: 'stream'
+      });
+
+      const zipStream = response.data.pipe(unzipper.Parse({ forceStream: true }));
+      
+      for await (const entry of zipStream) {
+        const fileName = entry.path;
+        const type = entry.type; // 'Directory' or 'File'
+        
+        if (type === 'File' && fileName.toLowerCase().endsWith('.wav')) {
+          console.log(`Extracting and uploading: ${fileName}`);
+          const fileRef = bucket.file(`samples/${Date.now()}_${path.basename(fileName)}`);
+          
+          // Stream directly from zip to Firebase Storage to avoid disk usage
+          const writeStream = fileRef.createWriteStream({
+            metadata: { contentType: 'audio/wav' }
+          });
+          
+          await new Promise((resolve, reject) => {
+            entry.pipe(writeStream)
+              .on('finish', resolve)
+              .on('error', reject);
+          });
+          
+          await fileRef.makePublic();
+          const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileRef.name}`;
+          
+          // Categorization logic
+          let cat = 'mids';
+          const lowerName = fileName.toLowerCase();
+          if (lowerName.includes('kick') || lowerName.includes('bass') || lowerName.includes('sub')) cat = 'bass';
+          else if (lowerName.includes('hat') || lowerName.includes('cymbal') || lowerName.includes('ride') || lowerName.includes('crash')) cat = 'highs';
+
+          // Save metadata to Firestore
+          try {
+            await db.collection('samples').add({
+              name: path.basename(fileName).replace('.wav', ''),
+              url: publicUrl,
+              category: cat,
+              type: 'Cloud WAV Sample',
+              createdAt: FieldValue.serverTimestamp()
+            });
+          } catch (dbAddErr) {
+            console.error(`Failed to add ${fileName} to Firestore:`, dbAddErr);
+          }
+        } else {
+          entry.autodrain(); // Skip non-wav files to prevent memory leak
+        }
+      }
+      totalProcessed++;
+      activeImportTasks[taskId].progress = `${totalProcessed} / ${urls.length} files processed`;
+    } catch (error) {
+      console.error(`Failed to process ${url}:`, error);
+    }
+  }
+  
+  activeImportTasks[taskId].status = 'completed';
+}
+
+app.get('/api/samples', async (req, res) => {
+  try {
+    const samples = [];
+    
+    // First, try loading cloud samples if DB is available
+    if (db) {
+      try {
+        const snapshot = await db.collection('samples').orderBy('name', 'asc').limit(500).get();
+        snapshot.forEach((doc: any) => {
+          const data = doc.data();
+          samples.push({
+            id: doc.id,
+            name: data.name,
+            category: data.category || 'mids',
+            type: data.type || 'Cloud WAV Sample',
+            url: data.url,
+            description: 'Loaded from Firebase Storage',
+            parameters: { frequency: data.category === 'bass' ? 60 : 1000, decay: 0.3 }
+          });
+        });
+      } catch (dbError) {
+        console.error("Firestore query failed, proceeding with local samples:", dbError);
+      }
+    }
+
+    // Then, append local ones
+    const samplesDir = path.join(process.cwd(), 'public', 'samples');
+    if (fs.existsSync(samplesDir)) {
+      const files = fs.readdirSync(samplesDir).filter(f => f.endsWith('.wav'));
+      files.forEach((filename, idx) => {
+        let cat = 'mids';
+        const lowerName = filename.toLowerCase();
+        if (lowerName.includes('kick') || lowerName.includes('bass') || lowerName.includes('sub')) cat = 'bass';
+        else if (lowerName.includes('hat') || lowerName.includes('cymbal') || lowerName.includes('ride') || lowerName.includes('crash')) cat = 'highs';
+        
+        samples.push({
+          id: `local-wav-${idx}`,
+          name: filename.replace('.wav', ''),
+          category: cat,
+          type: 'Local WAV Sample',
+          url: `/samples/${filename}`,
+          description: 'Local WAV sample',
+          parameters: { frequency: cat === 'bass' ? 60 : 1000, decay: 0.3 }
+        });
+      });
+    }
+    
+    return res.json({ samples: samples });
+  } catch (error) {
+    console.error('Error listing samples:', error);
+    return res.status(500).json({ error: 'Failed to list samples' });
+  }
+});
+
 // Setup Vite Dev Server / Static Asset delivery
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

@@ -13,6 +13,15 @@ class AudioEngine {
   private bassFilter!: Tone.Filter;
   private bassDelay!: Tone.FeedbackDelay;
   
+  // Players for custom samples
+  private samplePlayers: Record<string, Tone.Player> = {};
+  private trackSampleUrl: Record<TrackType, string | null> = {
+    kick: null,
+    hat: null,
+    clap: null,
+    synth: null
+  };
+
   // Visualizer Analyser
   public analyser!: Tone.Analyser;
   private masterVolume!: Tone.Volume;
@@ -141,31 +150,47 @@ class AudioEngine {
 
     // 1. Kick Trigger
     if (this.patterns.kick[step] && !this.mutedStems.kick) {
-      this.kickSynth.triggerAttackRelease('C1', '8n', time);
+      if (this.trackSampleUrl.kick && this.samplePlayers[this.trackSampleUrl.kick]) {
+        this.samplePlayers[this.trackSampleUrl.kick].start(time);
+      } else {
+        this.kickSynth.triggerAttackRelease('C1', '8n', time);
+      }
     }
 
     // 2. Hat Trigger
     if (this.patterns.hat[step] && !this.mutedStems.hat) {
-      this.hatSynth.triggerAttack(time);
+      if (this.trackSampleUrl.hat && this.samplePlayers[this.trackSampleUrl.hat]) {
+        this.samplePlayers[this.trackSampleUrl.hat].start(time);
+      } else {
+        this.hatSynth.triggerAttack(time);
+      }
     }
 
     // 3. Clap Trigger
     if (this.patterns.clap[step] && !this.mutedStems.clap) {
-      this.clapSynth.triggerAttack(time);
+      if (this.trackSampleUrl.clap && this.samplePlayers[this.trackSampleUrl.clap]) {
+        this.samplePlayers[this.trackSampleUrl.clap].start(time);
+      } else {
+        this.clapSynth.triggerAttack(time);
+      }
     }
 
     // 4. Synth Bass Trigger
     if (this.patterns.synth[step] && !this.mutedStems.synth) {
-      const scale = MUSIC_SCALES[this.currentScaleName];
-      const noteIndex = this.synthNotes[step] ?? 0;
-      const note = scale[noteIndex % scale.length];
-      
-      // Acid accent: higher velocity / decay if step is odd or accent pattern
-      if (step % 4 === 2) {
-        // accented note
-        this.bassSynth.triggerAttackRelease(note, '16n', time, 1.0);
+      if (this.trackSampleUrl.synth && this.samplePlayers[this.trackSampleUrl.synth]) {
+        this.samplePlayers[this.trackSampleUrl.synth].start(time);
       } else {
-        this.bassSynth.triggerAttackRelease(note, '16n', time, 0.7);
+        const scale = MUSIC_SCALES[this.currentScaleName];
+        const noteIndex = this.synthNotes[step] ?? 0;
+        const note = scale[noteIndex % scale.length];
+        
+        // Acid accent: higher velocity / decay if step is odd or accent pattern
+        if (step % 4 === 2) {
+          // accented note
+          this.bassSynth.triggerAttackRelease(note, '16n', time, 1.0);
+        } else {
+          this.bassSynth.triggerAttackRelease(note, '16n', time, 0.7);
+        }
       }
     }
 
@@ -228,9 +253,28 @@ class AudioEngine {
     this.masterVolume.volume.rampTo(db, 0.1);
   }
 
-  public async previewSample(category: 'bass' | 'mids' | 'highs', frequency?: number) {
+  public async loadTrackSample(track: TrackType, url: string | null) {
+    this.trackSampleUrl[track] = url;
+    if (url && !this.samplePlayers[url]) {
+      const player = new Tone.Player(url).connect(this.masterVolume);
+      await player.load(url);
+      this.samplePlayers[url] = player;
+    }
+  }
+
+  public async previewSample(category: 'bass' | 'mids' | 'highs', frequency?: number, url?: string) {
     await this.init();
     const time = Tone.now();
+    
+    if (url) {
+      if (!this.samplePlayers[url]) {
+        const player = new Tone.Player(url).connect(this.masterVolume);
+        await player.load(url);
+        this.samplePlayers[url] = player;
+      }
+      this.samplePlayers[url].start(time);
+      return;
+    }
     
     if (category === 'bass') {
       // Trigger kick or a low bass sound

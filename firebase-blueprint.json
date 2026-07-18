@@ -28,12 +28,51 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "name", "bpm", "patterns", "synthNotes"]
+    },
+    "AudioElement": {
+      "title": "AudioElement",
+      "description": "Represents samples, songs, and noises",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["sample", "song", "noise"] },
+        "source": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "frequency": { "type": "number" },
+        "duration": { "type": "number" },
+        "url": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "type", "tags"]
+    },
+    "MotionSequence": {
+      "title": "MotionSequence",
+      "description": "Represents movement patterns, automations, and rhythm matrices",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "data": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "type", "tags", "data"]
     }
   },
   "firestore": {
     "presets": {
       "schema": "CloudPreset",
       "description": "Global user-created audio presets and sequences"
+    },
+    "audioElements": {
+      "schema": "AudioElement",
+      "description": "Database of all audio samples, songs, and noises with extensive tagging"
+    },
+    "motionSequences": {
+      "schema": "MotionSequence",
+      "description": "Database of automation and rhythm patterns"
     }
   }
 }

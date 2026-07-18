@@ -34,12 +34,12 @@ import { audioEngine } from './utils/audioEngine';
 import { BeatVisualizer } from './components/BeatVisualizer';
 import { SampleMonkLogo } from './components/SampleMonkLogo';
 import { PRESET_SAMPLE_DATABASE, AudioSample } from './data/samples';
-import { savePresetToCloud, fetchPresetsFromCloud } from './utils/firebase';
+import { savePresetToCloud, fetchPresetsFromCloud, seedDatabase, uploadAudioElementToCloud } from './utils/firebase';
 
 export default function App() {
   // Preset state
   const [activePreset, setActivePreset] = useState<TrackPreset>(TECHNO_PRESETS[0]);
-  const [presetTab, setPresetTab] = useState<'studio' | 'cloud'>('studio');
+  const [presetTab, setPresetTab] = useState<'studio' | 'cloud' | 'matrix'>('studio');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   
@@ -92,6 +92,23 @@ export default function App() {
   const [isSavingCloud, setIsSavingCloud] = useState(false);
   const [cloudSuccessMsg, setCloudSuccessMsg] = useState('');
 
+  // Matrix / Database Seed state
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState('');
+  
+  // Custom Audio Upload State
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadName, setUploadName] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
+  const [uploadType, setUploadType] = useState<'sample' | 'song' | 'noise'>('sample');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+
+  // Zip Import State
+  const [zipUrlsText, setZipUrlsText] = useState('');
+  const [importTaskId, setImportTaskId] = useState<string | null>(null);
+  const [importStatusInfo, setImportStatusInfo] = useState<{status: string, progress: string, url: string} | null>(null);
+
   const loadCloudPresets = async () => {
     setIsLoadingCloud(true);
     try {
@@ -107,6 +124,59 @@ export default function App() {
   useEffect(() => {
     loadCloudPresets();
   }, []);
+
+  useEffect(() => {
+    let interval: any;
+    if (importTaskId) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/import-status/${importTaskId}`);
+          const data = await res.json();
+          setImportStatusInfo(data.status);
+          if (data.status && data.status.status === 'completed') {
+            clearInterval(interval);
+            setImportTaskId(null);
+            // Refresh samples
+            const sRes = await fetch('/api/samples');
+            const sData = await sRes.json();
+            if (sData.samples) {
+              setSamples(prev => {
+                const newIds = new Set(sData.samples.map((s: any) => s.id));
+                return [...prev.filter(p => !newIds.has(p.id)), ...sData.samples];
+              });
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [importTaskId]);
+
+  const handleStartImport = async () => {
+    if (!zipUrlsText.trim()) return;
+    const urls = zipUrlsText.split('\n').map(u => u.trim()).filter(u => u);
+    if (urls.length === 0) return;
+    
+    try {
+      const res = await fetch('/api/import-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setImportTaskId(data.taskId);
+        setZipUrlsText('');
+      } else {
+        alert("Error starting import: " + data.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error starting import");
+    }
+  };
 
   const handleSaveToCloud = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +209,37 @@ export default function App() {
     }
   };
 
+  const handleSeedDatabase = async () => {
+    setIsSeeding(true);
+    setSeedMsg('');
+    const res = await seedDatabase();
+    setSeedMsg(res.message);
+    setIsSeeding(false);
+    setTimeout(() => setSeedMsg(''), 6000);
+  };
+
+  const handleCustomUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile || !uploadName) return;
+    
+    setIsUploading(true);
+    setUploadMsg('');
+    
+    const tagsArray = uploadTags.split(',').map(t => t.trim()).filter(Boolean);
+    const res = await uploadAudioElementToCloud(uploadFile, uploadName, uploadType, tagsArray);
+    
+    setUploadMsg(res.message);
+    setIsUploading(false);
+    
+    if (res.success) {
+      setUploadFile(null);
+      setUploadName('');
+      setUploadTags('');
+      setUploadType('sample');
+      setTimeout(() => setUploadMsg(''), 4000);
+    }
+  };
+
   // Initialize and bind audio callback
   useEffect(() => {
     // Synchronize beat changes from Tone.js thread back to React safely
@@ -153,6 +254,24 @@ export default function App() {
   }, []);
 
   // Sync initial parameters on mount/preset-switch
+  useEffect(() => {
+    const fetchLocalSamples = async () => {
+      try {
+        const res = await fetch('/api/samples');
+        const data = await res.json();
+        if (data.samples && data.samples.length > 0) {
+          setSamples(prev => {
+            const newIds = new Set(data.samples.map((s: any) => s.id));
+            return [...prev.filter(p => !newIds.has(p.id)), ...data.samples];
+          });
+        }
+      } catch (e) {
+        console.error("Could not load local samples", e);
+      }
+    };
+    fetchLocalSamples();
+  }, []);
+
   useEffect(() => {
     const isAnySoloed = Object.values(soloedStems).some(Boolean);
     const finalMuteStates = {
@@ -248,13 +367,21 @@ export default function App() {
   // Sample Database Handlers
   const handlePreviewSample = async (sample: AudioSample) => {
     try {
-      await audioEngine.previewSample(sample.category, sample.parameters.frequency);
+      await audioEngine.previewSample(sample.category, sample.parameters.frequency, sample.url);
     } catch (err) {
       console.error('Error previewing sample:', err);
     }
   };
 
   const handleLoadSampleToTrack = (sample: AudioSample, targetTrack: TrackType) => {
+    // If it's a WAV file from public/samples, load it directly to the engine track
+    if (sample.url) {
+      audioEngine.loadTrackSample(targetTrack, sample.url);
+    } else {
+      // Clear out loaded sample if returning to synth mode
+      audioEngine.loadTrackSample(targetTrack, null);
+    }
+
     // Modify synth parameters if the sample provides them
     if (sample.parameters.frequency) {
       if (sample.category === 'bass') {
@@ -534,6 +661,12 @@ export default function App() {
                   Cloud
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 </button>
+                <button
+                  onClick={() => setPresetTab('matrix')}
+                  className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${presetTab === 'matrix' ? 'bg-fuchsia-500/15 text-fuchsia-400 font-bold' : 'text-neutral-500 hover:text-neutral-300'}`}
+                >
+                  Matrix
+                </button>
               </div>
             </div>
 
@@ -557,7 +690,7 @@ export default function App() {
                   );
                 })}
               </div>
-            ) : (
+            ) : presetTab === 'cloud' ? (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
                   <span>Community Firestore Loops</span>
@@ -673,6 +806,117 @@ export default function App() {
                   {cloudSuccessMsg && (
                     <div className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 justify-center mt-1 bg-emerald-500/10 py-1.5 rounded border border-emerald-500/25">
                       <CheckCircle2 className="w-3.5 h-3.5" /> {cloudSuccessMsg}
+                    </div>
+                  )}
+                </form>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                  <span>Data Matrix Connector</span>
+                  <Database className="w-3.5 h-3.5 text-fuchsia-400" />
+                </div>
+                <div className="bg-[#121215] p-3 rounded-lg border border-neutral-800/80 text-xs font-mono text-neutral-400 leading-relaxed">
+                  Connect and pull samples, sounds, and motion sequences from external sites like Freesound.org, MusicRadar, Legowelt, and FunctionLoops into the deep Firestore Matrix.
+                </div>
+                <button
+                  onClick={handleSeedDatabase}
+                  disabled={isSeeding}
+                  className="w-full bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-neutral-800 disabled:text-neutral-500 text-white font-bold font-mono text-xs py-2 px-3 rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  {isSeeding ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Syncing External Nodes...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-3.5 h-3.5" />
+                      Seed Database Matrix
+                    </>
+                  )}
+                </button>
+                {seedMsg && (
+                  <div className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 justify-center mt-1 bg-emerald-500/10 py-1.5 rounded border border-emerald-500/25 p-2 text-center leading-relaxed">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> {seedMsg}
+                  </div>
+                )}
+                
+                <div className="border-t border-neutral-800/80 my-2"></div>
+                
+                <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                  <span>Direct Matrix Upload</span>
+                  <UploadCloud className="w-3.5 h-3.5 text-sky-400" />
+                </div>
+                
+                <form onSubmit={handleCustomUpload} className="bg-[#121215] p-3 rounded-lg border border-neutral-800/80 flex flex-col gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-mono text-neutral-500 uppercase">Audio File</label>
+                    <input 
+                      type="file" 
+                      accept="audio/*"
+                      required
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                      className="text-xs text-neutral-400 font-mono file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-[10px] file:font-mono file:font-bold file:bg-sky-500/20 file:text-sky-400 hover:file:bg-sky-500/30 transition-colors"
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-mono text-neutral-500 uppercase">Name & Type</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        required
+                        value={uploadName}
+                        onChange={(e) => setUploadName(e.target.value)}
+                        placeholder="e.g. Deep Kick 01" 
+                        className="flex-1 bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-sky-500/60 font-mono"
+                      />
+                      <select
+                        value={uploadType}
+                        onChange={(e) => setUploadType(e.target.value as any)}
+                        className="w-[90px] bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-sky-500/60 font-mono"
+                      >
+                        <option value="sample">Sample</option>
+                        <option value="song">Song</option>
+                        <option value="noise">Noise</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-mono text-neutral-500 uppercase">Tags (comma separated)</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={uploadTags}
+                      onChange={(e) => setUploadTags(e.target.value)}
+                      placeholder="e.g. Kick, Techno, XXL, 808" 
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-sky-500/60 font-mono"
+                    />
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    disabled={isUploading || !uploadFile || !uploadName}
+                    className="w-full mt-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 disabled:bg-neutral-800 disabled:text-neutral-500 font-bold font-mono text-xs py-2 px-3 rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-sky-500/30"
+                  >
+                    {isUploading ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="w-3.5 h-3.5" />
+                        Upload & Tag
+                      </>
+                    )}
+                  </button>
+                  
+                  {uploadMsg && (
+                    <div className={`text-[10px] font-mono flex items-center gap-1 justify-center mt-1 py-1.5 rounded border p-2 text-center leading-relaxed ${uploadMsg.includes('failed') ? 'text-red-400 bg-red-500/10 border-red-500/25' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25'}`}>
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> {uploadMsg}
                     </div>
                   )}
                 </form>
@@ -1196,6 +1440,43 @@ export default function App() {
                 <span>{sampleSuccessMsg}</span>
               </div>
             )}
+
+            {/* Zip Batch Downloader Area */}
+            <div className="bg-[#121215] p-4 rounded-xl border border-neutral-800 flex flex-col gap-3">
+              <h4 className="text-xs font-mono font-bold text-neutral-300">ZIP-Batch Downloader (Cloud Storage)</h4>
+              <p className="text-[10px] text-neutral-500 font-mono">
+                Lade beliebig große Sample-Packs (bis 100GB). Der Server streamt die Dateien direkt in den Cloud-Storage (Firebase Bucket), entpackt die WAV-Dateien und legt sie in der Datenbank ab.
+              </p>
+              
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={zipUrlsText}
+                  onChange={(e) => setZipUrlsText(e.target.value)}
+                  placeholder="Füge hier Download-URLs zu .zip Dateien ein (eine URL pro Zeile)..."
+                  className="w-full h-20 bg-neutral-900 border border-neutral-700 rounded-lg p-2.5 text-xs text-neutral-300 font-mono focus:border-sky-500 focus:outline-none resize-none"
+                  disabled={!!importTaskId}
+                />
+                
+                <div className="flex justify-between items-center">
+                  <button
+                    onClick={handleStartImport}
+                    disabled={!!importTaskId || !zipUrlsText.trim()}
+                    className="px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 text-xs font-mono font-bold border border-sky-500/30 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {importTaskId ? 'Import läuft...' : 'ZIPs importieren'}
+                  </button>
+                  
+                  {importTaskId && importStatusInfo && (
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-sky-400">
+                      <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                      {importStatusInfo.status === 'processing' 
+                        ? `Lade & entpacke: ${importStatusInfo.url.substring(0, 30)}... (${importStatusInfo.progress})` 
+                        : 'Abgeschlossen!'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
               

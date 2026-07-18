@@ -1,12 +1,12 @@
 {
-  "projectId": "identitymonk",
-  "appId": "1:959327717347:web:b1fd8b5c642483329502d6",
-  "apiKey": "AIzaSyA_PfT8h83F9s0REeiKU-uXX-jQqaR2Lzo",
-  "authDomain": "identitymonk.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-tonetechnostatio-66b72757-3896-4550-bc13-f8d649b1796c",
-  "storageBucket": "identitymonk.firebasestorage.app",
-  "messagingSenderId": "959327717347",
+  "projectId": "sample-monk",
+  "appId": "1:293043362808:web:ae5f422a4ad04b7ae3540d",
+  "apiKey": "AIzaSyBfDgWQfRone3xQuYisWCmCi-aJJOmp2o8",
+  "authDomain": "sample-monk.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-samplemonk-66b72757-3896-4550-bc13-f8d649b1796c",
+  "storageBucket": "sample-monk.firebasestorage.app",
+  "messagingSenderId": "293043362808",
   "measurementId": "",
-  "oAuthClientId": "959327717347-7fmiau4g7iqc67gonumed5q77pt2u2fe.apps.googleusercontent.com",
+  "oAuthClientId": "293043362808-qe37l05tsmaqpm3nomm2g2i36nhijkia.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
