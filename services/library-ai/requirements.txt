@@ -1,0 +1,6 @@
+librosa
+scikit-learn
+chromadb
+firebase-admin
+numpy
+soundfile

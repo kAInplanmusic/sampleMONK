@@ -6,6 +6,28 @@ export function FXEngineTerminal() {
   const [activeFx, setActiveFx] = useState('REVERB');
   const [wetDry, setWetDry] = useState(50);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Connect to Backend API
+  const applyFx = async (fx: string, dryWet: number) => {
+    try {
+      await fetch('http://localhost:8000/api/apply-fx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fx_type: fx, 
+          settings: { wetDry: dryWet } 
+        }),
+      });
+      console.log(`FX ${fx} applied with wetDry ${dryWet}%`);
+    } catch (e) {
+      console.error("FX application failed:", e);
+    }
+  };
+
+  const handleFxChange = (fx: string) => {
+    setActiveFx(fx);
+    applyFx(fx, wetDry);
+  };
   
   const fxList = [
     { id: 'DELAY', label: 'TAPE ECHO' },
@@ -131,7 +153,7 @@ export function FXEngineTerminal() {
                {fxList.map(fx => (
                  <button
                    key={fx.id}
-                   onClick={() => setActiveFx(fx.id)}
+                   onClick={() => handleFxChange(fx.id)}
                    className={`h-16 flex flex-col items-center justify-center gap-1 rounded-lg border-2 transition-all ${activeFx === fx.id ? 'bg-rose-900/40 border-rose-500 text-rose-400 shadow-[inset_0_0_15px_rgba(244,63,94,0.2)]' : 'bg-[#222] border-transparent text-neutral-500 hover:bg-[#333] hover:text-neutral-400'}`}
                  >
                    <span className="text-xs font-black tracking-wider">{fx.id}</span>

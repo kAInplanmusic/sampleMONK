@@ -8,13 +8,29 @@ export function VoiceGenTerminal() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasResult, setHasResult] = useState(false);
 
-  const generate = () => {
+  const generate = async () => {
     setIsGenerating(true);
     setHasResult(false);
-    setTimeout(() => {
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/generate-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: prompt, voice_preset: voice }),
+      });
+      const data = await response.json();
+      console.log("Voice generation task triggered:", data.task_id);
+      
+      // Simulate finish for the alpha UI
+      setTimeout(() => {
+        setIsGenerating(false);
+        setHasResult(true);
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Voice generation failed:", error);
       setIsGenerating(false);
-      setHasResult(true);
-    }, 3000);
+    }
   };
 
   const voices = ['FEMALE_ROBOTIC', 'MALE_GRITTY', 'ETHEREAL_CHOIR', 'DISTORTED_DEMON', 'AI_NEWSCASTER'];

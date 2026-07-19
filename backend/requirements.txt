@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+celery[redis]
+torch
+torchaudio
+transformers
+demucs
+accelerate
+huggingface_hub
+pillow
+librosa\nscikit-learn\nchromadb

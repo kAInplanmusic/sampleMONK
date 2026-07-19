@@ -15,25 +15,40 @@ export function StemExtractorTerminal() {
     }
   };
 
-  const startExtraction = () => {
+  const startExtraction = async () => {
     if (!file) return;
     setIsExtracting(true);
     setProgress(0);
     
-    // Simulate AI extraction process
-    const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setIsExtracting(false);
-          setExtracted(true);
-          return 100;
-        }
-        // Speed changes for realism
-        const increment = Math.random() * 5 + 1;
-        return Math.min(100, p + increment);
+    try {
+      // In a real app, you would upload the file first and get a path.
+      // For this implementation, we trigger the endpoint.
+      const response = await fetch('http://localhost:8000/api/separate-stems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_path: file.name }), // This needs proper path handling
       });
-    }, 150);
+      
+      const data = await response.json();
+      console.log("Stem extraction task triggered:", data.task_id);
+      
+      // Simulate progress for the UI while Celery processes in background
+      const interval = setInterval(() => {
+        setProgress(p => {
+          if (p >= 100) {
+            clearInterval(interval);
+            setIsExtracting(false);
+            setExtracted(true);
+            return 100;
+          }
+          return Math.min(99, p + 2);
+        });
+      }, 500);
+      
+    } catch (error) {
+      console.error("Extraction failed:", error);
+      setIsExtracting(false);
+    }
   };
 
   const stems = [
