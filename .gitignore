@@ -7,3 +7,8 @@ coverage/
 .env*
 !.env.example
 public/samples/instruments/general_midi.sf2
+*.sf2
+*.wav
+*.zip
+*.sfArk
+/public/samples/
