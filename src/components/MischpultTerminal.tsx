@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Volume2, Monitor, Headphones } from 'lucide-react';
-
-// Zentrale Audio-Konfiguration für Web Audio API
-interface MixerChannel {
-  id: number;
-  gainNode: GainNode;
-  monitorNode: GainNode; // Routing zu Monitor-Kopfhörern
-  isMonitoring: boolean;
-}
+import { Sliders, Monitor, Headphones } from 'lucide-react';
 
 interface RoutingEntry {
   source: string;
@@ -17,8 +9,7 @@ interface RoutingEntry {
 }
 
 export function MischpultTerminal() {
-  const [monitorMode, setMonitorMode] = useState<'master' | 'monitor'>('master');
-  const [channels, setChannels] = useState<any[]>([]);
+  const [channels, setChannels] = useState<RoutingEntry[]>([]);
 
   useEffect(() => {
     fetch('/data/routing.json')
@@ -31,8 +22,15 @@ export function MischpultTerminal() {
 
   return (
     <div className="w-full h-full flex flex-col bg-[#1a1a1a] rounded-xl border border-neutral-800 text-neutral-300 font-sans shadow-2xl relative">
-      {/* ... Header bleibt ... */}
       
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] border-b border-neutral-800">
+        <div className="flex items-center gap-3">
+          <Sliders className="w-5 h-5 text-blue-400" />
+          <h2 className="text-xl font-black tracking-widest uppercase">PRO-MIX 9000</h2>
+        </div>
+      </div>
+
       {/* Mixer Matrix */}
       <div className="flex-1 p-6 flex gap-4 bg-[#111]">
         {channels.map((ch: RoutingEntry) => (
@@ -41,7 +39,10 @@ export function MischpultTerminal() {
             <span className="text-[9px] font-black text-neutral-400 text-center uppercase truncate">{ch.source}</span>
             <span className="text-[8px] text-neutral-600 text-center mb-2">{ch.type}</span>
             
-            {/* ... Fader/Controls ... */}
+            {/* Fader */}
+            <div className="flex-1 flex justify-center bg-[#080808] rounded-sm border border-neutral-900 relative">
+                <input type="range" orient="vertical" className="w-2 appearance-none h-full bg-neutral-800 rounded-sm accent-blue-500" />
+            </div>
           </div>
         ))}
       </div>

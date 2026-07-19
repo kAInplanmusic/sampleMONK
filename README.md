@@ -3,11 +3,9 @@
 High-End Audio-Produktionsumgebung, basierend auf einer verteilten Micro-Plugin-Architektur.
 
 ## 1. System Architektur
-Das System besteht aus einem zentralen Hub und 16 autarken Plugin-Containern.
-
-*   **Synchronisation:** UDP-Broadcast (OSC-Protokoll) über Port 9000.
-*   **Asset-Management:** Zentrales Asset-Repository unter `/public/wam/` und `/public/data/`.
-*   **Audio-Engine:** MasterEngine verwaltet AudioBuffer und prozedurale Synthese bei 48kHz/24bit.
+Das System ist strikt in zwei Einheiten getrennt:
+* **Produktions-Ecosystem (Hub + Plugins):** Zuständig für Sound-Generierung, Sequencing, DSP und Mixing. 
+* **Web-Audio-Player (Monitoring):** Eine vollständig entkoppelte Instanz. Sie empfängt den finalen Master-Output (10.1 / 8.1) und validiert ausschließlich die OS-seitige Hardware-Konfiguration, bevor sie den Live-Stream ausgibt. Sie hat keine Steuerungsfunktion über das Ecosystem.
 
 ## 2. Plugin-Verzeichnis (Blueprint)
 Alle Plugins folgen dem `Plugin`-Interface in `src/plugins/`:
@@ -41,9 +39,22 @@ export interface Plugin {
 }
 ```
 
-## 4. Deployment
+## 4. Audio Quick-Start Guide (Monitoring Endpunkt)
+Der Webplayer validiert beim Start, ob dein OS die nötigen Kanäle bereitstellt:
+1. **OS-Ebene:** Konfiguriere dein Audio-Interface/HDMI-Ausgang im Betriebssystem auf 8 oder 10 Kanäle.
+2. **Web-Player:** Beim Start der App, rufe `checkAudioSystem()` aus `src/utils/audioDiagnostics.ts` in der Konsole auf, um die Kanalkonfiguration zu verifizieren.
+3. **LFE-Modus:** Das Spatial-Plugin leitet das LFE-Signal (Kanal 9/11) transparent durch. Die Endstufe/der DSP muss die LFE-Übergangsfrequenz (Crossover) verarbeiten.
+
+### Diagnose
+```javascript
+import { checkAudioSystem } from './utils/audioDiagnostics';
+checkAudioSystem();
+```
+Falls "WARNUNG: System unterstützt weniger als 8 Kanäle" erscheint, ist die OS-Konfiguration fehlerhaft.
+
+## 5. Deployment
 Starten des gesamten Stacks:
 ```bash
 docker compose up --build -d
 ```
-EOF
+

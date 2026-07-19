@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Music, Piano, Guitar, Trumpet, Layers, Loader2 } from 'lucide-react';
+import { Music, Piano, Guitar, Layers, Loader2 } from 'lucide-react';
 
 // --- WAM2 / Instrument Standards ---
 type InstrumentType = 'sampler' | 'synth' | 'soundfont';
@@ -15,10 +15,9 @@ const INSTRUMENT_CATEGORIES = [
   { name: 'Tasteninstrumente', icon: Piano },
   { name: 'Streichinstrumente', icon: Music },
   { name: 'Zupfinstrumente', icon: Guitar },
-  { name: 'Blasinstrumente', icon: Trumpet },
+  { name: 'Blasinstrumente', icon: Music },
   { name: 'Weltmusik & Chor', icon: Layers }
 ];
-
 export function InstrumentsTerminal() {
   const [activeCategory, setActiveCategory] = useState('Tasteninstrumente');
   const [search, setSearch] = useState('');
