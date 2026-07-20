@@ -3,6 +3,7 @@ import { Play, Square, Circle, LayoutGrid, Zap, Clock } from 'lucide-react';
 import { TrackType, TrackPreset } from '../types';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
+import { usePluginState } from '../hooks/usePluginState';
 
 interface SequencerProps {
   isPlaying: boolean;
@@ -17,6 +18,7 @@ interface SequencerProps {
 
 export function SequencerPluginTerminal(props: SequencerProps) {
   const { setSelectedSample } = useSamples();
+  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
   const [trackSamples, setTrackSamples] = useState<Record<TrackType, AudioSample | null>>({
     kick: null, hat: null, clap: null, snare: null
   });
@@ -37,14 +39,20 @@ export function SequencerPluginTerminal(props: SequencerProps) {
   };
 
   return (
-    <section className="bg-[#050508] p-5 rounded-xl border border-neutral-800/80 shadow-xl flex flex-col gap-4">
-      
+    <section className={`bg-[#050508] p-5 rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800/80'} shadow-xl flex flex-col gap-4 ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
+
       {/* Taktmaschine Header */}
       <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
         <h3 className="text-sm font-mono text-neutral-300 font-bold tracking-wider flex items-center gap-2">
           <Clock className="w-4 h-4 text-emerald-400" /> MASTER CLOCK ENGINE
         </h3>
-        
+
+        <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
+            <option value="OFF">OFF</option>
+            <option value="AI_CONTROLLED">AI</option>
+            <option value="ACTIVE">ACTIVE</option>
+        </select>
+
         <div className="flex gap-4 items-center">
             <div className="flex items-center gap-2">
                 <span className="text-[9px] font-mono text-neutral-500 uppercase">BPM</span>
@@ -52,7 +60,7 @@ export function SequencerPluginTerminal(props: SequencerProps) {
             </div>
         </div>
       </div>
-
+//...
       {/* Grid als reine Rhythmus-Matrix */}
       <div className="bg-[#0c0c0e] p-4 rounded-lg border border-neutral-800/50">
         {(['kick', 'hat', 'clap', 'snare'] as TrackType[]).map((trackKey) => (

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Radio, Mic, Save, Activity, Download, Play, Square, Circle } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
+import { usePluginState } from '../hooks/usePluginState';
 
 export function RecorderTerminal() {
   const { addSample } = useSamples();
+  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
   const [takes, setTakes] = useState([
@@ -54,7 +56,7 @@ export function RecorderTerminal() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl relative">
+    <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-indigo-900/20 to-[#111] border-b border-indigo-900/30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
@@ -64,9 +66,14 @@ export function RecorderTerminal() {
             <h2 className="text-xl font-black tracking-widest text-neutral-100 uppercase flex items-center gap-2">
               Master Recorder <span className="text-[10px] font-mono text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-sm">BIT-PERFECT</span>
             </h2>
-            <p className="text-xs text-neutral-500 font-mono">Realtime Lossless Capture & Auto-Library Push</p>
           </div>
         </div>
+        
+        <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
+            <option value="OFF">OFF</option>
+            <option value="AI_CONTROLLED">AI</option>
+            <option value="ACTIVE">ACTIVE</option>
+        </select>
       </div>
 
       <div className="flex-1 p-6 flex gap-6 overflow-hidden">
@@ -84,7 +91,7 @@ export function RecorderTerminal() {
             <div className="flex items-center gap-6">
               {!isRecording ? (
                 <button 
-                  onClick={() => setIsRecording(true)}
+                  onClick={() => { if (!(lockStatus.active && lockStatus.lockedBy !== 'localUser')) setIsRecording(true); }}
                   className="w-20 h-20 rounded-full bg-[#222] border-4 border-[#111] flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:border-red-900 transition-colors group"
                 >
                   <Circle className="w-8 h-8 text-red-500 fill-current group-hover:drop-shadow-[0_0_10px_rgba(239,68,68,1)]" />
@@ -108,7 +115,7 @@ export function RecorderTerminal() {
               {['MASTER_OUT', 'VOCAL_STEM', 'DRUM_BUS', 'SYNTH_GROUP'].map(src => (
                 <button 
                   key={src}
-                  onClick={() => setInputSource(src)}
+                  onClick={() => { if (!(lockStatus.active && lockStatus.lockedBy !== 'localUser')) setInputSource(src); }}
                   className={`py-2 px-3 rounded border text-[10px] font-mono font-bold transition-all ${inputSource === src ? 'bg-indigo-900/40 border-indigo-500 text-indigo-400' : 'bg-[#111] border-neutral-800 text-neutral-500 hover:bg-[#222]'}`}
                 >
                   {src}

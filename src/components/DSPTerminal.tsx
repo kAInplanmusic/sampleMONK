@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, Power, Settings, Cpu, Zap, Sliders } from 'lucide-react';
+import { usePluginState } from '../hooks/usePluginState';
 
 export function DSPTerminal() {
+  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
   const [power, setPower] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -59,7 +61,7 @@ export function DSPTerminal() {
   ];
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl relative">
+    <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-violet-900/20 to-[#111] border-b border-violet-900/30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.3)]">
@@ -67,11 +69,16 @@ export function DSPTerminal() {
           </div>
           <div>
             <h2 className="text-xl font-black tracking-widest text-neutral-100 uppercase flex items-center gap-2">
-              Digital Signal Processor <span className="text-[10px] font-mono text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded-sm">ZERO JITTER</span>
+              DSP Engine <span className="text-[10px] font-mono text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded-sm">ZERO JITTER</span>
             </h2>
-            <p className="text-xs text-neutral-500 font-mono">High-End Realtime Signal Manipulation Inlay</p>
           </div>
         </div>
+        
+        <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
+            <option value="OFF">OFF</option>
+            <option value="AI_CONTROLLED">AI</option>
+            <option value="ACTIVE">ACTIVE</option>
+        </select>
         
         <button 
           onClick={() => setPower(!power)}
@@ -127,8 +134,8 @@ export function DSPTerminal() {
         {/* Right Col: Visualization & Settings */}
         <div className="col-span-8 flex flex-col gap-6">
           <div className="h-48 bg-black rounded-xl border-4 border-neutral-800 shadow-inner p-2 relative overflow-hidden">
-             <canvas ref={canvasRef} width={600} height={200} className="w-full h-full" />
-             <div className="absolute top-2 left-3 bg-black/50 px-2 py-1 rounded text-[10px] font-mono text-violet-500 border border-violet-500/30">
+             <canvas ref={canvasRef} width={800} height={200} className="w-full h-full opacity-80" />
+             <div className="absolute top-2 left-3 bg-black/50 px-2 py-1 rounded text-[10px] font-mono text-teal-500 border border-teal-500/30">
                REALTIME PHASE MONITOR
              </div>
           </div>

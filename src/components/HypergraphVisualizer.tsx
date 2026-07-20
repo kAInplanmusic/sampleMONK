@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useSamples } from '../context/SampleContext';
+import { usePluginState } from '../hooks/usePluginState';
 
 export function HypergraphVisualizer() {
   const { samples } = useSamples();
+  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -103,9 +105,18 @@ export function HypergraphVisualizer() {
   }, []);
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-30">
-      <canvas ref={canvasRef} className="w-full h-full" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#070709] via-transparent to-[#070709]"></div>
+    <div className={`relative w-full h-full ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
+        <div className="absolute top-4 right-4 z-10">
+            <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
+                <option value="OFF">OFF</option>
+                <option value="AI_CONTROLLED">AI</option>
+                <option value="ACTIVE">ACTIVE</option>
+            </select>
+        </div>
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-30">
+          <canvas ref={canvasRef} className="w-full h-full" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#070709] via-transparent to-[#070709]"></div>
+        </div>
     </div>
   );
 }

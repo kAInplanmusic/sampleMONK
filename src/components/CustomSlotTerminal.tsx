@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { Puzzle, Lock, Settings, Code, Terminal, Play, Save, RefreshCw, Upload, Network } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
+import { usePluginState } from '../hooks/usePluginState';
 
 export function CustomSlotTerminal() {
   const { samples, addSample } = useSamples();
+  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
   const [activeTab, setActiveTab] = useState('RUNTIME');
   const [isCompiling, setIsCompiling] = useState(false);
-
+  
   const handleCompile = () => {
+    if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setIsCompiling(true);
     setTimeout(() => setIsCompiling(false), 2000);
   };
-// ...
+
   return (
-    <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl relative">
+    <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-sky-900/20 to-[#111] border-b border-sky-900/30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-sky-500/20 flex items-center justify-center border border-sky-500/50 shadow-[0_0_15px_rgba(14,165,233,0.3)]">
@@ -23,9 +26,14 @@ export function CustomSlotTerminal() {
             <h2 className="text-xl font-black tracking-widest text-neutral-100 uppercase flex items-center gap-2">
               Custom Plugin Slot <span className="text-[10px] font-mono text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded-sm">SANDBOX</span>
             </h2>
-            <p className="text-xs text-neutral-500 font-mono">Orchestra API & 3rd Party Code Inlay</p>
           </div>
         </div>
+        
+        <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
+            <option value="OFF">OFF</option>
+            <option value="AI_CONTROLLED">AI</option>
+            <option value="ACTIVE">ACTIVE</option>
+        </select>
         
         <div className="flex bg-[#1a1a1a] rounded-lg border border-neutral-800 p-1">
           {['RUNTIME', 'CODE', 'API_SYNC'].map(tab => (
@@ -51,9 +59,6 @@ export function CustomSlotTerminal() {
               </div>
               
               <h3 className="text-lg font-black tracking-widest text-neutral-200 mb-2">NO PLUGIN LOADED</h3>
-              <p className="text-xs text-neutral-500 font-mono leading-relaxed mb-8">
-                This sandbox container is ready. You can inject custom React components, WebAudio DSP scripts, or remote WebAssembly modules. It automatically inherits Realtime-State-Sync (B2B Locking) and UI Theming from the Orchestra Core.
-              </p>
               
               <div className="flex justify-center gap-4">
                 <button className="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold text-xs tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(14,165,233,0.4)] transition-all">
@@ -133,9 +138,6 @@ export default definePlugin({
                    <span className="text-xs font-mono text-sky-400">STATE_SYNC</span>
                    <span className="text-[10px] font-bold text-emerald-400">ACTIVE</span>
                  </div>
-                 <p className="text-[10px] font-mono text-neutral-500 mt-2">
-                   When a user interacts with this sandbox, it automatically locks for the other 3 collaborators in the session to prevent state conflict.
-                 </p>
                </div>
                
                <div className="bg-[#1a1a1a] rounded-xl border border-neutral-800 p-6 flex flex-col gap-4">

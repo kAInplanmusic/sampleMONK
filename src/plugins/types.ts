@@ -1,4 +1,4 @@
-export type PluginState = 'OFF' | 'ON' | 'BYPASS';
+export type PluginState = 'OFF' | 'AI_CONTROLLED' | 'ACTIVE';
 export interface LockStatus {
   lockedBy: string | null;
   timestamp: number;

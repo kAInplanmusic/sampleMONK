@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Waves, Power, Sliders, Settings } from 'lucide-react';
+import { usePluginState } from '../hooks/usePluginState';
 
 export function EQPluginTerminal() {
+  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
   const [power, setPower] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -98,14 +100,8 @@ export function EQPluginTerminal() {
     return () => cancelAnimationFrame(frameId);
   }, [power, gainValues]);
 
-  const updateGain = (index: number, newGain: number) => {
-    const next = [...gainValues];
-    next[index] = newGain;
-    setGainValues(next);
-  };
-
   return (
-    <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl relative">
+    <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-teal-900/20 to-[#111] border-b border-teal-900/30">
@@ -115,11 +111,16 @@ export function EQPluginTerminal() {
           </div>
           <div>
             <h2 className="text-xl font-black tracking-widest text-neutral-100 uppercase flex items-center gap-2">
-              Parametric EQ <span className="text-[10px] font-mono text-teal-400 border border-teal-500/30 px-2 py-0.5 rounded-sm">8-BAND</span>
+              Equalizer <span className="text-[10px] font-mono text-teal-400 border border-teal-500/30 px-2 py-0.5 rounded-sm">PARA-EQ</span>
             </h2>
-            <p className="text-xs text-neutral-500 font-mono">Analog-Modeled Equalizer</p>
           </div>
         </div>
+        
+        <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
+            <option value="OFF">OFF</option>
+            <option value="AI_CONTROLLED">AI</option>
+            <option value="ACTIVE">ACTIVE</option>
+        </select>
         
         <button 
           onClick={() => setPower(!power)}
