@@ -1,15 +1,21 @@
-import { useState } from 'react';
-import { PluginState, LockStatus } from '../plugins/types';
+import { useState, useMemo } from 'react';
+import { PluginState } from '../plugins/types';
+import { webRTCManager } from '../utils/WebRTCManager';
+import { usePluginManager } from '../context/PluginManagerContext';
 
-export const usePluginState = (initialState: PluginState = 'OFF') => {
+export const usePluginState = (pluginId: string, initialState: PluginState = 'OFF') => {
   const [state, setState] = useState<PluginState>(initialState);
-  const [lockStatus, setLockStatus] = useState<LockStatus>({ lockedBy: null, timestamp: 0, active: false });
+  const { pluginLocks } = usePluginManager();
+  
+  const lockStatus = useMemo(() => pluginLocks[pluginId] || { lockedBy: null, timestamp: 0, active: false }, [pluginLocks, pluginId]);
 
   const updateState = (newState: PluginState) => {
     if (!lockStatus.active) {
       setState(newState);
+      // Sync via WebRTC DataChannel
+      webRTCManager.sendToAllPeers({ type: 'PLUGIN_STATE_UPDATE', pluginId, state: newState });
     }
   };
 
-  return { state, lockStatus, updateState, setLockStatus };
+  return { state, lockStatus, updateState };
 };

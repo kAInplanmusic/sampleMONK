@@ -5,7 +5,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export function CustomSlotTerminal() {
   const { samples, addSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('custom_slot', 'ACTIVE');
   const [activeTab, setActiveTab] = useState('RUNTIME');
   const [isCompiling, setIsCompiling] = useState(false);
   

@@ -3,7 +3,7 @@ import { Activity, Power, Settings, Cpu, Zap, Sliders } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 
 export function DSPTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('dsp', 'ACTIVE');
   const [power, setPower] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 

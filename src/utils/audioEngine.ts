@@ -460,5 +460,13 @@ class AudioEngine {
      if (!this.initialized) return;
      // simple volume toggle logic or similar
   }
+public addRemoteStream(stream: MediaStream) {
+  if (!this.ctx) return;
+  const source = this.ctx.createMediaStreamSource(stream);
+  // Connect to master bus (assuming masterBus is defined in class)
+  source.connect(this.masterBus);
+  console.log('Remote WebRTC audio stream connected to master bus');
 }
+}
+
 export const audioEngine = new AudioEngine();

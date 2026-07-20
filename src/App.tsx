@@ -4,6 +4,8 @@ import {
   Sparkles, Layers, Mic, Cpu, Radio, Puzzle, Play, Pause, Square
 } from 'lucide-react';
 import { audioEngine } from './utils/audioEngine';
+import { webRTCManager } from './utils/WebRTCManager';
+import { usePluginManager } from './context/PluginManagerContext';
 import { BeatVisualizer } from './components/BeatVisualizer';
 import { MischpultTerminal } from './components/MischpultTerminal';
 import { SequencerPluginTerminal } from './components/SequencerPluginTerminal';
@@ -45,6 +47,7 @@ const PLUGIN_REGISTRY = [
 
 export default function App() {
   const [activePlugins, setActivePlugins] = useState<Set<string>>(new Set(['midi', 'sample_db']));
+  const { pluginLocks, requestLock, releaseLock } = usePluginManager();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [bpm, setBpm] = useState(128);
@@ -52,6 +55,11 @@ export default function App() {
   const [synthNotes, setSynthNotes] = useState(TECHNO_PRESETS[0].synthNotes);
 
   useEffect(() => {
+    webRTCManager.onRemoteStream = (stream, senderId) => {
+        console.log('Linking remote stream from:', senderId);
+        audioEngine.addRemoteStream(stream);
+    };
+
     audioEngine.setOnBeatCallback((step) => {
       setCurrentStep(step);
     });
@@ -87,10 +95,23 @@ export default function App() {
 
   const togglePlugin = (id: string) => {
     if (id === 'mischpult') return; // Mischpult is persistent
+    
+    // Check if plugin is locked by another user
+    const lock = pluginLocks[id];
+    if (lock && lock.active && lock.lockedBy !== 'localUser') {
+        alert('Plugin is currently locked by another user');
+        return;
+    }
+
     setActivePlugins(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        releaseLock(id, 'localUser');
+      } else {
+        next.add(id);
+        requestLock(id, 'localUser');
+      }
       return next;
     });
   };

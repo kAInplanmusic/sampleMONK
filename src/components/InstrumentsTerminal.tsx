@@ -23,7 +23,7 @@ const INSTRUMENT_CATEGORIES = [
 ];
 
 export function InstrumentsTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('instruments', 'ACTIVE');
   const [activeCategory, setActiveCategory] = useState('Tasteninstrumente');
   const [search, setSearch] = useState('');
   const [instruments, setInstruments] = useState<Instrument[]>([]);

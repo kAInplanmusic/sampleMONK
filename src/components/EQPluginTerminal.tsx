@@ -3,7 +3,7 @@ import { Waves, Power, Sliders, Settings } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 
 export function EQPluginTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('eq', 'ACTIVE');
   const [power, setPower] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   

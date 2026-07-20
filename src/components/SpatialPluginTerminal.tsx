@@ -5,7 +5,7 @@ import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
 
 export function SpatialPluginTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('spatial', 'ACTIVE');
   const [isPlaying, setIsPlaying] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   

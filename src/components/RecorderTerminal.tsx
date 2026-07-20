@@ -6,7 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export function RecorderTerminal() {
   const { addSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('recorder', 'ACTIVE');
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
   const [takes, setTakes] = useState([

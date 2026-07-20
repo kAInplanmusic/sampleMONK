@@ -5,7 +5,7 @@ import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
 
 export function MIDIControllerTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('midi', 'ACTIVE');
   const [activeProfile, setActiveProfile] = useState('APC40');
   const [isConnected, setIsConnected] = useState(true);
   const [padMappings, setPadMappings] = useState<Record<number, AudioSample>>({});

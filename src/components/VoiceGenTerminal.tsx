@@ -6,7 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export function VoiceGenTerminal() {
   const { addSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('voice_gen', 'ACTIVE');
   const [prompt, setPrompt] = useState('Dark warehouse techno vocals saying "Are you ready to lose control"');
   const [style, setStyle] = useState('SPOKEN'); // SPOKEN, CHANT, SINGING
   const [voice, setVoice] = useState('FEMALE_ROBOTIC');

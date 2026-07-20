@@ -18,7 +18,7 @@ interface SequencerProps {
 
 export function SequencerPluginTerminal(props: SequencerProps) {
   const { setSelectedSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('sequencer', 'ACTIVE');
   const [trackSamples, setTrackSamples] = useState<Record<TrackType, AudioSample | null>>({
     kick: null, hat: null, clap: null, snare: null
   });

@@ -4,7 +4,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export function HypergraphVisualizer() {
   const { samples } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('ai_terminal', 'ACTIVE');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

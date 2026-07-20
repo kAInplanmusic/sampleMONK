@@ -8,7 +8,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export function MischpultTerminal() {
   const { setSelectedSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('mischpult', 'ACTIVE');
   const [channels, setChannels] = useState<RoutingEntry[]>([]);
   // ... (channelSamples logic)
 

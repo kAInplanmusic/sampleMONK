@@ -6,7 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export function StemExtractorTerminal() {
   const { addSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('stem_extractor', 'ACTIVE');
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [file, setFile] = useState<File | null>(null);

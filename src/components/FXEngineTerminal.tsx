@@ -5,7 +5,7 @@ import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
 
 export function FXEngineTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('dj_fx', 'ACTIVE');
   const [power, setPower] = useState(true);
   const [activeFx, setActiveFx] = useState('REVERB');
   const [wetDry, setWetDry] = useState(50);

@@ -4,13 +4,16 @@ import App from './App.tsx';
 import './index.css';
 import { AudioProvider } from './context/AudioContext';
 import { SampleProvider } from './context/SampleContext';
+import { PluginManagerProvider } from './context/PluginManagerContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SampleProvider>
-      <AudioProvider>
-        <App />
-      </AudioProvider>
-    </SampleProvider>
+    <PluginManagerProvider>
+      <SampleProvider>
+        <AudioProvider>
+          <App />
+        </AudioProvider>
+      </SampleProvider>
+    </PluginManagerProvider>
   </StrictMode>,
 );

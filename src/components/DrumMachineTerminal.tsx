@@ -6,7 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export const DrumMachineTerminal: React.FC = () => {
   const { samples } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('drum_machines', 'ACTIVE');
   const [padSamples, setPadSamples] = useState<Record<number, AudioSample>>({});
 
   const handleSampleDrop = (sample: AudioSample, index: number) => {
