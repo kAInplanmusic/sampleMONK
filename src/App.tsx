@@ -20,6 +20,7 @@ import { MIDIControllerTerminal } from './components/MIDIControllerTerminal';
 import { RecorderTerminal } from './components/RecorderTerminal';
 import { DSPTerminal } from './components/DSPTerminal';
 import { CustomSlotTerminal } from './components/CustomSlotTerminal';
+import { PerformanceMonitorTerminal } from './components/PerformanceMonitorTerminal';
 import { MasteringOverlay } from './components/MasteringOverlay';
 import { HypergraphVisualizer } from './components/HypergraphVisualizer';
 import { LibraryTerminal } from './components/LibraryTerminal';
@@ -43,6 +44,7 @@ const PLUGIN_REGISTRY = [
   { id: 'recorder', name: 'Master Recorder', short: 'REC', color: 'indigo', icon: Radio, component: RecorderTerminal },
   { id: 'dsp', name: 'Digital Signal Processor', short: 'DSP', color: 'violet', icon: Activity, component: DSPTerminal },
   { id: 'custom_slot', name: 'Custom Sandbox', short: 'CUS', color: 'sky', icon: Puzzle, component: CustomSlotTerminal },
+  { id: 'perf_mon', name: 'Performance Monitor', short: 'PERF', color: 'emerald', icon: Activity, component: PerformanceMonitorTerminal },
 ];
 
 export default function App() {

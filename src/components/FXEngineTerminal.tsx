@@ -3,6 +3,7 @@ import { Sparkles, Activity, Power, Sliders, AudioLines, Radio, Flame, Cpu } fro
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
+import { webRTCManager } from '../utils/WebRTCManager';
 
 export function FXEngineTerminal() {
   const { state, lockStatus, updateState } = usePluginState('dj_fx', 'ACTIVE');
@@ -12,22 +13,15 @@ export function FXEngineTerminal() {
   const [sourceSample, setSourceSample] = useState<AudioSample | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Connect to Backend API
-  const applyFx = async (fx: string, dryWet: number, sampleId?: string) => {
-    try {
-      await fetch('http://localhost:8000/api/apply-fx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fx_type: fx, 
-          settings: { wetDry: dryWet },
-          sample_id: sampleId
-        }),
-      });
-      console.log(`FX ${fx} applied to ${sampleId || 'global'} with wetDry ${dryWet}%`);
-    } catch (e) {
-      console.error("FX application failed:", e);
-    }
+  // Connect via WebRTC
+  const applyFx = (fx: string, dryWet: number, sampleId?: string) => {
+    webRTCManager.sendToAllPeers({ 
+        type: 'FX_UPDATE',
+        fx_type: fx, 
+        settings: { wetDry: dryWet },
+        sample_id: sampleId
+    });
+    console.log(`FX ${fx} synced to peers with wetDry ${dryWet}%`);
   };
 
   const handleSampleDrop = (sample: AudioSample) => {
@@ -165,7 +159,7 @@ export function FXEngineTerminal() {
                 </div>
              </div>
          </div>
-// ...
+         {/* ... rest of columns */}
       </div>
     </div>
   );
