@@ -17,6 +17,8 @@ export function FXEngineTerminal() {
   const applyFx = (fx: string, dryWet: number, sampleId?: string) => {
     webRTCManager.sendToAllPeers({ 
         type: 'FX_UPDATE',
+        senderId: 'localUser',
+        timestamp: Date.now(),
         fx_type: fx, 
         settings: { wetDry: dryWet },
         sample_id: sampleId
