@@ -44,7 +44,7 @@ const PLUGIN_REGISTRY = [
 ];
 
 export default function App() {
-  const [activePlugin, setActivePlugin] = useState('sequencer');
+  const [activePlugins, setActivePlugins] = useState<Set<string>>(new Set(['midi', 'sample_db']));
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [bpm, setBpm] = useState(128);
@@ -85,28 +85,41 @@ export default function App() {
     setCurrentStep(0);
   };
 
-  const renderActivePlugin = () => {
-    const plugin = PLUGIN_REGISTRY.find(p => p.id === activePlugin);
-    if (!plugin) return null;
-    const Component = plugin.component;
+  const togglePlugin = (id: string) => {
+    if (id === 'mischpult') return; // Mischpult is persistent
+    setActivePlugins(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
-    if (activePlugin === 'sequencer') {
-      return (
-        <SequencerPluginTerminal 
-          isPlaying={isPlaying}
-          currentStep={currentStep}
-          tracks={patterns}
-          bpm={bpm}
-          setBpm={setBpm}
-          onPlay={handlePlay}
-          onStop={handleStop}
-          onToggleStep={handleToggleStep}
-        />
-      );
-    }
+  const renderActivePlugins = () => {
+    return PLUGIN_REGISTRY
+      .filter(p => p.id !== 'mischpult' && activePlugins.has(p.id))
+      .map(plugin => {
+        const Component = plugin.component;
+        
+        // Special case for sequencer to pass props
+        if (plugin.id === 'sequencer') {
+          return (
+            <SequencerPluginTerminal 
+              key={plugin.id}
+              isPlaying={isPlaying}
+              currentStep={currentStep}
+              tracks={patterns}
+              bpm={bpm}
+              setBpm={setBpm}
+              onPlay={handlePlay}
+              onStop={handleStop}
+              onToggleStep={handleToggleStep}
+            />
+          );
+        }
 
-    // Generic render for other plugins
-    return <Component />;
+        return <Component key={plugin.id} />;
+      });
   };
 
   return (
@@ -127,9 +140,9 @@ export default function App() {
             {PLUGIN_REGISTRY.map(plugin => (
               <button
                 key={plugin.id}
-                onClick={() => setActivePlugin(plugin.id)}
+                onClick={() => togglePlugin(plugin.id)}
                 className={`flex flex-col items-center justify-center min-w-[76px] h-14 rounded-lg border transition-all ${
-                  activePlugin === plugin.id 
+                  activePlugins.has(plugin.id) || plugin.id === 'mischpult'
                     ? 'bg-orange-600 border-orange-400 text-white shadow-[0_0_15px_rgba(234,88,12,0.3)]' 
                     : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:bg-neutral-700'
                 }`}
@@ -153,8 +166,8 @@ export default function App() {
 
       {/* 4. DYNAMIC PLUGIN AREA */}
       <main className="flex-1 overflow-auto bg-[#070709] relative">
-         <div className="p-6 max-w-7xl mx-auto">
-            {renderActivePlugin()}
+         <div className="p-6 max-w-7xl mx-auto flex flex-col gap-6">
+            {renderActivePlugins()}
          </div>
          
          {/* Background Decor */}
