@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sliders, Monitor, Headphones } from 'lucide-react';
+import { useSamples } from '../context/SampleContext';
+import { AudioSample } from '../data/samples';
 
 interface RoutingEntry {
   source: string;
@@ -9,7 +11,9 @@ interface RoutingEntry {
 }
 
 export function MischpultTerminal() {
+  const { setSelectedSample } = useSamples();
   const [channels, setChannels] = useState<RoutingEntry[]>([]);
+  const [channelSamples, setChannelSamples] = useState<Record<number, AudioSample>>({});
 
   useEffect(() => {
     fetch('/data/routing.json')
@@ -19,6 +23,21 @@ export function MischpultTerminal() {
       })
       .catch(err => console.error("Failed to load routing", err));
   }, []);
+
+  const handleDrop = (e: React.DragEvent, channel: number) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      setChannelSamples(prev => ({ ...prev, [channel]: data }));
+      setSelectedSample(data);
+    } catch (err) {
+      console.error("Invalid sample dropped", err);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
 
   return (
     <div className="w-full h-full flex flex-col bg-[#1a1a1a] rounded-xl border border-neutral-800 text-neutral-300 font-sans shadow-2xl relative">
@@ -34,10 +53,17 @@ export function MischpultTerminal() {
       {/* Mixer Matrix */}
       <div className="flex-1 p-6 flex gap-4 bg-[#111]">
         {channels.map((ch: RoutingEntry) => (
-          <div key={ch.channel} className="flex-1 flex flex-col bg-[#161616] rounded-md border border-neutral-800 p-2">
+          <div 
+            key={ch.channel} 
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, ch.channel)}
+            className="flex-1 flex flex-col bg-[#161616] rounded-md border border-neutral-800 p-2"
+          >
             <div className={`w-full h-2 ${ch.color} rounded-t-sm mb-2`} />
             <span className="text-[9px] font-black text-neutral-400 text-center uppercase truncate">{ch.source}</span>
-            <span className="text-[8px] text-neutral-600 text-center mb-2">{ch.type}</span>
+            <span className="text-[8px] text-neutral-600 text-center mb-1 h-3 truncate">
+                {channelSamples[ch.channel]?.name || ch.type}
+            </span>
             
             {/* Fader */}
             <div className="flex-1 flex justify-center bg-[#080808] rounded-sm border border-neutral-900 relative">

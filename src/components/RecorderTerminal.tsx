@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Radio, Mic, Save, Activity, Download, Play, Square, Circle } from 'lucide-react';
+import { useSamples } from '../context/SampleContext';
+import { AudioSample } from '../data/samples';
 
 export function RecorderTerminal() {
+  const { addSample } = useSamples();
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
   const [takes, setTakes] = useState([
@@ -28,13 +31,25 @@ export function RecorderTerminal() {
   const handleStop = () => {
     if (isRecording) {
       setIsRecording(false);
-      setTakes([{
+      const newTake = {
         id: takes.length + 1,
         name: `${inputSource}_Take_0${takes.length + 1}.wav`,
         duration: formatTime(recordTime),
         size: `${Math.max(1, Math.floor(recordTime * 0.15))} MB`,
         date: new Date().toISOString().split('T')[0]
-      }, ...takes]);
+      };
+      setTakes([newTake, ...takes]);
+      
+      // Add recording to library
+      const newSample: AudioSample = {
+          id: `rec-${Date.now()}`,
+          name: newTake.name,
+          category: 'mids',
+          type: 'Recording',
+          description: `Master recording from ${inputSource}`,
+          parameters: {}
+      };
+      addSample(newSample);
     }
   };
 

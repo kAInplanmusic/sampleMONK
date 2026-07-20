@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
+import { useSamples } from '../context/SampleContext';
 
 export function HypergraphVisualizer() {
+  const { samples } = useSamples();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

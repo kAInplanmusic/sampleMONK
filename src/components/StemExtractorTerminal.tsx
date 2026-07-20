@@ -1,7 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Layers, Upload, Download, Play, Square, Scissors, Database, Loader2, Music, Mic, AudioWaveform, Zap } from 'lucide-react';
+import { useSamples } from '../context/SampleContext';
+import { AudioSample } from '../data/samples';
 
 export function StemExtractorTerminal() {
+  const { addSample } = useSamples();
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [file, setFile] = useState<File | null>(null);
@@ -39,6 +42,19 @@ export function StemExtractorTerminal() {
             clearInterval(interval);
             setIsExtracting(false);
             setExtracted(true);
+            
+            // Add extracted stems to library
+            ['vocals', 'melody', 'highs', 'mids', 'lows'].forEach(stem => {
+                const newSample: AudioSample = {
+                    id: `stem-${Date.now()}-${stem}`,
+                    name: `${file!.name.split('.')[0]}_${stem}`,
+                    category: 'mids',
+                    type: 'Stem',
+                    description: `Extracted stem from ${file!.name}`,
+                    parameters: {}
+                };
+                addSample(newSample);
+            });
             return 100;
           }
           return Math.min(99, p + 2);

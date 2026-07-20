@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Puzzle, Lock, Settings, Code, Terminal, Play, Save, RefreshCw, Upload, Network } from 'lucide-react';
+import { useSamples } from '../context/SampleContext';
 
 export function CustomSlotTerminal() {
+  const { samples, addSample } = useSamples();
   const [activeTab, setActiveTab] = useState('RUNTIME');
   const [isCompiling, setIsCompiling] = useState(false);
-  
+
   const handleCompile = () => {
     setIsCompiling(true);
     setTimeout(() => setIsCompiling(false), 2000);
   };
-
+// ...
   return (
     <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl relative">
       <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-sky-900/20 to-[#111] border-b border-sky-900/30">

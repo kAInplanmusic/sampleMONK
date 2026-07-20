@@ -1,7 +1,7 @@
 import React from 'react';
 import { PluginBase } from '../PluginBase';
 import { PluginState, LockStatus, Plugin } from '../types';
-import { hubConnector } from '../hubConnector';
+import { hubConnector } from '../../hubConnector';
 
 export class SpatialSurroundPlugin implements Plugin {
   config = { id: 'spatial-surround', name: 'SpatialSurround', colorScheme: 'blue' };

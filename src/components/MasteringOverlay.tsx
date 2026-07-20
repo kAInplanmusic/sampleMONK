@@ -2,20 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { audioEngine } from '../utils/audioEngine';
 import { MASTERING_PRESETS } from '../data/masteringPresets';
 import { Cpu, Radio, Sparkles, SlidersHorizontal, Activity, Layers, Power } from 'lucide-react';
+import { DropTarget } from './DropTarget';
+import { AudioSample } from '../data/samples';
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  plugin: 'master_me' | 'tone_shift_eq';
-}
-
-export function MasteringOverlay({ isOpen, onClose, plugin }: Props) {
+export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, onClose: () => void, plugin: 'master_me' | 'tone_shift_eq'}) {
   const [activeTab, setActiveTab] = useState<'master_me' | 'tone_shift_eq'>(plugin);
   const [autoMode, setAutoMode] = useState(false);
   const [activePreset, setActivePreset] = useState<string>('techno_club');
+  const [targetSample, setTargetSample] = useState<AudioSample | null>(null);
 
   const [masterMeParams, setMasterMeParams] = useState(MASTERING_PRESETS['techno_club'].master_me);
   const [toneShiftParams, setToneShiftParams] = useState(MASTERING_PRESETS['techno_club'].tone_shift);
+
+  const handleSampleDrop = (sample: AudioSample) => {
+    setTargetSample(sample);
+    console.log('Sample set for targeted mastering:', sample.name);
+  };
 
   useEffect(() => {
     if (isOpen) setActiveTab(plugin);
@@ -28,6 +30,58 @@ export function MasteringOverlay({ isOpen, onClose, plugin }: Props) {
 
   if (!isOpen) return null;
 
+  // ... (rest of the component logic)
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8">
+      {/* Container - Command Center Style */}
+      <div className="relative w-full max-w-6xl h-full max-h-[800px] bg-[#050508] border border-sky-500/30 rounded-2xl shadow-[0_0_50px_rgba(14,165,233,0.15)] flex flex-col overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-sky-900/20 to-indigo-900/20 border-b border-sky-500/20">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.3)]">
+              <Cpu className="w-5 h-5 text-sky-400" />
+            </div>
+            <div>
+              <h2 className="font-mono text-xl text-sky-100 font-bold tracking-tight flex items-center gap-2">
+                NEXUS KONTROL <span className="px-2 py-0.5 rounded text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 uppercase">v2.0</span>
+              </h2>
+              <p className="text-xs font-mono text-sky-400/60 uppercase tracking-widest mt-0.5">Quantum Audio Processor</p>
+            </div>
+          </div>
+
+          {/* Target Sample Area */}
+          <DropTarget 
+            label="Target Sample/Stem"
+            onDrop={handleSampleDrop}
+            className="w-48 h-10 flex items-center justify-center text-xs font-mono"
+          >
+            {targetSample ? targetSample.name : 'DROP STEM TO MASTER'}
+          </DropTarget>
+
+          {/* ... (Existing Header Controls: AutoMode, Close) */}
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setAutoMode(!autoMode)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${autoMode ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-neutral-900 text-neutral-500 border border-neutral-800'}`}
+            >
+              <Activity className="w-4 h-4" />
+              AUTO SYNC
+            </button>
+            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:text-red-300 transition-all">
+              <Power className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* ... (Main Interface) */}
+      </div>
+    </div>
+  );
+}
+
+// ... (KnobCard)
   const handleMasterMeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const numValue = parseFloat(value);

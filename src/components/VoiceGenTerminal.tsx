@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Mic, Play, Download, Settings, RefreshCw, Volume2, AlignLeft, Wand2 } from 'lucide-react';
+import { useSamples } from '../context/SampleContext';
+import { AudioSample } from '../data/samples';
 
 export function VoiceGenTerminal() {
+  const { addSample } = useSamples();
   const [prompt, setPrompt] = useState('Dark warehouse techno vocals saying "Are you ready to lose control"');
   const [style, setStyle] = useState('SPOKEN'); // SPOKEN, CHANT, SINGING
   const [voice, setVoice] = useState('FEMALE_ROBOTIC');
@@ -25,6 +28,17 @@ export function VoiceGenTerminal() {
       setTimeout(() => {
         setIsGenerating(false);
         setHasResult(true);
+
+        // Add generated vocal to library
+        const newSample: AudioSample = {
+            id: `vocal-${Date.now()}`,
+            name: `Vocal_${voice}_${Date.now()}`,
+            category: 'mids',
+            type: 'Vocal',
+            description: `Generated vocal: "${prompt}"`,
+            parameters: {}
+        };
+        addSample(newSample);
       }, 3000);
       
     } catch (error) {

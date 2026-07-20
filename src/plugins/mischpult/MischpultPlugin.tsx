@@ -1,36 +1,33 @@
 import React from 'react';
-import { PluginBase } from '../PluginBase';
-import { PluginState, LockStatus, Plugin } from '../types';
-import { hubConnector } from '../hubConnector';
+import { Sliders, Volume2 } from 'lucide-react';
 
-export class MischpultPlugin implements Plugin {
-  config = { id: 'mischpult', name: 'Mischpult', colorScheme: 'blue' };
-  state: PluginState = 'OFF';
-  lockStatus: LockStatus = { lockedBy: null, timestamp: 0, active: false };
+export function MischpultTerminal({ plugin, currentUserId }) {
+  const assignBus = (chId: number, bus: string) => {
+    // Interaktion mit MasterEngine API
+    console.log(`Assigning ${chId} to ${bus}`);
+  };
 
-  async requestLock(userId: string): Promise<boolean> {
-    const success = await hubConnector.lockPlugin(this.config.id, userId);
-    return success;
-  }
-
-  async releaseLock(userId: string): Promise<void> {
-    await hubConnector.unlockPlugin(this.config.id, userId);
-  }
-
-  async updateState(newState: PluginState): Promise<void> {
-    this.state = newState;
-  }
-}
-
-export const MischpultUI: React.FC<{plugin: MischpultPlugin, currentUserId: string}> = ({ plugin, currentUserId }) => {
   return (
-    <PluginBase
-      name={plugin.config.name}
-      state={plugin.state}
-      lockStatus={plugin.lockStatus}
-      currentUserId={currentUserId}
-      onStateChange={(s) => plugin.updateState(s)}
-      renderProUI={() => <div>Mischpult Advanced Interface</div>}
-    />
+    <div className="flex flex-col bg-[#111] p-4 text-neutral-300">
+      <div className="grid grid-cols-5 gap-4">
+        {/* Beispiel für 5 Kanäle mit User-Bus-Routing */}
+        {[1,2,3,4,5].map(ch => (
+          <div key={ch} className="p-4 bg-neutral-900 border border-neutral-700">
+            <h4 className="text-xs font-bold mb-2">CH {ch}</h4>
+            <div className="flex flex-col gap-1">
+              {['GLOBAL_MASTER', 'USER_1', 'USER_2', 'USER_3', 'USER_4'].map(bus => (
+                <button 
+                  key={bus} 
+                  onClick={() => assignBus(ch, bus)}
+                  className="text-[9px] bg-neutral-800 hover:bg-orange-600 rounded p-1"
+                >
+                  {bus}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
-};
+}

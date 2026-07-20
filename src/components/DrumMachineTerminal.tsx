@@ -1,56 +1,32 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
+import { useSamples } from '../context/SampleContext';
+import { DropTarget } from './DropTarget';
+import { AudioSample } from '../data/samples';
 
 export const DrumMachineTerminal: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number>();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { samples } = useSamples();
+  const [padSamples, setPadSamples] = useState<Record<number, AudioSample>>({});
 
-  // High-performance rendering loop (Phase 5)
-  const animate = (time: number) => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#10B981';
-        ctx.fillRect(10, 10, 50, 50); // Playhead indicator
-      }
-    }
-    requestRef.current = requestAnimationFrame(animate);
-  };
-
-  useEffect(() => {
-    requestRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(requestRef.current!);
-  }, []);
-
-  const generateSample = async (prompt: string) => {
-    setIsGenerating(true);
-    try {
-      const response = await fetch('http://localhost:8000/api/generate-sample', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-      const data = await response.json();
-      console.log("Sample generation task triggered:", data.task_id);
-    } catch (error) {
-      console.error("Generation failed:", error);
-    } finally {
-      setIsGenerating(false);
-    }
+  const handleSampleDrop = (sample: AudioSample, index: number) => {
+    setPadSamples(prev => ({ ...prev, [index]: sample }));
   };
 
   return (
-    <div className="drum-machine-ui p-4 bg-gray-800 rounded-lg">
-      <canvas ref={canvasRef} width={800} height={200} className="border border-gray-600 mb-4" />
-      <button 
-        className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
-        onClick={() => generateSample("A crisp snare drum")}
-        disabled={isGenerating}
-      >
-        {isGenerating ? "Generating..." : "Generate Snare Sample"}
-      </button>
+    <div className="drum-machine-ui p-6 bg-[#1a1a1a] rounded-xl border border-neutral-800 text-white">
+      <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 mb-4">Drum Pad Mapper</h3>
+      <div className="grid grid-cols-4 gap-4">
+        {[...Array(16)].map((_, i) => (
+          <DropTarget 
+            key={i} 
+            onDrop={(sample) => handleSampleDrop(sample, i)}
+            className="aspect-square bg-[#111] border border-neutral-700 rounded-lg flex items-center justify-center text-[10px] text-neutral-600 hover:border-fuchsia-500"
+          >
+            <div className="text-center truncate p-2">
+                {padSamples[i]?.name || `PAD ${i + 1}`}
+            </div>
+          </DropTarget>
+        ))}
+      </div>
     </div>
   );
 };

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Play, Square, Circle, LayoutGrid, Zap, Clock } from 'lucide-react';
 import { TrackType, TrackPreset } from '../types';
+import { useSamples } from '../context/SampleContext';
+import { AudioSample } from '../data/samples';
 
 interface SequencerProps {
   isPlaying: boolean;
@@ -14,6 +16,26 @@ interface SequencerProps {
 }
 
 export function SequencerPluginTerminal(props: SequencerProps) {
+  const { setSelectedSample } = useSamples();
+  const [trackSamples, setTrackSamples] = useState<Record<TrackType, AudioSample | null>>({
+    kick: null, hat: null, clap: null, snare: null
+  });
+
+  const handleDrop = (e: React.DragEvent, track: TrackType) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      setTrackSamples(prev => ({ ...prev, [track]: data }));
+      setSelectedSample(data);
+    } catch (err) {
+      console.error("Invalid sample dropped", err);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
   return (
     <section className="bg-[#050508] p-5 rounded-xl border border-neutral-800/80 shadow-xl flex flex-col gap-4">
       
@@ -28,19 +50,20 @@ export function SequencerPluginTerminal(props: SequencerProps) {
                 <span className="text-[9px] font-mono text-neutral-500 uppercase">BPM</span>
                 <input type="number" value={props.bpm} onChange={e => props.setBpm(Number(e.target.value))} className="w-16 bg-neutral-900 border border-neutral-800 rounded text-center text-sm" />
             </div>
-            <div className="flex items-center gap-2">
-                <span className="text-[9px] font-mono text-neutral-500 uppercase">Swing</span>
-                <input type="range" min="50" max="75" className="w-16 accent-emerald-500" />
-            </div>
         </div>
       </div>
 
       {/* Grid als reine Rhythmus-Matrix */}
       <div className="bg-[#0c0c0e] p-4 rounded-lg border border-neutral-800/50">
         {(['kick', 'hat', 'clap', 'snare'] as TrackType[]).map((trackKey) => (
-          <div key={trackKey} className="mb-4">
+          <div 
+            key={trackKey} 
+            className="mb-4"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, trackKey)}
+          >
             <div className="flex justify-between text-[9px] font-mono text-neutral-500 uppercase mb-1">
-                <span>{trackKey}</span>
+                <span>{trackKey} : {trackSamples[trackKey]?.name || '...'}</span>
             </div>
             <div className="grid grid-cols-16 gap-1">
               {props.tracks[trackKey].map((isActive, colIndex) => (
