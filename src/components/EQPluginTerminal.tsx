@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Waves, Power, Sliders, Settings } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
+import { audioEngine } from '../utils/audioEngine';
 
 export function EQPluginTerminal() {
   const { state, lockStatus, updateState } = usePluginState('eq', 'ACTIVE');
@@ -19,6 +20,17 @@ export function EQPluginTerminal() {
   ];
 
   const [gainValues, setGainValues] = useState(bands.map(b => b.val));
+
+  const handleGainChange = (idx: number, gain: number) => {
+    const newGains = [...gainValues];
+    newGains[idx] = gain;
+    setGainValues(newGains);
+    
+    // Update audioEngine
+    audioEngine.updateToneShiftEQ({
+        bands: bands.map((b, i) => ({ freq: parseInt(b.freq), gain: newGains[i], q: 1 }))
+    });
+  };
 
   // Frequency response curve visualization
   useEffect(() => {
@@ -148,8 +160,15 @@ export function EQPluginTerminal() {
                
                {/* Fader */}
                <div className="h-40 w-8 bg-black rounded-full border-4 border-neutral-800 flex justify-center relative p-1 shadow-inner">
+                  <input 
+                    type="range"
+                    min="-12" max="12" step="0.1"
+                    value={gainValues[idx]}
+                    onChange={(e) => handleGainChange(idx, parseFloat(e.target.value))}
+                    className="absolute w-2 h-40 opacity-0 cursor-ns-resize"
+                  />
                   <div 
-                    className="w-10 h-6 bg-[#2a2a2a] rounded-sm border border-neutral-700 shadow-xl cursor-ns-resize absolute flex items-center justify-center flex-col gap-0.5 hover:bg-[#333] transition-colors"
+                    className="w-10 h-6 bg-[#2a2a2a] rounded-sm border border-neutral-700 shadow-xl pointer-events-none absolute flex items-center justify-center flex-col gap-0.5"
                     style={{ 
                       bottom: `${((gainValues[idx] + 12) / 24) * 100}%`, 
                       transform: 'translateY(50%)' 

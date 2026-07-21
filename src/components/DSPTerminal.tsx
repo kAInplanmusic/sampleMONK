@@ -6,6 +6,11 @@ export function DSPTerminal() {
   const { state, lockStatus, updateState } = usePluginState('dsp', 'ACTIVE');
   const [power, setPower] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  const handleParamChange = (name: string, value: number) => {
+      audioEngine.setWorkletParam(name, value);
+  };
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -141,14 +146,23 @@ export function DSPTerminal() {
           </div>
           
           <div className="flex-1 bg-[#1a1a1a] rounded-xl border border-neutral-800 p-6 shadow-inner grid grid-cols-4 gap-6">
-            {['OVERSAMPLING', 'LOOKAHEAD', 'TRANSIENT DETECT', 'STEREO LINK'].map((param, i) => (
-              <div key={param} className="flex flex-col items-center justify-center gap-4">
-                <div className="w-16 h-16 rounded-full border-4 border-[#111] bg-neutral-800 relative cursor-pointer hover:border-violet-900 transition-colors shadow-lg">
-                   <div className="absolute top-1 left-1/2 w-1 h-3 bg-violet-400 -translate-x-1/2 rounded-full shadow-[0_0_5px_rgba(139,92,246,0.8)]"></div>
-                </div>
+            {[
+                { name: 'OVERSAMPLING', id: 'oversampling', min: 1, max: 8, val: 8 },
+                { name: 'LOOKAHEAD', id: 'lookahead', min: 0, max: 10, val: 1.5 },
+                { name: 'TRANSIENT DETECT', id: 'transient', min: 0, max: 1, val: 0.8 },
+                { name: 'STEREO LINK', id: 'stereoLink', min: 0, max: 1, val: 1 }
+            ].map((param, i) => (
+              <div key={param.name} className="flex flex-col items-center justify-center gap-4">
+                <input 
+                    type="range" 
+                    min={param.min} max={param.max} step="0.1" 
+                    value={param.val}
+                    onChange={(e) => handleParamChange(param.id, parseFloat(e.target.value))}
+                    className="w-16 h-16 rounded-full border-4 border-[#111] bg-neutral-800 accent-violet-500 appearance-none cursor-pointer"
+                />
                 <div className="text-center">
-                  <span className="text-[9px] font-mono font-bold text-neutral-500">{param}</span>
-                  <div className="text-xs font-black text-violet-400 mt-1">{['8x', '1.5ms', 'FAST', '100%'][i]}</div>
+                  <span className="text-[9px] font-mono font-bold text-neutral-500">{param.name}</span>
+                  <div className="text-xs font-black text-violet-400 mt-1">{param.val}</div>
                 </div>
               </div>
             ))}

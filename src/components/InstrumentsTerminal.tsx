@@ -3,6 +3,7 @@ import { Music, Piano, Guitar, Layers, Loader2 } from 'lucide-react';
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
+import { audioEngine } from '../utils/audioEngine';
 
 // --- WAM2 / Instrument Standards ---
 type InstrumentType = 'sampler' | 'synth' | 'soundfont';
@@ -30,10 +31,8 @@ export function InstrumentsTerminal() {
   const [activeInstrument, setActiveInstrument] = useState<Instrument | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [masterEngine, setMasterEngine] = useState<any>(null);
+  const [droppedSample, setDroppedSample] = useState<AudioSample | null>(null);
 
-import { audioEngine } from '../utils/audioEngine';
-
-// ... inside InstrumentsTerminal
   const handleSampleDrop = (sample: AudioSample) => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setDroppedSample(sample);
@@ -42,7 +41,10 @@ import { audioEngine } from '../utils/audioEngine';
   };
 
   const loadInstrument = async (inst: Instrument) => {
-    // ... existing logic
+    if (!masterEngine) return;
+    setIsLoading(true);
+    setActiveInstrument(inst);
+    
     try {
       await masterEngine.loadInstrument(inst.id);
       // Stub: notify audioEngine to route audio through this instrument

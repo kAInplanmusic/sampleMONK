@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, Square, Circle, LayoutGrid, Zap, Clock } from 'lucide-react';
 import { TrackType, TrackPreset } from '../types';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
+import { generateRhythmicPattern } from '../utils/aiRhythmGenerator';
 
 interface SequencerProps {
   isPlaying: boolean;
@@ -16,14 +17,16 @@ interface SequencerProps {
   onToggleStep: (track: TrackType, stepIndex: number) => void;
 }
 
-import { generateRhythmicPattern } from '../utils/aiRhythmGenerator';
+export function SequencerPluginTerminal(props: SequencerProps) {
+  const { setSelectedSample } = useSamples();
+  const { state, lockStatus, updateState } = usePluginState('sequencer', 'ACTIVE');
+  
+  const channels: TrackType[] = ['channel1', 'channel2', 'channel3', 'channel4', 'channel5', 'channel6', 'channel7', 'channel8'];
+  const [trackSamples, setTrackSamples] = useState<Record<string, AudioSample | null>>({});
 
-// ... inside SequencerPluginTerminal
   useEffect(() => {
     if (state === 'AUTO_AI') {
       const newPatterns = generateRhythmicPattern('techno');
-      // Update local state or props.setPatterns
-      // Note: Assuming props.tracks is what we need to update
       Object.keys(newPatterns).forEach(track => {
          newPatterns[track as TrackType].forEach((isActive, step) => {
              if (isActive !== props.tracks[track as TrackType][step]) {
@@ -85,13 +88,12 @@ import { generateRhythmicPattern } from '../utils/aiRhythmGenerator';
             <div className="flex justify-between text-[9px] font-mono text-neutral-500 uppercase mb-1">
                 <span>{trackKey} : {trackSamples[trackKey]?.name || '...'}</span>
             </div>
-// ... inside channel map loop
             <div className="grid grid-cols-16 gap-1">
               {props.tracks[trackKey as TrackType].map((isActive, colIndex) => (
                 <div key={colIndex} className="flex flex-col gap-1 items-center">
                     <button
                         onClick={() => props.onToggleStep(trackKey as TrackType, colIndex)}
-                        className={`w-8 h-8 rounded-sm ${isActive ? 'bg-emerald-500' : 'bg-neutral-900'} ${props.currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white' : ''}`}
+                        className={`w-8 h-8 rounded-sm ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-neutral-900'} ${props.currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white' : ''}`}
                     />
                     {state === 'PRO' && isActive && (
                         <input 

@@ -9,7 +9,7 @@ interface ModuleContainerProps {
   children: React.ReactNode;
 }
 
-export const ModuleContainer: React.FC<ModuleContainerProps> = ({ id, name, state, children }) => {
+export const ModuleContainer = React.memo(({ id, name, state, children }: ModuleContainerProps) => {
   const { pluginLocks } = usePluginManager();
   const isLocked = pluginLocks[id]?.active && pluginLocks[id]?.lockedBy !== 'localUser';
 
@@ -33,4 +33,4 @@ export const ModuleContainer: React.FC<ModuleContainerProps> = ({ id, name, stat
       </div>
     </div>
   );
-};
+});

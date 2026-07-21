@@ -24,10 +24,12 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "socket.io-client": "^4.8.3",
     "tone": "^15.1.22",
     "unzipper": "^0.12.5",
     "vite": "^6.2.3",
-    "ytdl-core": "^4.11.5"
+    "ytdl-core": "^4.11.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

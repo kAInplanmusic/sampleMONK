@@ -3,6 +3,26 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import { z } from 'zod';
+
+const PresetSchema = z.object({
+  name: z.string(),
+  genre: z.string(),
+  bpm: z.number().min(110).max(145),
+  key: z.string(),
+  description: z.string(),
+  patterns: z.object({
+    kick: z.array(z.boolean()).length(16),
+    hat: z.array(z.boolean()).length(16),
+    clap: z.array(z.boolean()).length(16),
+    synth: z.array(z.boolean()).length(16),
+  }),
+  synthNotes: z.array(z.number()).length(16),
+  cutoff: z.number().min(300).max(1500),
+  resonance: z.number().min(2).max(15),
+  delayTime: z.union([z.literal(0.125), z.literal(0.25), z.literal(0.33), z.literal(0.5)]),
+  decay: z.number().min(0.1).max(0.5),
+});
 
 dotenv.config();
 
@@ -74,13 +94,14 @@ app.post('/api/generate-preset', async (req, res) => {
     
     // Safety check and JSON parsing
     try {
-      const parsedPreset = JSON.parse(responseText);
-      return res.json(parsedPreset);
+      const rawParsed = JSON.parse(responseText);
+      const validatedPreset = PresetSchema.parse(rawParsed);
+      return res.json(validatedPreset);
     } catch (parseError) {
-      console.error('Failed to parse Gemini response as JSON:', responseText, parseError);
+      console.error('Failed to parse or validate Gemini response:', responseText, parseError);
       return res.status(500).json({ 
-        error: 'The AI generated a preset but it could not be processed as valid audio engine data. Please try again.',
-        raw: responseText
+        error: 'The AI generated an invalid preset.',
+        details: parseError instanceof z.ZodError ? parseError.errors : 'Parsing failed'
       });
     }
   } catch (error: any) {

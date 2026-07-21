@@ -89,7 +89,7 @@ class AudioEngine {
     
     // --- WORKLET SETUP ---
     await Tone.context.audioWorklet.addModule('/src/audio/worklets/dspProcessor.js');
-    const dspNode = new AudioWorkletNode(Tone.context.rawContext, 'dsp-processor');
+    this.dspNode = new AudioWorkletNode(Tone.context.rawContext, 'dsp-processor');
     
     // Core limiters & analyzer
     
@@ -134,8 +134,8 @@ class AudioEngine {
       prevNode = this.toneShiftEqBands[i];
     }
     prevNode.connect(this.toneShiftTilt);
-    this.toneShiftTilt.connect(dspNode); // Connect to Worklet
-    dspNode.toDestination();
+    this.toneShiftTilt.connect(this.dspNode); // Connect to Worklet
+    this.dspNode.toDestination();
     
     // Reset EQ to flat initially
     for(let i=0; i<12; i++) {
@@ -300,11 +300,13 @@ class AudioEngine {
     this.bassDelay.delayTime.rampTo(timeValue, 0.1);
   }
 
-  public setSpatialPosition(track: TrackType, x: number, y: number) {
-    if (!this.initialized) return;
-    const { channels } = calculate10ChannelPan(x, y);
-    console.log(`AudioEngine: Routing ${track} to 10.0 Spatial Matrix`, channels);
+  private dspNode!: AudioWorkletNode;
+
+  public setWorkletParam(name: string, value: number) {
+    if (!this.dspNode) return;
+    this.dspNode.parameters.get(name)?.setValueAtTime(value, Tone.now());
   }
+
 
   public setGranularParams(params: { grainSize: number; density: number; position: number }) {
     if (!this.initialized) return;
