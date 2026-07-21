@@ -1,10 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Sliders, Monitor, Headphones } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sliders } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
-import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
-
-// ... (RoutingEntry)
 
 interface RoutingEntry {
   channel: number;
@@ -16,8 +13,7 @@ interface RoutingEntry {
 }
 
 export function MischpultTerminal() {
-  const { setSelectedSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('mischpult', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('mixer', 'ACTIVE');
   const [channels, setChannels] = useState<RoutingEntry[]>(
     Array.from({ length: 10 }, (_, i) => ({
       channel: i,
@@ -33,9 +29,6 @@ export function MischpultTerminal() {
     setChannels(prev => prev.map(ch => ch.channel === channel ? { ...ch, ...updates } : ch));
   };
 
-  // ... (channelSamples logic)
-
-  // Header update to show state
   return (
     <div className={`w-full h-full flex flex-col bg-[#1a1a1a] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       
@@ -51,7 +44,6 @@ export function MischpultTerminal() {
             <option value="ACTIVE">ACTIVE</option>
         </select>
       </div>
-      // ... (rest of the component)
 
       {/* Mixer Matrix */}
       <div className="flex-1 p-6 flex gap-4 bg-[#111]">

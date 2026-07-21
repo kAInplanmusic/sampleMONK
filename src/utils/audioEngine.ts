@@ -153,10 +153,20 @@ class AudioEngine {
       prevNode.connect(this.toneShiftEqBands[i]);
       prevNode = this.toneShiftEqBands[i];
     }
-    prevNode.connect(this.toneShiftTilt);
-    this.toneShiftTilt.connect(this.dspNode); // Connect to Worklet
-    this.dspNode.connect(this.analyzerNode);
+  private lufsNode!: AudioWorkletNode;
+  public onLufsUpdate: (lufs: number) => void = () => {};
+
+  public async init() {
+    // ... setup
+    await Tone.context.audioWorklet.addModule('/src/audio/worklets/lufsProcessor.js');
+    this.lufsNode = new AudioWorkletNode(Tone.context.rawContext, 'lufs-processor');
+    this.lufsNode.port.onmessage = (e) => this.onLufsUpdate(e.data.lufs);
+    // ...
+    this.toneShiftTilt.connect(this.dspNode);
+    this.dspNode.connect(this.lufsNode);
+    this.lufsNode.connect(this.analyzerNode);
     this.analyzerNode.toDestination();
+
     
     // Reset EQ to flat initially
     for(let i=0; i<12; i++) {

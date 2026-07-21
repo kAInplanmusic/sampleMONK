@@ -7,12 +7,19 @@ import { AudioSample } from '../data/samples';
 
 export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, onClose: () => void, plugin: 'master_me' | 'tone_shift_eq'}) {
   const [activeTab, setActiveTab] = useState<'master_me' | 'tone_shift_eq'>(plugin);
-  const [autoMode, setAutoMode] = useState(false);
-  const [activePreset, setActivePreset] = useState<string>('techno_club');
-  const [targetSample, setTargetSample] = useState<AudioSample | null>(null);
+  const [lufs, setLufs] = useState(-23);
 
-  const [masterMeParams, setMasterMeParams] = useState(MASTERING_PRESETS['techno_club'].master_me);
-  const [toneShiftParams, setToneShiftParams] = useState(MASTERING_PRESETS['techno_club'].tone_shift);
+  useEffect(() => {
+    audioEngine.onLufsUpdate = (val: number) => setLufs(val);
+  }, []);
+
+  // ... (inside JSX)
+  <div className="flex items-center gap-2 px-4 py-2 bg-black rounded border border-neutral-800">
+    <Activity className="w-4 h-4 text-emerald-500" />
+    <span className="font-mono text-xs text-neutral-400">LUFS:</span>
+    <span className="font-mono text-sm font-bold text-emerald-400">{lufs.toFixed(1)}</span>
+  </div>
+
 
   const handleSampleDrop = (sample: AudioSample) => {
     setTargetSample(sample);
