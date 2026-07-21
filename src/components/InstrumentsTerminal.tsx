@@ -31,38 +31,22 @@ export function InstrumentsTerminal() {
   const [isLoading, setIsLoading] = useState(false);
   const [masterEngine, setMasterEngine] = useState<any>(null);
 
-  // New state to hold dropped sample
-  const [droppedSample, setDroppedSample] = useState<AudioSample | null>(null);
+import { audioEngine } from '../utils/audioEngine';
 
+// ... inside InstrumentsTerminal
   const handleSampleDrop = (sample: AudioSample) => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setDroppedSample(sample);
-    console.log('Sample assigned to instrument slot:', sample.name);
-    // Add logic to load sample into engine
+    // Tell audioEngine to map this sample to the active instrument slot
+    audioEngine.loadTrackSample('channel1', sample.source); // Simplified mapping
   };
 
-  useEffect(() => {
-    fetch('/data/instruments.json')
-      .then(res => res.json())
-      .then(async data => {
-        setInstruments(data.instruments);
-        setActiveInstrument(data.instruments[0]);
-        
-        // Master-Engine dynamisch laden
-        const { default: Engine } = await import(data.masterEngineUrl);
-        setMasterEngine(new Engine(new AudioContext()));
-      })
-      .catch(err => console.error("Failed to load instruments registry", err));
-  }, []);
-
   const loadInstrument = async (inst: Instrument) => {
-    if (!masterEngine) return;
-    setIsLoading(true);
-    setActiveInstrument(inst);
-    
+    // ... existing logic
     try {
       await masterEngine.loadInstrument(inst.id);
-      console.log('Instrument loaded successfully via MasterEngine:', inst.name);
+      // Stub: notify audioEngine to route audio through this instrument
+      console.log('Routing through instrument:', inst.name);
     } catch (error) {
       console.error(`Failed to load instrument: ${inst.name}`, error);
     } finally {

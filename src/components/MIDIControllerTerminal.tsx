@@ -3,18 +3,46 @@ import { Keyboard, Activity, Link2, RefreshCw, Cpu, Layers } from 'lucide-react'
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
+import { useMIDI } from '../hooks/useMIDI';
+import { useHID } from '../hooks/useHID';
+import { audioEngine } from '../utils/audioEngine';
 
 export function MIDIControllerTerminal() {
   const { state, lockStatus, updateState } = usePluginState('midi', 'ACTIVE');
+  const { midiAccess, lastMessage } = useMIDI();
+  const { devices } = useHID();
   const [activeProfile, setActiveProfile] = useState('APC40');
-  const [isConnected, setIsConnected] = useState(true);
+  const isConnected = !!midiAccess || devices.length > 0;
   const [padMappings, setPadMappings] = useState<Record<number, AudioSample>>({});
+
+  useEffect(() => {
+    if (lastMessage) {
+        const [status, note, velocity] = lastMessage.data!;
+        // Handle Note On (status 144)
+        if (status === 144 && velocity > 0) {
+            const padIndex = note % 40; // Mapping MIDI note to padIndex
+            const sample = padMappings[padIndex];
+            if (sample) {
+                audioEngine.previewSample('mids', undefined, sample.source);
+            }
+        }
+    }
+  }, [lastMessage, padMappings]);
   
   const profiles = [
-    { id: 'APC40', name: 'AKAI APC40 MKII', type: 'Clip Launcher' },
-    { id: 'PUSH2', name: 'ABLETON PUSH 2', type: 'Production Controller' },
-    { id: 'LAUNCHPAD', name: 'NOVATION LAUNCHPAD', type: 'Grid Controller' },
-    { id: 'KOMPLETE', name: 'NI KOMPLETE KONTROL', type: 'Keyboard' },
+    { id: 'APC40', name: 'AKAI APC40 MKII', type: 'Grid- & Clip-Launcher' },
+    { id: 'PUSH2', name: 'ABLETON PUSH 2', type: 'Grid- & Clip-Launcher' },
+    { id: 'LAUNCHPAD', name: 'NOVATION LAUNCHPAD', type: 'Grid- & Clip-Launcher' },
+    { id: 'DDJ', name: 'PIONEER DDJ-Serie', type: 'DJ-Controller' },
+    { id: 'REV', name: 'PIONEER DDJ-REV', type: 'DJ-Controller' },
+    { id: 'TRAKTOR', name: 'NI TRAKTOR KONTROL', type: 'DJ-Controller' },
+    { id: 'INPULSE', name: 'HERCULES INPULSE', type: 'DJ-Controller' },
+    { id: 'DENON', name: 'DENON DJ PRIME', type: 'DJ-Controller' },
+    { id: 'MPC', name: 'AKAI MPC-Serie', type: 'Finger-Drumming & Pads' },
+    { id: 'MASCHINE', name: 'NI MASCHINE', type: 'Finger-Drumming & Pads' },
+    { id: 'MPD', name: 'AKAI MPD-Serie', type: 'Finger-Drumming & Pads' },
+    { id: 'KEYBOARD', name: 'Keyboard-Controller', type: 'Melodie & Synthese' },
+    { id: 'DAW', name: 'DAW/Mixer-Controller', type: 'Automation & Mixing' },
   ];
 
   const handleSampleDrop = (sample: AudioSample, padIndex: number) => {
@@ -55,21 +83,27 @@ export function MIDIControllerTerminal() {
         
         {/* Left: Profiles */}
         <div className="w-1/3 flex flex-col gap-4">
-           <h3 className="font-bold text-sm tracking-widest uppercase text-neutral-400 flex items-center gap-2">
+           <h3 className="font-bold text-sm tracking-widest uppercase text-neutral-400 flex items-center gap-2 mb-4">
              <Cpu className="w-4 h-4 text-pink-500" /> MAPPED HARDWARE
            </h3>
            
-           <div className="flex flex-col gap-3">
-             {profiles.map(p => (
-               <button
-                 key={p.id}
-                 onClick={() => setActiveProfile(p.id)}
-                 className={`p-4 rounded-xl border flex flex-col items-start transition-all ${activeProfile === p.id ? 'bg-pink-900/20 border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.1)]' : 'bg-[#1a1a1a] border-neutral-800 hover:bg-[#222]'}`}
-               >
-                 <span className={`text-sm font-black tracking-widest ${activeProfile === p.id ? 'text-pink-400' : 'text-neutral-300'}`}>{p.name}</span>
-                 <span className="text-[10px] font-mono text-neutral-500 mt-1 uppercase">{p.type}</span>
-               </button>
-             ))}
+           <div className="flex-1 overflow-y-auto space-y-4">
+            {Object.entries(groupedProfiles).map(([type, items]) => (
+                <div key={type}>
+                    <h4 className="text-[10px] font-bold text-neutral-600 uppercase mb-2">{type}</h4>
+                    <div className="space-y-2">
+                        {items.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => setActiveProfile(p.id)}
+                                className={`w-full p-3 rounded-lg border text-left transition-all ${activeProfile === p.id ? 'bg-pink-900/20 border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.1)]' : 'bg-[#1a1a1a] border-neutral-800 hover:bg-[#222]'}`}
+                            >
+                                <span className={`text-sm font-black ${activeProfile === p.id ? 'text-pink-400' : 'text-neutral-300'}`}>{p.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            ))}
            </div>
            
            <div className="mt-auto">

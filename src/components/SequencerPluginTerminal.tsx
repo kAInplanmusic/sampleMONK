@@ -16,14 +16,26 @@ interface SequencerProps {
   onToggleStep: (track: TrackType, stepIndex: number) => void;
 }
 
-export function SequencerPluginTerminal(props: SequencerProps) {
-  const { setSelectedSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('sequencer', 'ACTIVE');
-  const [trackSamples, setTrackSamples] = useState<Record<TrackType, AudioSample | null>>({
-    kick: null, hat: null, clap: null, snare: null
-  });
+import { generateRhythmicPattern } from '../utils/aiRhythmGenerator';
 
-  const handleDrop = (e: React.DragEvent, track: TrackType) => {
+// ... inside SequencerPluginTerminal
+  useEffect(() => {
+    if (state === 'AUTO_AI') {
+      const newPatterns = generateRhythmicPattern('techno');
+      // Update local state or props.setPatterns
+      // Note: Assuming props.tracks is what we need to update
+      Object.keys(newPatterns).forEach(track => {
+         newPatterns[track as TrackType].forEach((isActive, step) => {
+             if (isActive !== props.tracks[track as TrackType][step]) {
+                 props.onToggleStep(track as TrackType, step);
+             }
+         });
+      });
+    }
+  }, [state]);
+
+
+  const handleDrop = (e: React.DragEvent, track: string) => {
     e.preventDefault();
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
@@ -44,7 +56,7 @@ export function SequencerPluginTerminal(props: SequencerProps) {
       {/* Taktmaschine Header */}
       <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
         <h3 className="text-sm font-mono text-neutral-300 font-bold tracking-wider flex items-center gap-2">
-          <Clock className="w-4 h-4 text-emerald-400" /> MASTER CLOCK ENGINE
+          <Clock className="w-4 h-4 text-emerald-400" /> SEQUENCER MONK
         </h3>
 
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
@@ -60,10 +72,10 @@ export function SequencerPluginTerminal(props: SequencerProps) {
             </div>
         </div>
       </div>
-//...
+
       {/* Grid als reine Rhythmus-Matrix */}
       <div className="bg-[#0c0c0e] p-4 rounded-lg border border-neutral-800/50">
-        {(['kick', 'hat', 'clap', 'snare'] as TrackType[]).map((trackKey) => (
+        {channels.map((trackKey) => (
           <div 
             key={trackKey} 
             className="mb-4"
@@ -73,13 +85,21 @@ export function SequencerPluginTerminal(props: SequencerProps) {
             <div className="flex justify-between text-[9px] font-mono text-neutral-500 uppercase mb-1">
                 <span>{trackKey} : {trackSamples[trackKey]?.name || '...'}</span>
             </div>
+// ... inside channel map loop
             <div className="grid grid-cols-16 gap-1">
-              {props.tracks[trackKey].map((isActive, colIndex) => (
-                <button
-                  key={colIndex}
-                  onClick={() => props.onToggleStep(trackKey, colIndex)}
-                  className={`w-8 h-8 rounded-sm ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-neutral-900'} ${props.currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white' : ''}`}
-                />
+              {props.tracks[trackKey as TrackType].map((isActive, colIndex) => (
+                <div key={colIndex} className="flex flex-col gap-1 items-center">
+                    <button
+                        onClick={() => props.onToggleStep(trackKey as TrackType, colIndex)}
+                        className={`w-8 h-8 rounded-sm ${isActive ? 'bg-emerald-500' : 'bg-neutral-900'} ${props.currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white' : ''}`}
+                    />
+                    {state === 'PRO' && isActive && (
+                        <input 
+                            type="range" min="0" max="1" step="0.1" defaultValue="1"
+                            className="w-8 h-1 accent-emerald-500"
+                        />
+                    )}
+                </div>
               ))}
             </div>
           </div>

@@ -8,4 +8,6 @@ demucs
 accelerate
 huggingface_hub
 pillow
-librosa\nscikit-learn\nchromadb
+librosa
+scikit-learn
+chromadb

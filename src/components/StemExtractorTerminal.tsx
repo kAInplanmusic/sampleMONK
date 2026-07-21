@@ -3,9 +3,11 @@ import { Layers, Upload, Download, Play, Square, Scissors, Database, Loader2, Mu
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
+import { useAudioAI } from '../hooks/useAudioAI';
 
 export function StemExtractorTerminal() {
   const { addSample } = useSamples();
+  const { separateStems } = useAudioAI();
   const { state, lockStatus, updateState } = usePluginState('stem_extractor', 'ACTIVE');
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -26,16 +28,8 @@ export function StemExtractorTerminal() {
     setProgress(0);
     
     try {
-      // In a real app, you would upload the file first and get a path.
-      // For this implementation, we trigger the endpoint.
-      const response = await fetch('http://localhost:8000/api/separate-stems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file_path: file.name }), // This needs proper path handling
-      });
-      
-      const data = await response.json();
-      console.log("Stem extraction task triggered:", data.task_id);
+      const data = await separateStems(file);
+      console.log("Stem extraction task triggered:", data);
       
       // Simulate progress for the UI while Celery processes in background
       const interval = setInterval(() => {

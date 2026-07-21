@@ -3,9 +3,11 @@ import { Mic, Play, Download, Settings, RefreshCw, Volume2, AlignLeft, Wand2 } f
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
+import { useAudioAI } from '../hooks/useAudioAI';
 
 export function VoiceGenTerminal() {
   const { addSample } = useSamples();
+  const { generateVoice } = useAudioAI();
   const { state, lockStatus, updateState } = usePluginState('voice_gen', 'ACTIVE');
   const [prompt, setPrompt] = useState('Dark warehouse techno vocals saying "Are you ready to lose control"');
   const [style, setStyle] = useState('SPOKEN'); // SPOKEN, CHANT, SINGING
@@ -19,13 +21,8 @@ export function VoiceGenTerminal() {
     setHasResult(false);
     
     try {
-      const response = await fetch('http://localhost:8000/api/generate-voice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: prompt, voice_preset: voice }),
-      });
-      const data = await response.json();
-      console.log("Voice generation task triggered:", data.task_id);
+      const data = await generateVoice(prompt, voice);
+      console.log("Voice generation response:", data);
       
       // Simulate finish
       setTimeout(() => {

@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
-import { Database, Search, Filter, Play, Download, Zap, Clipboard, GripVertical } from 'lucide-react';
+import { Database, Play, Download, Clipboard, GripVertical } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
+import { SemanticSampleSearch } from './SemanticSampleSearch';
+import { Scratchpad } from './Scratchpad';
 
 export function LibraryTerminal() {
-  const { samples } = useSamples();
-  const [search, setSearch] = useState('');
+  const { samples, addSample } = useSamples();
   const [category, setCategory] = useState<string>('all');
 
   const filteredSamples = samples.filter(sample => {
-    const matchesSearch = sample.name.toLowerCase().includes(search.toLowerCase()) || 
-                          sample.description.toLowerCase().includes(search.toLowerCase()) ||
-                          sample.type.toLowerCase().includes(sample.type.toLowerCase());
     const matchesCategory = category === 'all' || sample.category === category;
-    return matchesSearch && matchesCategory;
+    return matchesCategory;
   });
 
   const handleCopy = (sample: AudioSample) => {
@@ -27,33 +25,28 @@ export function LibraryTerminal() {
 
   return (
     <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl">
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-fuchsia-900/20 to-[#111] border-b border-fuchsia-900/30">
+      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-fuchsia-900/20 to-[#111] border-b border-fuchsia-900/30 gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-fuchsia-500/20 flex items-center justify-center border border-fuchsia-500/50 shadow-[0_0_15px_rgba(192,38,211,0.3)]">
             <Database className="w-5 h-5 text-fuchsia-400" />
           </div>
           <h2 className="text-xl font-black tracking-widest text-neutral-100 uppercase">Sample Library</h2>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-neutral-500" />
-            <input 
-              type="text"
-              placeholder="Search library..."
-              className="pl-10 pr-4 py-2 bg-[#1a1a1a] border border-neutral-800 rounded-lg text-sm focus:outline-none focus:border-fuchsia-500/50"
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <select 
+        
+        <div className="flex items-center gap-2 flex-1 max-w-sm">
+            <SemanticSampleSearch onSelect={addSample} />
+            <Scratchpad />
+        </div>
+
+        <select 
             className="bg-[#1a1a1a] border border-neutral-800 rounded-lg px-4 py-2 text-sm focus:outline-none"
             onChange={(e) => setCategory(e.target.value)}
-          >
+        >
             <option value="all">All Categories</option>
             <option value="bass">Bass</option>
             <option value="mids">Mids</option>
             <option value="highs">Highs</option>
-          </select>
-        </div>
+        </select>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">

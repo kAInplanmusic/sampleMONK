@@ -4,16 +4,22 @@ import App from './App.tsx';
 import './index.css';
 import { AudioProvider } from './context/AudioContext';
 import { SampleProvider } from './context/SampleContext';
-import { PluginManagerProvider } from './context/PluginManagerContext';
-
+import { ModuleStateProvider } from './context/ModuleStateContext';
+import { SessionProvider } from './context/SessionContext';
+import { ModuleStateProvider } from './context/ModuleStateContext';
+// ...
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PluginManagerProvider>
-      <SampleProvider>
-        <AudioProvider>
-          <App />
-        </AudioProvider>
-      </SampleProvider>
-    </PluginManagerProvider>
+    <SessionProvider>
+      <ModuleStateProvider>
+        <PluginManagerProvider>
+          <SampleProvider>
+            <AudioProvider>
+              <App />
+            </AudioProvider>
+          </SampleProvider>
+        </PluginManagerProvider>
+      </ModuleStateProvider>
+    </SessionProvider>
   </StrictMode>,
 );

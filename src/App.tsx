@@ -3,9 +3,11 @@ import {
   Sliders, Grid3X3, Database, Speaker, Music, Box, Waves, Activity, Keyboard, 
   Sparkles, Layers, Mic, Cpu, Radio, Puzzle, Play, Pause, Square
 } from 'lucide-react';
+import { PLUGIN_REGISTRY } from './plugins/registry';
 import { audioEngine } from './utils/audioEngine';
 import { webRTCManager } from './utils/WebRTCManager';
 import { usePluginManager } from './context/PluginManagerContext';
+import { useModuleState, ModuleState } from './context/ModuleStateContext';
 import { BeatVisualizer } from './components/BeatVisualizer';
 import { MischpultTerminal } from './components/MischpultTerminal';
 import { SequencerPluginTerminal } from './components/SequencerPluginTerminal';
@@ -26,27 +28,10 @@ import { LibraryTerminal } from './components/LibraryTerminal';
 import { TECHNO_PRESETS } from './presets';
 import { TrackType, MUSIC_SCALES } from './types';
 
-const PLUGIN_REGISTRY = [
-  { id: 'mischpult', name: 'Mischpult', short: 'MIX', color: 'blue', icon: Sliders, component: MischpultTerminal },
-  { id: 'sequencer', name: 'Sequenzer', short: 'SEQ', color: 'amber', icon: Grid3X3, component: SequencerPluginTerminal },
-  { id: 'sample_db', name: 'Library', short: 'LIB', color: 'fuchsia', icon: Database, component: LibraryTerminal },
-  { id: 'drum_machines', name: 'Drum-Machines', short: 'DRM', color: 'yellow', icon: Speaker, component: DrumMachineTerminal },
-  { id: 'instruments', name: 'Instrumenten', short: 'INS', color: 'purple', icon: Music, component: InstrumentsTerminal },
-  { id: 'spatial', name: 'Spatial Audio', short: '3D', color: 'lime', icon: Box, component: SpatialPluginTerminal },
-  { id: 'eq', name: 'Equalizer', short: 'EQ', color: 'teal', icon: Waves, component: EQPluginTerminal },
-  { id: 'mastering', name: 'Mastering', short: 'MST', color: 'emerald', icon: Activity, component: MasteringOverlay },
-  { id: 'midi', name: 'MIDI Ctrl', short: 'MID', color: 'pink', icon: Keyboard, component: MIDIControllerTerminal },
-  { id: 'dj_fx', name: 'Effektmaschine', short: 'FX', color: 'rose', icon: Sparkles, component: FXEngineTerminal },
-  { id: 'stem_extractor', name: 'Remix Extractor', short: 'RMX', color: 'red', icon: Layers, component: StemExtractorTerminal },
-  { id: 'voice_gen', name: 'Voice Gen', short: 'VOX', color: 'orange', icon: Mic, component: VoiceGenTerminal },
-  { id: 'ai_terminal', name: 'Critic-Agent', short: 'EMCS', color: 'cyan', icon: Cpu, component: HypergraphVisualizer },
-  { id: 'recorder', name: 'Master Recorder', short: 'REC', color: 'indigo', icon: Radio, component: RecorderTerminal },
-  { id: 'dsp', name: 'Digital Signal Processor', short: 'DSP', color: 'violet', icon: Activity, component: DSPTerminal },
-  { id: 'custom_slot', name: 'Custom Sandbox', short: 'CUS', color: 'sky', icon: Puzzle, component: CustomSlotTerminal },
-];
+// PLUGIN_REGISTRY removed, imported from ./plugins/registry
 
 export default function App() {
-  const [activePlugins, setActivePlugins] = useState<Set<string>>(new Set(['midi', 'sample_db']));
+  const { moduleStates, setModuleState } = useModuleState();
   const { pluginLocks, requestLock, releaseLock } = usePluginManager();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -94,52 +79,52 @@ export default function App() {
   };
 
   const togglePlugin = (id: string) => {
-    if (id === 'mischpult') return; // Mischpult is persistent
+    if (id === 'mixer') return; // Mixer is persistent
     
-    // Check if plugin is locked by another user
-    const lock = pluginLocks[id];
-    if (lock && lock.active && lock.lockedBy !== 'localUser') {
-        alert('Plugin is currently locked by another user');
-        return;
-    }
-
-    setActivePlugins(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        releaseLock(id, 'localUser');
-      } else {
-        next.add(id);
-        requestLock(id, 'localUser');
-      }
-      return next;
-    });
+    const currentState = moduleStates[id] || 'OFF';
+    let nextState: ModuleState = 'OFF';
+    
+    if (currentState === 'OFF') nextState = 'AUTO_AI';
+    else if (currentState === 'AUTO_AI') nextState = 'PRO';
+    else if (currentState === 'PRO') nextState = 'OFF';
+    
+    setModuleState(id, nextState);
+    
+    // Manage locks based on state
+    if (nextState === 'PRO') requestLock(id, 'localUser');
+    else releaseLock(id, 'localUser');
   };
+
+import { ModuleContainer } from './components/ModuleContainer';
+// ... (keep other imports)
+
+// ... (keep state)
 
   const renderActivePlugins = () => {
     return PLUGIN_REGISTRY
-      .filter(p => p.id !== 'mischpult' && activePlugins.has(p.id))
+      .filter(p => p.id !== 'mixer' && moduleStates[p.id] && moduleStates[p.id] !== 'OFF')
       .map(plugin => {
         const Component = plugin.component;
+        const state = moduleStates[plugin.id];
         
-        // Special case for sequencer to pass props
-        if (plugin.id === 'sequencer') {
-          return (
-            <SequencerPluginTerminal 
-              key={plugin.id}
-              isPlaying={isPlaying}
-              currentStep={currentStep}
-              tracks={patterns}
-              bpm={bpm}
-              setBpm={setBpm}
-              onPlay={handlePlay}
-              onStop={handleStop}
-              onToggleStep={handleToggleStep}
-            />
-          );
-        }
-
-        return <Component key={plugin.id} />;
+        return (
+          <ModuleContainer key={plugin.id} id={plugin.id} name={plugin.name} state={state}>
+            {plugin.id === 'sequencer' ? (
+              <SequencerPluginTerminal 
+                isPlaying={isPlaying}
+                currentStep={currentStep}
+                tracks={patterns}
+                bpm={bpm}
+                setBpm={setBpm}
+                onPlay={handlePlay}
+                onStop={handleStop}
+                onToggleStep={handleToggleStep}
+              />
+            ) : (
+              <Component />
+            )}
+          </ModuleContainer>
+        );
       });
   };
 
@@ -158,20 +143,27 @@ export default function App() {
         </div>
         
         <div className="flex gap-2">
-            {PLUGIN_REGISTRY.map(plugin => (
-              <button
-                key={plugin.id}
-                onClick={() => togglePlugin(plugin.id)}
-                className={`flex flex-col items-center justify-center min-w-[76px] h-14 rounded-lg border transition-all ${
-                  activePlugins.has(plugin.id) || plugin.id === 'mischpult'
-                    ? 'bg-orange-600 border-orange-400 text-white shadow-[0_0_15px_rgba(234,88,12,0.3)]' 
-                    : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:bg-neutral-700'
-                }`}
-              >
-                <plugin.icon size={18} />
-                <span className="text-[9px] font-black mt-1 uppercase tracking-tighter">{plugin.short}</span>
-              </button>
-            ))}
+            {PLUGIN_REGISTRY.map(plugin => {
+              const state = moduleStates[plugin.id] || 'OFF';
+              const isActive = state !== 'OFF';
+              
+              return (
+                <button
+                  key={plugin.id}
+                  onClick={() => togglePlugin(plugin.id)}
+                  className={`flex flex-col items-center justify-center min-w-[76px] h-14 rounded-lg border transition-all ${
+                    isActive
+                      ? state === 'PRO'
+                        ? 'bg-orange-600 border-orange-400 text-white shadow-[0_0_15px_rgba(234,88,12,0.3)]'
+                        : 'bg-orange-600/50 border-orange-400/50 text-white shadow-[0_0_15px_rgba(234,88,12,0.1)] animate-pulse'
+                      : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:bg-neutral-700'
+                  }`}
+                >
+                  <plugin.icon size={18} />
+                  <span className="text-[9px] font-black mt-1 uppercase tracking-tighter">{plugin.short}</span>
+                </button>
+              );
+            })}
         </div>
       </header>
 

@@ -6,14 +6,14 @@ export interface TrackPreset {
   key: string;
   description: string;
   patterns: {
-    kick: boolean[];
-    hat: boolean[];
-    clap: boolean[];
-    synth: boolean[];
-    snare: boolean[];
-    tom: boolean[];
-    perc: boolean[];
-    bass: boolean[];
+    channel1: boolean[];
+    channel2: boolean[];
+    channel3: boolean[];
+    channel4: boolean[];
+    channel5: boolean[];
+    channel6: boolean[];
+    channel7: boolean[];
+    channel8: boolean[];
   };
   synthNotes: number[]; // Index maps to step, value represents pitch index in scale
   cutoff: number;
@@ -22,7 +22,7 @@ export interface TrackPreset {
   decay: number;
 }
 
-export type TrackType = 'kick' | 'hat' | 'clap' | 'synth' | 'snare' | 'tom' | 'perc' | 'bass';
+export type TrackType = 'channel1' | 'channel2' | 'channel3' | 'channel4' | 'channel5' | 'channel6' | 'channel7' | 'channel8';
 
 export interface AudioElement {
   id: string;

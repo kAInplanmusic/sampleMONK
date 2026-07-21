@@ -6,10 +6,33 @@ import { usePluginState } from '../hooks/usePluginState';
 
 // ... (RoutingEntry)
 
+interface RoutingEntry {
+  channel: number;
+  source: string;
+  type: string;
+  color: string;
+  volume: number; // 0 to 1
+  pan: number; // -1 to 1 (Stereo)
+}
+
 export function MischpultTerminal() {
   const { setSelectedSample } = useSamples();
   const { state, lockStatus, updateState } = usePluginState('mischpult', 'ACTIVE');
-  const [channels, setChannels] = useState<RoutingEntry[]>([]);
+  const [channels, setChannels] = useState<RoutingEntry[]>(
+    Array.from({ length: 10 }, (_, i) => ({
+      channel: i,
+      source: `CH ${i + 1}`,
+      type: 'Input',
+      color: 'bg-blue-500',
+      volume: 0.8,
+      pan: 0
+    }))
+  );
+
+  const updateChannel = (channel: number, updates: Partial<RoutingEntry>) => {
+    setChannels(prev => prev.map(ch => ch.channel === channel ? { ...ch, ...updates } : ch));
+  };
+
   // ... (channelSamples logic)
 
   // Header update to show state
@@ -35,20 +58,31 @@ export function MischpultTerminal() {
         {channels.map((ch: RoutingEntry) => (
           <div 
             key={ch.channel} 
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, ch.channel)}
             className="flex-1 flex flex-col bg-[#161616] rounded-md border border-neutral-800 p-2"
           >
             <div className={`w-full h-2 ${ch.color} rounded-t-sm mb-2`} />
             <span className="text-[9px] font-black text-neutral-400 text-center uppercase truncate">{ch.source}</span>
-            <span className="text-[8px] text-neutral-600 text-center mb-1 h-3 truncate">
-                {channelSamples[ch.channel]?.name || ch.type}
-            </span>
             
             {/* Fader */}
-            <div className="flex-1 flex justify-center bg-[#080808] rounded-sm border border-neutral-900 relative">
-                <input type="range" orient="vertical" className="w-2 appearance-none h-full bg-neutral-800 rounded-sm accent-blue-500" />
+            <div className="flex-1 flex justify-center bg-[#080808] rounded-sm border border-neutral-900 relative my-2">
+                <input 
+                    type="range" 
+                    orient="vertical" 
+                    min="0" max="1" step="0.01" 
+                    value={ch.volume}
+                    onChange={(e) => updateChannel(ch.channel, { volume: parseFloat(e.target.value) })}
+                    className="w-2 appearance-none h-full bg-neutral-800 rounded-sm accent-blue-500" 
+                />
             </div>
+            
+            {/* Pan */}
+            <input 
+                type="range" 
+                min="-1" max="1" step="0.1" 
+                value={ch.pan}
+                onChange={(e) => updateChannel(ch.channel, { pan: parseFloat(e.target.value) })}
+                className="w-full accent-neutral-500 h-1" 
+            />
           </div>
         ))}
       </div>

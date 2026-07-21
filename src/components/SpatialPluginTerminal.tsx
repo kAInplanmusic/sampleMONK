@@ -4,24 +4,40 @@ import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
 
+import { calculate10ChannelPan } from '../utils/spatialMath';
+
+import { StartupWizard } from './spatial/StartupWizard';
+import { SpatialSetup } from './spatial/types';
+
 export function SpatialPluginTerminal() {
   const { state, lockStatus, updateState } = usePluginState('spatial', 'ACTIVE');
-  const [isPlaying, setIsPlaying] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  const [nodes, setNodes] = useState([
-    { id: 'KICK', x: 0, y: 0, color: '#f43f5e', active: true },
-    { id: 'SNARE', x: -0.3, y: 0.2, color: '#3b82f6', active: true },
-    { id: 'HIHAT', x: 0.5, y: -0.1, color: '#10b981', active: true },
-    { id: 'SYNTH', x: -0.6, y: -0.5, color: '#8b5cf6', active: true },
-    { id: 'VOCAL', x: 0.2, y: 0.6, color: '#f97316', active: true },
-  ]);
+  const [setup, setSetup] = useState<SpatialSetup | null>(null);
 
-  const [draggedNode, setDraggedNode] = useState<string | null>(null);
+  if (!setup) {
+    return (
+        <div className="w-full h-full flex items-center justify-center bg-[#111]">
+            <StartupWizard onComplete={setSetup} />
+        </div>
+    );
+  }
 
-  const handleSampleDrop = (sample: AudioSample) => {
-    if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
-    // Add new node for dropped sample
+  // ... rest of the existing terminal logic (using setup for panning)
+
+
+  useEffect(() => {
+    // simulation loop
+    nodes.forEach(node => {
+        const { channels } = calculate10ChannelPan(node.x, node.y);
+        // console.log(`Routing ${node.id} to channels:`, channels);
+    });
+  }, [nodes]);
+
+const updateNodePosition = (id: string, x: number, y: number) => {
+  setNodes(prev => prev.map(n => n.id === id ? { ...n, x, y } : n));
+  // Route to audio engine
+  audioEngine.setSpatialPosition(id.toLowerCase() as TrackType, x, y);
+};
+
     const newNode = { 
         id: sample.name.toUpperCase().substring(0, 5), 
         x: 0, 
@@ -64,6 +80,17 @@ export function SpatialPluginTerminal() {
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           {isPlaying ? 'LFO ACTIVE' : 'LFO PATHS'}
         </button>
+
+        <div className="flex items-center gap-2 bg-black p-1 rounded border border-neutral-800">
+           <button 
+             onClick={() => setSpatialMode('ON_TOP')}
+             className={`px-3 py-1 text-[10px] font-bold rounded ${spatialMode === 'ON_TOP' ? 'bg-lime-600 text-white' : 'text-neutral-500'}`}
+           >ON TOP</button>
+           <button 
+             onClick={() => setSpatialMode('SEPARATION')}
+             className={`px-3 py-1 text-[10px] font-bold rounded ${spatialMode === 'SEPARATION' ? 'bg-lime-600 text-white' : 'text-neutral-500'}`}
+           >SEPARATION</button>
+        </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden p-6 gap-6">
@@ -95,35 +122,60 @@ export function SpatialPluginTerminal() {
            </div>
            
            <div className="flex-1 bg-[#111] rounded-xl border border-neutral-800 p-4 flex flex-col shadow-inner">
+import { generateCircularPath, generateLissajousPath, generatePingPongPath } from '../utils/spatialAutomation';
+
+// ... inside SpatialPluginTerminal component
+
+  const [macroMappings, setMacroMappings] = useState<Record<string, string>>({
+    'btn1': 'CIRCLE',
+    'btn2': 'LISS',
+    'btn3': 'PINGPONG',
+    'btn4': 'CIRCLE_RIGHT',
+    'btn5': 'CHAOS'
+  });
+
+  const handleMacroDrop = (sample: AudioSample, btnId: string) => {
+    // Treat the dropped sample name as a pattern definition if needed, 
+    // or assign a pattern name to the button.
+    setMacroMappings(prev => ({ ...prev, [btnId]: sample.name }));
+  };
+
+  const triggerMacro = (pattern: string) => {
+    let path;
+    const steps = 100;
+    
+    // Fallback logic if it's a known pattern or a sample-based pattern
+    if (pattern === 'CIRCLE') path = generateCircularPath(0.5, steps);
+    else if (pattern === 'LISS') path = generateLissajousPath(3, 2, steps);
+    else if (pattern === 'PINGPONG') path = generatePingPongPath(0.8, steps);
+    else if (pattern === 'CIRCLE_RIGHT') path = generateCircularPath(0.5, steps);
+    else if (pattern === 'CHAOS') path = Array.from({ length: steps }, () => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 }));
+    else {
+        console.log(`Executing pattern for sample: ${pattern}`);
+        return;
+    }
+    
+    console.log(`Triggering macro: ${pattern}`, path);
+  };
+// ...
              <h3 className="text-xs font-bold tracking-widest text-neutral-500 mb-4 flex items-center gap-2">
                <Map className="w-4 h-4" /> MACRO CONTROLS
              </h3>
              
-             <div className="flex flex-col gap-6 flex-1 justify-center">
-               <div className="flex flex-col gap-2">
-                 <div className="flex justify-between text-[10px] font-mono text-neutral-500">
-                   <span>ROOM SIZE</span>
-                   <span className="text-lime-400">LARGE</span>
-                 </div>
-                 <input type="range" className="w-full accent-lime-500" defaultValue="75" />
-               </div>
-               
-               <div className="flex flex-col gap-2">
-                 <div className="flex justify-between text-[10px] font-mono text-neutral-500">
-                   <span>DOPPLER INTENSITY</span>
-                   <span className="text-lime-400">40%</span>
-                 </div>
-                 <input type="range" className="w-full accent-lime-500" defaultValue="40" />
-               </div>
-               
-               <div className="flex flex-col gap-2">
-                 <div className="flex justify-between text-[10px] font-mono text-neutral-500">
-                   <span>LOW FREQUENCY LFE</span>
-                   <span className="text-lime-400">80Hz</span>
-                 </div>
-                 <input type="range" className="w-full accent-lime-500" defaultValue="80" />
-               </div>
+             <div className="grid grid-cols-2 gap-2">
+                 {Object.entries(macroMappings).map(([id, pattern]) => (
+                    <DropTarget 
+                        key={id}
+                        onDrop={(sample) => handleMacroDrop(sample, id)}
+                        className="bg-neutral-800 rounded text-[9px] font-bold hover:bg-lime-600 p-2 text-center"
+                    >
+                        <button onClick={() => triggerMacro(pattern)} className="w-full h-full">
+                            {pattern}
+                        </button>
+                    </DropTarget>
+                 ))}
              </div>
+
              
              <button className="w-full mt-4 py-3 bg-[#222] hover:bg-[#333] border border-neutral-700 rounded text-[10px] font-bold tracking-widest text-neutral-400 flex items-center justify-center gap-2 transition-colors">
                <RefreshCw className="w-3 h-3" /> RESET POSITIONS
@@ -131,6 +183,10 @@ export function SpatialPluginTerminal() {
            </div>
         </div>
         
+import { SpatialCanvas } from './spatial/SpatialCanvas';
+// ... other imports
+
+// ... inside the JSX return:
         {/* Right Side: Visualizer Canvas */}
         <div className="flex-1">
             <DropTarget 
@@ -139,16 +195,7 @@ export function SpatialPluginTerminal() {
                 className="w-full h-full p-4 flex flex-col items-center justify-center"
             >
                 <div className="w-full h-full max-w-[500px] max-h-[500px] bg-black rounded-full border border-neutral-800 overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                    <canvas 
-                        ref={canvasRef} 
-                        width={500} 
-                        height={500} 
-                        className={`w-full h-full ${draggedNode ? 'cursor-grabbing' : 'cursor-crosshair'}`}
-                        /* onMouseDown={handleMouseDown} */
-                        /* onMouseMove={handleMouseMove} */
-                        /* onMouseUp={handleMouseUp} */
-                        /* onMouseLeave={handleMouseUp} */
-                    />
+                    <SpatialCanvas />
                 </div>
             </DropTarget>
         </div>

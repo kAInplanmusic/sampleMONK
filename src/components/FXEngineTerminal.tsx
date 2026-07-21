@@ -3,39 +3,41 @@ import { Sparkles, Activity, Power, Sliders, AudioLines, Radio, Flame, Cpu } fro
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
-import { webRTCManager } from '../utils/WebRTCManager';
+import { audioEngine } from '../utils/audioEngine';
 
 export function FXEngineTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('dj_fx', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('effect', 'ACTIVE');
   const [power, setPower] = useState(true);
   const [activeFx, setActiveFx] = useState('REVERB');
   const [wetDry, setWetDry] = useState(50);
   const [sourceSample, setSourceSample] = useState<AudioSample | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Connect via WebRTC
-  const applyFx = (fx: string, dryWet: number, sampleId?: string) => {
-    webRTCManager.sendToAllPeers({ 
-        type: 'FX_UPDATE',
-        senderId: 'localUser',
-        timestamp: Date.now(),
-        fx_type: fx, 
-        settings: { wetDry: dryWet },
-        sample_id: sampleId
+  const applyFx = (fx: string, dryWet: number) => {
+    // Integrate with AudioEngine's effect parameters
+    audioEngine.setEffectParams({
+        type: fx,
+        wet: dryWet / 100,
+        power: power
     });
-    console.log(`FX ${fx} synced to peers with wetDry ${dryWet}%`);
+    console.log(`FX ${fx} updated with wetDry ${dryWet}%`);
   };
 
   const handleSampleDrop = (sample: AudioSample) => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setSourceSample(sample);
-    applyFx(activeFx, wetDry, sample.id);
+    // Logic for loading sample to effect chain if needed
   };
 
   const handleFxChange = (fx: string) => {
     setActiveFx(fx);
-    applyFx(fx, wetDry, sourceSample?.id);
+    applyFx(fx, wetDry);
   };
+  
+  useEffect(() => {
+    applyFx(activeFx, wetDry);
+  }, [activeFx, wetDry, power]);
+
   
   const fxList = [
     { id: 'DELAY', label: 'TAPE ECHO' },

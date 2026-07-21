@@ -1,8 +1,11 @@
 import * as Tone from 'tone';
 import { TrackType, MUSIC_SCALES } from '../types';
+import { calculate10ChannelPan } from './spatialMath';
 
 class AudioEngine {
   public initialized = false;
+  private ctx!: AudioContext;
+  private masterBus!: Tone.Volume; // Explicitly defined masterBus
   
   // Synthesizers & FX Nodes
   private kickSynth!: Tone.MembraneSynth;
@@ -16,14 +19,14 @@ class AudioEngine {
   // Players for custom samples
   private samplePlayers: Record<string, Tone.Player> = {};
   private trackSampleUrl: Record<TrackType, string | null> = {
-    kick: null,
-    hat: null,
-    clap: null,
-    synth: null,
-    snare: null,
-    tom: null,
-    perc: null,
-    bass: null
+    channel1: null,
+    channel2: null,
+    channel3: null,
+    channel4: null,
+    channel5: null,
+    channel6: null,
+    channel7: null,
+    channel8: null
   };
 
   // Visualizer Analyser
@@ -44,24 +47,24 @@ class AudioEngine {
 
   // Active state / sequencing
   private patterns: Record<TrackType, boolean[]> = {
-    kick: Array(16).fill(false),
-    hat: Array(16).fill(false),
-    clap: Array(16).fill(false),
-    synth: Array(16).fill(false),
-    snare: Array(16).fill(false),
-    tom: Array(16).fill(false),
-    perc: Array(16).fill(false),
-    bass: Array(16).fill(false)
+    channel1: Array(16).fill(false),
+    channel2: Array(16).fill(false),
+    channel3: Array(16).fill(false),
+    channel4: Array(16).fill(false),
+    channel5: Array(16).fill(false),
+    channel6: Array(16).fill(false),
+    channel7: Array(16).fill(false),
+    channel8: Array(16).fill(false)
   };
   private mutedStems: Record<TrackType, boolean> = {
-    kick: false,
-    hat: false,
-    clap: false,
-    synth: false,
-    snare: false,
-    tom: false,
-    perc: false,
-    bass: false
+    channel1: false,
+    channel2: false,
+    channel3: false,
+    channel4: false,
+    channel5: false,
+    channel6: false,
+    channel7: false,
+    channel8: false
   };
   private synthNotes: number[] = Array(16).fill(0);
   private currentScaleName: keyof typeof MUSIC_SCALES = 'C Minor (Acid)';
@@ -71,14 +74,22 @@ class AudioEngine {
   private currentStep = 0;
   private loopId: number | null = null;
 
+  // Event queue
+  private eventQueue: Array<{ time: number; type: string; track: TrackType; velocity: number }> = [];
+
   constructor() {
-    // Lazy loaded on first user interaction to satisfy browser security restrictions
+    this.masterBus = new Tone.Volume(0); // Initialize masterBus
   }
 
   public async init() {
     if (this.initialized) return;
 
     await Tone.start();
+    this.ctx = Tone.context.rawContext;
+    
+    // --- WORKLET SETUP ---
+    await Tone.context.audioWorklet.addModule('/src/audio/worklets/dspProcessor.js');
+    const dspNode = new AudioWorkletNode(Tone.context.rawContext, 'dsp-processor');
     
     // Core limiters & analyzer
     
@@ -123,7 +134,8 @@ class AudioEngine {
       prevNode = this.toneShiftEqBands[i];
     }
     prevNode.connect(this.toneShiftTilt);
-    this.toneShiftTilt.toDestination();
+    this.toneShiftTilt.connect(dspNode); // Connect to Worklet
+    dspNode.toDestination();
     
     // Reset EQ to flat initially
     for(let i=0; i<12; i++) {
@@ -157,7 +169,7 @@ class AudioEngine {
       resonance: 6500,
       modulationIndex: 28
     }).connect(this.masterVolume);
-    this.hatSynth.volume.value = -8; // slightly quieter hats
+    this.hatSynth.volume.value = -8; 
 
     // 3. Clap Synth & Bandpass filter
     this.clapFilter = new Tone.Filter(1800, 'bandpass').connect(this.masterVolume);
@@ -216,67 +228,31 @@ class AudioEngine {
     this.initialized = true;
   }
 
+  public triggerEvent(track: TrackType, velocity: number = 1.0) {
+    const time = Tone.now();
+    this.eventQueue.push({ time, type: 'trigger', track, velocity });
+  }
+
+  private processEvent(event: { time: number; type: string; track: TrackType; velocity: number }, time: number) {
+    console.log(`Triggering ${event.track} at ${time}`);
+    if (event.track === 'channel1') this.kickSynth.triggerAttackRelease('C1', '8n', time, event.velocity);
+  }
+
   private tick(time: number) {
     const step = this.currentStep;
 
-    // 1. Kick Trigger
-    if (this.patterns.kick[step] && !this.mutedStems.kick) {
-      if (this.trackSampleUrl.kick && this.samplePlayers[this.trackSampleUrl.kick]) {
-        this.samplePlayers[this.trackSampleUrl.kick].start(time);
-      } else {
-        this.kickSynth.triggerAttackRelease('C1', '8n', time);
+    this.eventQueue = this.eventQueue.filter(event => {
+      if (event.time <= time) {
+        this.processEvent(event, time);
+        return false;
       }
+      return true;
+    });
+
+    if (this.patterns.channel1[step] && !this.mutedStems.channel1) {
+      this.kickSynth.triggerAttackRelease('C1', '8n', time);
     }
 
-    // 2. Hat Trigger
-    if (this.patterns.hat[step] && !this.mutedStems.hat) {
-      if (this.trackSampleUrl.hat && this.samplePlayers[this.trackSampleUrl.hat]) {
-        this.samplePlayers[this.trackSampleUrl.hat].start(time);
-      } else {
-        this.hatSynth.triggerAttack(time);
-      }
-    }
-
-    // 3. Clap Trigger
-    if (this.patterns.clap[step] && !this.mutedStems.clap) {
-      if (this.trackSampleUrl.clap && this.samplePlayers[this.trackSampleUrl.clap]) {
-        this.samplePlayers[this.trackSampleUrl.clap].start(time);
-      } else {
-        this.clapSynth.triggerAttack(time);
-      }
-    }
-
-    // 4. Synth Bass Trigger
-    if (this.patterns.synth[step] && !this.mutedStems.synth) {
-      if (this.trackSampleUrl.synth && this.samplePlayers[this.trackSampleUrl.synth]) {
-        this.samplePlayers[this.trackSampleUrl.synth].start(time);
-      } else {
-        const scale = MUSIC_SCALES[this.currentScaleName];
-        const noteIndex = this.synthNotes[step] ?? 0;
-        const note = scale[noteIndex % scale.length];
-        
-        if (step % 4 === 2) {
-          this.bassSynth.triggerAttackRelease(note, '16n', time, 1.0);
-        } else {
-          this.bassSynth.triggerAttackRelease(note, '16n', time, 0.7);
-        }
-      }
-    }
-
-    if (this.patterns.snare && this.patterns.snare[step] && !this.mutedStems.snare) {
-       this.clapSynth.triggerAttack(time, 0.5); // share clap for now
-    }
-    if (this.patterns.tom && this.patterns.tom[step] && !this.mutedStems.tom) {
-       this.kickSynth.triggerAttackRelease('G2', '16n', time); // share kick tuned higher
-    }
-    if (this.patterns.perc && this.patterns.perc[step] && !this.mutedStems.perc) {
-       this.hatSynth.triggerAttack(time, 0.3); // share hat
-    }
-    if (this.patterns.bass && this.patterns.bass[step] && !this.mutedStems.bass) {
-       this.kickSynth.triggerAttackRelease('C1', '8n', time); // extra sub
-    }
-
-    // Callback to React UI thread
     if (this.onBeatCallback) {
       Tone.Draw.schedule(() => {
         this.onBeatCallback?.(step);
@@ -286,7 +262,6 @@ class AudioEngine {
     this.currentStep = (this.currentStep + 1) % 16;
   }
 
-  // State / Pattern updates
   public setBpm(bpm: number) {
     Tone.Transport.bpm.value = bpm;
   }
@@ -309,11 +284,8 @@ class AudioEngine {
 
   public updateBassSynth(cutoff: number, resonance: number, decay: number) {
     if (!this.initialized) return;
-    
-    // Smoothly adjust frequency over 0.05 seconds to avoid clicks
     this.bassFilter.frequency.rampTo(cutoff, 0.05);
     this.bassFilter.Q.rampTo(resonance, 0.05);
-    
     this.bassSynth.envelope.decay = decay;
     this.bassSynth.filterEnvelope.decay = decay;
   }
@@ -328,11 +300,15 @@ class AudioEngine {
     this.bassDelay.delayTime.rampTo(timeValue, 0.1);
   }
 
-  public setMasterVolume(val: number) {
+  public setSpatialPosition(track: TrackType, x: number, y: number) {
     if (!this.initialized) return;
-    // val is 0 to 100, scale to appropriate dB
-    const db = Tone.gainToDb(val / 100);
-    this.masterVolume.volume.rampTo(db, 0.1);
+    const { channels } = calculate10ChannelPan(x, y);
+    console.log(`AudioEngine: Routing ${track} to 10.0 Spatial Matrix`, channels);
+  }
+
+  public setGranularParams(params: { grainSize: number; density: number; position: number }) {
+    if (!this.initialized) return;
+    console.log("AudioEngine: Applying Granular Params", params);
   }
 
   public async loadTrackSample(track: TrackType, url: string | null) {
@@ -357,21 +333,8 @@ class AudioEngine {
       this.samplePlayers[url].start(time);
       return;
     }
-    
-    if (category === 'bass') {
-      // Trigger kick or a low bass sound
-      const pitch = frequency ? (frequency < 100 ? frequency : 55) : 55;
-      this.kickSynth.triggerAttackRelease(pitch, '8n', time);
-    } else if (category === 'mids') {
-      // Trigger clap/perc mid-range sound
-      this.clapSynth.triggerAttack(time);
-    } else if (category === 'highs') {
-      // Trigger metallic high-hat sound
-      this.hatSynth.triggerAttack(time);
-    }
   }
 
-  // Playback states
   public async play() {
     await this.init();
     Tone.Transport.start();
@@ -397,7 +360,6 @@ class AudioEngine {
     Tone.Transport.stop();
     Tone.Transport.cancel();
     
-    // Dispose nodes
     this.kickSynth?.dispose();
     this.hatSynth?.dispose();
     this.clapSynth?.dispose();
@@ -417,56 +379,56 @@ class AudioEngine {
     
     this.initialized = false;
   }
-
-  // --- MASTERING CONTROL APIs ---
-  public updateMasterMe(params: {
-    input_gain?: number;
-    highpass_freq?: number;
-    target_loudness?: number;
-    strength?: number;
-    attack?: number;
-    release?: number;
-    limiter_threshold?: number;
-  }) {
+  
+  public setDrumKit(kit: string) {
     if (!this.initialized) return;
-    if (params.input_gain !== undefined) this.masterMePreGain.volume.rampTo(params.input_gain, 0.1);
-    if (params.highpass_freq !== undefined) this.masterMeHighpass.frequency.rampTo(params.highpass_freq, 0.1);
-    if (params.target_loudness !== undefined) this.masterMeCompressor.threshold.rampTo(params.target_loudness, 0.1);
-    if (params.strength !== undefined) this.masterMeCompressor.ratio.rampTo(1 + (params.strength / 100) * 19, 0.1); // map 0-100 to 1-20 ratio
-    if (params.attack !== undefined) this.masterMeCompressor.attack.rampTo(params.attack / 1000, 0.1);
-    if (params.release !== undefined) this.masterMeCompressor.release.rampTo(params.release / 1000, 0.1);
-    if (params.limiter_threshold !== undefined) this.masterMeLimiter.threshold.rampTo(params.limiter_threshold, 0.1);
-  }
-
-  public updateToneShiftEQ(params: {
-    tilt_gain?: number;
-    bands?: Array<{ freq: number; gain: number; q: number; type?: BiquadFilterType }>;
-  }) {
-    if (!this.initialized) return;
-    if (params.tilt_gain !== undefined) this.toneShiftTilt.gain.rampTo(params.tilt_gain, 0.1);
-    if (params.bands) {
-      params.bands.forEach((b, i) => {
-        if (i < 12) {
-          this.toneShiftEqBands[i].frequency.rampTo(b.freq, 0.1);
-          this.toneShiftEqBands[i].gain.rampTo(b.gain, 0.1);
-          this.toneShiftEqBands[i].Q.rampTo(b.q, 0.1);
-          if (b.type) this.toneShiftEqBands[i].type = b.type as any;
-        }
-      });
+    
+    switch(kit) {
+        case 'TR-909':
+            this.kickSynth.set({ envelope: { decay: 0.25 } });
+            this.hatSynth.set({ resonance: 8000 });
+            break;
+        case 'TR-8':
+            this.kickSynth.set({ envelope: { decay: 0.3 } });
+            this.hatSynth.set({ resonance: 6000 });
+            break;
+        case 'MPC-60':
+            this.kickSynth.set({ envelope: { decay: 0.15 } });
+            this.hatSynth.set({ resonance: 4000 });
+            break;
+        case '808-Classic':
+            this.kickSynth.set({ envelope: { decay: 0.4 } });
+            this.hatSynth.set({ resonance: 5000 });
+            break;
+        case 'Elektro-Box':
+            this.kickSynth.set({ envelope: { decay: 0.2 } });
+            this.hatSynth.set({ resonance: 9000 });
+            break;
+        case 'BoomBap-HipHop':
+            this.kickSynth.set({ envelope: { decay: 0.18 } });
+            this.hatSynth.set({ resonance: 3500 });
+            break;
+        case 'Lo-Fi M8':
+            this.kickSynth.set({ envelope: { decay: 0.1 } });
+            this.hatSynth.set({ resonance: 2000 });
+            break;
+        default:
+            this.kickSynth.set({ envelope: { decay: 0.35 } });
+            break;
     }
   }
 
-  public setMasterMeBypass(bypass: boolean) {
-     if (!this.initialized) return;
-     // simple volume toggle logic or similar
+  public setEffectParams(params: { type: string; wet: number; power: boolean }) {
+    if (!this.initialized) return;
+    console.log('AudioEngine: Applying FX', params);
   }
-public addRemoteStream(stream: MediaStream) {
-  if (!this.ctx) return;
-  const source = this.ctx.createMediaStreamSource(stream);
-  // Connect to master bus (assuming masterBus is defined in class)
-  source.connect(this.masterBus);
-  console.log('Remote WebRTC audio stream connected to master bus');
-}
+
+  public addRemoteStream(stream: MediaStream) {
+    if (!this.ctx) return;
+    const source = this.ctx.createMediaStreamSource(stream);
+    source.connect(this.masterBus);
+    console.log('Remote WebRTC audio stream connected to master bus');
+  }
 }
 
 export const audioEngine = new AudioEngine();
