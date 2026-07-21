@@ -5,21 +5,24 @@ import './index.css';
 import { AudioProvider } from './context/AudioContext';
 import { SampleProvider } from './context/SampleContext';
 import { ModuleStateProvider } from './context/ModuleStateContext';
+import { PluginManagerProvider } from './context/PluginManagerContext';
 import { SessionProvider } from './context/SessionContext';
-import { ModuleStateProvider } from './context/ModuleStateContext';
-// ...
+import { AccessProvider } from './context/AccessContext';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SessionProvider>
-      <ModuleStateProvider>
-        <PluginManagerProvider>
-          <SampleProvider>
-            <AudioProvider>
-              <App />
-            </AudioProvider>
-          </SampleProvider>
-        </PluginManagerProvider>
-      </ModuleStateProvider>
-    </SessionProvider>
+    <AccessProvider>
+      <SessionProvider>
+        <ModuleStateProvider>
+          <PluginManagerProvider>
+            <SampleProvider>
+              <AudioProvider>
+                <App />
+              </AudioProvider>
+            </SampleProvider>
+          </PluginManagerProvider>
+        </ModuleStateProvider>
+      </SessionProvider>
+    </AccessProvider>
   </StrictMode>,
 );

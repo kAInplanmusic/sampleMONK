@@ -58,7 +58,16 @@ class WebRTCManager {
 
     pc.ondatachannel = (e) => {
       this.dataChannels.set(targetId, e.channel);
-      e.channel.onmessage = (msg) => console.log('Data from', targetId, msg.data);
+      e.channel.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (data.type === 'CLOCK_PING') {
+            e.channel.send(JSON.stringify({ type: 'CLOCK_PONG', pingTime: data.timestamp, pongTime: performance.now() }));
+        }
+        if (data.type === 'LATENCY_PING') {
+            e.channel.send(JSON.stringify({ type: 'LATENCY_PONG', timestamp: data.timestamp }));
+        }
+        console.log('Data from', targetId, data);
+      };
     };
 
     pc.ontrack = (e) => {

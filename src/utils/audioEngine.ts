@@ -1,10 +1,25 @@
-import * as Tone from 'tone';
-import { TrackType, MUSIC_SCALES } from '../types';
-import { calculate10ChannelPan } from './spatialMath';
+import { LatencyMonitor } from './LatencyMonitor';
 
 class AudioEngine {
-  public initialized = false;
-  private ctx!: AudioContext;
+  // ...
+  private latencyMonitor = new LatencyMonitor();
+
+  public adjustLatency(oneWayLatency: number) {
+      // Set lookAhead to match latency + buffer
+      Tone.Transport.lookAhead = oneWayLatency / 1000 + 0.05; 
+      console.log(`AudioEngine: LookAhead adjusted to ${Tone.Transport.lookAhead}s`);
+  }
+
+
+  // ... (inside AudioEngine)
+
+  public syncClock(pingTime: number, pongTime: number) {
+      this.clockSync.handlePong(pongTime, pingTime);
+      // Adjust transport based on PLL output
+      const drift = this.pll.update(pongTime - pingTime); 
+      Tone.Transport.seconds += drift;
+  }
+
   private masterBus!: Tone.Volume; // Explicitly defined masterBus
   
   // Synthesizers & FX Nodes
@@ -30,6 +45,8 @@ class AudioEngine {
   };
 
   // Visualizer Analyser
+  private analyzerNode!: AudioWorkletNode;
+  public onWaveformUpdate: (data: Float32Array) => void = () => {};
   public analyser!: Tone.Analyser;
   private masterVolume!: Tone.Volume;
   
@@ -91,7 +108,10 @@ class AudioEngine {
     await Tone.context.audioWorklet.addModule('/src/audio/worklets/dspProcessor.js');
     this.dspNode = new AudioWorkletNode(Tone.context.rawContext, 'dsp-processor');
     
-    // Core limiters & analyzer
+    await Tone.context.audioWorklet.addModule('/src/audio/worklets/analyzerProcessor.js');
+    this.analyzerNode = new AudioWorkletNode(Tone.context.rawContext, 'analyzer-processor');
+    this.analyzerNode.port.onmessage = (e) => this.onWaveformUpdate(e.data.waveform);
+
     
     // --- MASTERING CHAIN SETUP ---
     // master_me
@@ -135,7 +155,8 @@ class AudioEngine {
     }
     prevNode.connect(this.toneShiftTilt);
     this.toneShiftTilt.connect(this.dspNode); // Connect to Worklet
-    this.dspNode.toDestination();
+    this.dspNode.connect(this.analyzerNode);
+    this.analyzerNode.toDestination();
     
     // Reset EQ to flat initially
     for(let i=0; i<12; i++) {

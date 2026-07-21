@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
 import { Waves, Zap, Settings } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
+import { WasmPluginHost } from '../audio/wasm/WasmPluginHost';
 import { audioEngine } from '../utils/audioEngine';
 
 export const SynthesizerTerminal: React.FC = () => {
   const { state, lockStatus, updateState } = usePluginState('synth', 'ACTIVE');
-  const [engine, setEngine] = useState('SUBTRACTIVE');
-  const [cutoff, setCutoff] = useState(1000);
+  const [host] = useState(new WasmPluginHost());
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const handleEngineChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newEngine = e.target.value;
-    setEngine(newEngine);
-    // Link to audioEngine: audioEngine.setSynthEngine(newEngine);
-    console.log('Switching synth engine to:', newEngine);
+  useEffect(() => {
+    // Load plugin on startup
+    host.loadPlugin('/plugins/synth_core.wasm').then(() => {
+        setIsLoaded(true);
+        console.log("WASM Synth loaded");
+    });
+  }, []);
+
+  const handleCutoffChange = (value: number) => {
+    if (isLoaded) host.setParameter('cutoff', value);
   };
+
 
   return (
     <div className={`p-6 bg-[#161616] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-mono shadow-2xl`}>

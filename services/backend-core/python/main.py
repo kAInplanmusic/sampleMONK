@@ -1,8 +1,19 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
+from celery_app import render_project_task, celery_app
+from celery.result import AsyncResult
 
-app = FastAPI(title="Sample Monk Core Backend")
+# ...
+
+@app.get("/api/render-status/{task_id}")
+async def get_render_status(task_id: str):
+    res = AsyncResult(task_id, app=celery_app)
+    return {
+        "task_id": task_id,
+        "status": res.status,
+        "result": res.result
+    }
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,9 +50,12 @@ async def generate_voice(request: Request):
 async def apply_fx(request: Request):
     return await proxy_request("dsp", "/api/apply-fx", request)
 
-@app.post("/api/master-audio-control")
-async def master_audio_control(request: Request):
-    return await proxy_request("master", "/api/control", request)
+@app.post("/api/render")
+async def render_project(request: Request):
+    project_data = await request.json()
+    # Trigger headless celery task
+    task = render_project_task.delay(project_data)
+    return {"task_id": task.id, "status": "Render started"}
 
 @app.get("/")
 async def root():

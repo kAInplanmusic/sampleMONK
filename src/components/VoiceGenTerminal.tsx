@@ -4,6 +4,8 @@ import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
 import { useAudioAI } from '../hooks/useAudioAI';
+import { PitchDetector } from '../utils/PitchDetector';
+import { audioEngine } from '../utils/audioEngine';
 
 export function VoiceGenTerminal() {
   const { addSample } = useSamples();
@@ -14,6 +16,30 @@ export function VoiceGenTerminal() {
   const [voice, setVoice] = useState('FEMALE_ROBOTIC');
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasResult, setHasResult] = useState(false);
+  const [isRecordingMidi, setIsRecordingMidi] = useState(false);
+  const midiIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startRecordingForMIDI = async () => {
+    if (isRecordingMidi) {
+        if (midiIntervalRef.current) clearInterval(midiIntervalRef.current);
+        setIsRecordingMidi(false);
+        return;
+    }
+    
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioContext = new AudioContext();
+    const detector = new PitchDetector(audioContext);
+    
+    setIsRecordingMidi(true);
+    const interval = setInterval(() => {
+        const note = detector.getNote();
+        console.log("Detected Pitch:", note);
+        audioEngine.triggerEvent('channel5', 0.8);
+    }, 100);
+    
+    midiIntervalRef.current = interval;
+  };
+
 
   const generate = async () => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
@@ -121,7 +147,13 @@ export function VoiceGenTerminal() {
             </div>
           </div>
           
-          <div className="mt-auto pt-6 border-t border-neutral-800">
+          <div className="mt-auto pt-6 border-t border-neutral-800 flex flex-col gap-3">
+            <button 
+              onClick={startRecordingForMIDI}
+              className={`w-full py-3 rounded-lg font-bold tracking-widest flex justify-center items-center gap-2 transition-all ${isRecordingMidi ? 'bg-red-900/50 text-red-400' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'}`}
+            >
+              <Mic className="w-4 h-4" /> {isRecordingMidi ? 'STOP RECORDING' : 'RECORD VOICE-TO-MIDI'}
+            </button>
             <button 
               onClick={generate}
               disabled={isGenerating}

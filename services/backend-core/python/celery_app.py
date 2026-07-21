@@ -47,7 +47,10 @@ def generate_voice_task(text: str, voice_preset: str):
     # Placeholder for AI Vocalist
     return f"Voice generated: {text} with {voice_preset}"
 
-@celery_app.task
-def apply_fx_task(fx_type: str, settings: dict):
-    # Placeholder for FX Engine
-    return f"FX {fx_type} applied with {settings}"
+@celery_app.task(bind=True)
+def render_project_task(self, project_data: dict):
+    # Simulate render progress
+    for i in range(1, 6):
+        self.update_state(state='PROGRESS', meta={'percent': i * 20})
+    # Finalize render
+    return f"Render completed: master_out_{self.request.id}.wav"

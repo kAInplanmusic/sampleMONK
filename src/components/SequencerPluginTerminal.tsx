@@ -17,7 +17,7 @@ interface SequencerProps {
   onToggleStep: (track: TrackType, stepIndex: number) => void;
 }
 
-export function SequencerPluginTerminal(props: SequencerProps) {
+export const SequencerPluginTerminal = React.memo(function SequencerPluginTerminal(props: SequencerProps) {
   const { setSelectedSample } = useSamples();
   const { state, lockStatus, updateState } = usePluginState('sequencer', 'ACTIVE');
   

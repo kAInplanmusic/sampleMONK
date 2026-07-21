@@ -14,10 +14,9 @@ import { MIDIControllerTerminal } from '../components/MIDIControllerTerminal';
 import { FXEngineTerminal } from '../components/FXEngineTerminal';
 import { StemExtractorTerminal } from '../components/StemExtractorTerminal';
 import { VoiceGenTerminal } from '../components/VoiceGenTerminal';
-import { HypergraphVisualizer } from '../components/HypergraphVisualizer';
 import { RecorderTerminal } from '../components/RecorderTerminal';
 import { DSPTerminal } from '../components/DSPTerminal';
-import { CustomSlotTerminal } from '../components/CustomSlotTerminal';
+import { VisualizerTerminal } from '../components/VisualizerTerminal';
 import { SynthesizerTerminal } from '../components/SynthesizerTerminal';
 
 export const PLUGIN_REGISTRY = [
@@ -30,7 +29,7 @@ export const PLUGIN_REGISTRY = [
   { id: 'effect', name: 'effectMONK', short: 'FX', icon: Sparkles, description: 'Effektrack für Hardware-FX-Emulationen.', component: FXEngineTerminal },
   { id: 'synth', name: 'synthesizerMONK', short: 'SYN', icon: Waves, description: 'Vielseitige Synthese-Engines.', component: SynthesizerTerminal },
   { id: 'voice', name: 'voiceMONK', short: 'VOX', icon: Mic, description: 'KI-Vocal-Synthese, TTS und Vokoder.', component: VoiceGenTerminal },
-  { id: 'sampler', name: 'samplerMONK', short: 'SMP', icon: Layers, description: 'Sample-Generator mit Granularsynthese.', component: CustomSlotTerminal },
+  { id: 'visualizer', name: 'visMONK', short: 'VIS', icon: Activity, description: 'Echtzeit-Audioanalyse.', component: VisualizerTerminal },
   { id: 'stem', name: 'stemMONK', short: 'RMX', icon: Radio, description: 'KI-gestützte Live-Stem-Trennung.', component: StemExtractorTerminal },
   { id: 'recording', name: 'recordingMONK', short: 'REC', icon: Activity, description: 'Audio-Interface für bit-perfektes Recording.', component: RecorderTerminal },
   { id: 'library', name: 'biblioMONK', short: 'LIB', icon: Database, description: 'Bibliothek und Datei-Explorer.', component: LibraryTerminal },
