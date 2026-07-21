@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { WebRTCMessage } from '../types/protocol';
 
 class WebRTCManager {
   private socket: Socket;
@@ -78,7 +79,7 @@ class WebRTCManager {
     this.socket.emit('offer', { target: targetId, offer });
   }
 
-  public sendToAllPeers(data: any) {
+  public sendToAllPeers(data: WebRTCMessage) {
     this.dataChannels.forEach(channel => {
       if (channel.readyState === 'open') {
         channel.send(JSON.stringify(data));
