@@ -17,6 +17,32 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState(0);
   const [bpm, setBpm] = useState(128);
   const [patterns, setPatterns] = useState(TECHNO_PRESETS[0].patterns);
+  const [isStarted, setIsStarted] = useState(false);
+
+  const startApp = async () => {
+      await audioEngine.play();
+      setIsStarted(true);
+      setIsPlaying(true);
+  };
+
+  if (!isStarted) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
+              <button 
+                onClick={startApp}
+                className="group flex flex-col items-center gap-4 transition-transform hover:scale-105 active:scale-95"
+              >
+                  {/* Branded Logo Shape */}
+                  <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-[0_0_40px_rgba(168,85,247,0.4)]">
+                    <Music className="w-12 h-12 text-white" />
+                  </div>
+                  <span className="text-xl font-black tracking-widest text-neutral-400 group-hover:text-white transition-colors">
+                      START MONK
+                  </span>
+              </button>
+          </div>
+      );
+  }
 
   const togglePlugin = (id: string) => {
     if (id === 'mixer') return; 
