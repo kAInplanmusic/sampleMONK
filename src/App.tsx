@@ -8,8 +8,17 @@ import { BeatVisualizer } from './components/BeatVisualizer';
 import { SequencerPluginTerminal } from './components/SequencerPluginTerminal';
 import { TECHNO_PRESETS } from './presets';
 import { TrackType } from './types';
+import { SafeModuleBoundary } from './components/SafeModuleBoundary';
 
 export default function App() {
+  return (
+    <SafeModuleBoundary>
+      <AppComponent />
+    </SafeModuleBoundary>
+  );
+}
+
+function AppComponent() {
   const { moduleStates, setModuleState } = useModuleState();
   const { requestLock, releaseLock } = usePluginManager();
   
@@ -112,23 +121,28 @@ export default function App() {
           .filter(p => p.id !== 'mixer' && moduleStates[p.id] && moduleStates[p.id] !== 'OFF')
           .map(plugin => (
             <ModuleContainer key={plugin.id} id={plugin.id} name={plugin.name} state={moduleStates[plugin.id]}>
-                {plugin.id === 'sequencer' ? (
-                <SequencerPluginTerminal 
-                    isPlaying={isPlaying}
-                    currentStep={currentStep}
-                    tracks={patterns}
-                    bpm={bpm}
-                    setBpm={setBpm}
-                    onPlay={() => setIsPlaying(true)}
-                    onStop={() => setIsPlaying(false)}
-                    onToggleStep={handleToggleStep}
-                />
-                ) : (
-                <plugin.component />
-                )}
-            </ModuleContainer>
+
+                              <SafeModuleBoundary>
+                                {plugin.id === 'sequencer' ? (
+                                  <SequencerPluginTerminal 
+                                      isPlaying={isPlaying}
+                                      currentStep={currentStep}
+                                      tracks={patterns}
+                                      bpm={bpm}
+                                      setBpm={setBpm}
+                                      onPlay={() => setIsPlaying(true)}
+                                      onStop={() => setIsPlaying(false)}
+                                      onToggleStep={handleToggleStep}
+                                  />
+                                  ) : (
+                                  <plugin.component />
+                                  )}
+                              </SafeModuleBoundary>
+                            </ModuleContainer>
+
         ))}
       </div>
     </div>
   );
+}
 }

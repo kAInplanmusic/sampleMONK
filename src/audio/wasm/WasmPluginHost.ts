@@ -9,7 +9,8 @@ export class WasmPluginHost {
   private instance: WasmPluginInstance | null = null;
 
   async loadPlugin(wasmUrl: string): Promise<void> {
-    const response = await fetch(wasmUrl);
+    const url = wasmUrl.startsWith('http') ? wasmUrl : new URL(wasmUrl, window.location.origin).href;
+    const response = await fetch(url);
     const buffer = await response.arrayBuffer();
     // Emscripten/WASM instantiation
     const module = await WebAssembly.instantiate(buffer, {

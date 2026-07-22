@@ -17,9 +17,18 @@ class AudioEngine {
   private dspNode!: AudioWorkletNode;
   private lufsNode!: AudioWorkletNode;
   public analyzerNode!: AudioWorkletNode;
+  public sharedWaveformBuffer!: Float32Array;
+  public lufsBufferView!: Float32Array; // Added for LUFS SAB
   
   public onWaveformUpdate: (data: Float32Array) => void = () => {};
-  public onLufsUpdate: (lufs: number) => void = () => {};
+  public getLufsValue(): number {
+      // Ensure lufsBufferView is initialized before reading
+      if (this.lufsBufferView) {
+          return Atomics.load(this.lufsBufferView, 0);
+      }
+      return 0; // Default or error value if not initialized
+  }
+
   public analyser!: Tone.Analyser;
   private ctx!: AudioContext;
 
@@ -69,20 +78,75 @@ class AudioEngine {
   public async init() {
     if (this.initialized) return;
 
-    await Tone.start();
+    // Load routing.json
+    try {
+      const response = await fetch('/routing.json'); // Fetch from public directory
+      const routingConfig = await response.json();
+      console.log('Loaded routing config:', routingConfig);
+
+      // Apply global settings
+      if (routingConfig.global) {
+        if (routingConfig.global.tempo) {
+          Tone.Transport.bpm.value = routingConfig.global.tempo;
+        }
+        // Assuming masterVolume refers to this.masterVolume.volume.value
+        if (routingConfig.global.masterVolume !== undefined) {
+          this.masterVolume.volume.value = routingConfig.global.masterVolume;
+        }
+      }
+      
+      // Apply track settings from routing.json to existing synths
+      if (routingConfig.tracks && Array.isArray(routingConfig.tracks)) {
+        routingConfig.tracks.forEach(trackConfig => {
+          if (trackConfig.params) { // Only apply if params exist
+            switch(trackConfig.instrument) {
+              case "kickSynth":
+                this.kickSynth.set(trackConfig.params);
+                break;
+              case "hatSynth":
+                this.hatSynth.set(trackConfig.params); 
+                break;
+              case "clapSynth":
+                this.clapSynth.set(trackConfig.params); 
+                break;
+              case "bassSynth":
+                this.bassSynth.set(trackConfig.params);
+                break;
+              // Add more cases for other instruments
+            }
+          }
+        });
+      }
+
+      // TODO: Apply effects and connections from routingConfig.buses and routingConfig.connections
+      // This would require significant refactoring to dynamically create and manage nodes.
+      // For now, we apply global and track-level settings to existing hardcoded elements.
+
+    } catch (error) {
+      console.error('Failed to load or parse routing.json:', error);
+      // Fallback to default hardcoded settings
+    }
+
+
+    // Tone.start() and Worklets are now loaded centrally by AudioProvider
+    // We only need to ensure Tone is ready and context is available before proceeding
+    // Since AudioProvider ensures Tone.start() is called, we can directly access Tone.context.rawContext
     this.ctx = Tone.context.rawContext;
     
-    // --- WORKLET SETUP ---
-    await Tone.context.audioWorklet.addModule('/src/audio/worklets/dspProcessor.js');
+    // --- WORKLET NODE INSTANTIATION ---
+    // Worklets are now loaded centrally by AudioProvider
     this.dspNode = new AudioWorkletNode(Tone.context.rawContext, 'dsp-processor');
-    
-    await Tone.context.audioWorklet.addModule('/src/audio/worklets/analyzerProcessor.js');
     this.analyzerNode = new AudioWorkletNode(Tone.context.rawContext, 'analyzer-processor');
-    this.analyzerNode.port.onmessage = (e) => this.onWaveformUpdate(e.data.waveform);
     
-    await Tone.context.audioWorklet.addModule('/src/audio/worklets/lufsProcessor.js');
+    // Initialize SharedArrayBuffer for visualization
+    const sab = new SharedArrayBuffer(128 * 4);
+    this.sharedWaveformBuffer = new Float32Array(sab);
+    this.analyzerNode.port.postMessage({ buffer: sab });
+    
     this.lufsNode = new AudioWorkletNode(Tone.context.rawContext, 'lufs-processor');
-    this.lufsNode.port.onmessage = (e) => this.onLufsUpdate(e.data.lufs);
+    const lufsSab = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT); // Single float for LUFS
+    this.lufsBufferView = new Float32Array(lufsSab); // Create a view for reading
+    this.lufsNode.port.postMessage({ buffer: lufsSab }); // Pass SAB to lufs Worklet
 
     // Mastering Chain
     this.masterMePreGain = new Tone.Volume(0);
@@ -99,8 +163,11 @@ class AudioEngine {
     }
     this.toneShiftTilt = new Tone.Filter(1000, 'highshelf');
 
-    this.masterVolume = new Tone.Volume(-6);
-    this.masterVolume.connect(this.masterMePreGain);
+    this.masterVolume = new Tone.Volume(-6); // This is now part of the chain after masterBus
+
+    // Connect masterBus to masterVolume, then masterVolume to the mastering chain
+    this.masterBus.connect(this.masterVolume); 
+    this.masterVolume.connect(this.masterMePreGain); 
     this.masterMePreGain.connect(this.masterMeHighpass);
     this.masterMeHighpass.connect(this.masterMeCompressor);
     this.masterMeCompressor.connect(this.masterMeMultiband);
@@ -123,14 +190,14 @@ class AudioEngine {
     this.toneShiftTilt.gain.value = 0;
 
     this.analyser = new Tone.Analyser('waveform', 256);
-    this.masterVolume.connect(this.analyser);
+    this.masterBus.connect(this.analyser); // Connect analyser to masterBus
 
     // Synth setup ... (abbreviated)
-    this.kickSynth = new Tone.MembraneSynth().connect(this.masterVolume);
-    this.hatSynth = new Tone.MetalSynth().connect(this.masterVolume);
-    this.clapFilter = new Tone.Filter(1800, 'bandpass').connect(this.masterVolume);
+    this.kickSynth = new Tone.MembraneSynth().connect(this.masterBus); // Connect to masterBus
+    this.hatSynth = new Tone.MetalSynth().connect(this.masterBus); // Connect to masterBus
+    this.clapFilter = new Tone.Filter(1800, 'bandpass').connect(this.masterBus); // Connect to masterBus
     this.clapSynth = new Tone.NoiseSynth().connect(this.clapFilter);
-    this.bassFilter = new Tone.Filter({ type: 'lowpass', frequency: 600 }).connect(this.masterVolume);
+    this.bassFilter = new Tone.Filter({ type: 'lowpass', frequency: 600 }).connect(this.masterBus); // Connect to masterBus
     this.bassDelay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.25, wet: 0.3 }).connect(this.bassFilter);
     this.bassSynth = new Tone.MonoSynth().connect(this.bassDelay);
 
@@ -182,7 +249,22 @@ class AudioEngine {
   public stop() { Tone.Transport.stop(); this.currentStep = 0; }
   
   public loadTrackSample(track: TrackType, url: string | null) {
-      // ...
+    // If there's an existing player for this track, dispose of it
+    if (this.samplePlayers[track]) {
+      this.samplePlayers[track].stop(); // Stop playback
+      this.samplePlayers[track].disconnect(); // Disconnect from audio graph
+      this.samplePlayers[track].dispose();    // Release resources
+      delete this.samplePlayers[track];        // Remove reference
+    }
+
+    if (url) {
+      const player = new Tone.Player(url).connect(this.masterBus);
+      // player.autostart = true; // Or player.start() when needed
+      this.samplePlayers[track] = player;
+      this.trackSampleUrl[track] = url;
+    } else {
+      this.trackSampleUrl[track] = null;
+    }
   }
   
   public setSpatialPosition(track: TrackType, x: number, y: number) {

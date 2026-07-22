@@ -3,7 +3,7 @@ import { Activity } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 
-export const VisualizerTerminal: React.FC = () => {
+export const VisualizerTerminal: React.FC = React.memo(() => {
   const { state, lockStatus, updateState } = usePluginState('visualizer', 'ACTIVE');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -12,21 +12,30 @@ export const VisualizerTerminal: React.FC = () => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    audioEngine.onWaveformUpdate = (waveform: Float32Array) => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.beginPath();
-        ctx.strokeStyle = '#14b8a6';
-        ctx.lineWidth = 2;
-        
-        for (let i = 0; i < waveform.length; i++) {
-            const x = (i / waveform.length) * canvas.width;
-            const y = (waveform[i] * canvas.height / 2) + (canvas.height / 2);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+    
+    let animationId: number;
+    
+    const draw = () => {
+        const waveform = audioEngine.sharedWaveformBuffer;
+        if (waveform) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            ctx.strokeStyle = '#14b8a6';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < waveform.length; i++) {
+                const x = (i / waveform.length) * canvas.width;
+                const y = (waveform[i] * canvas.height / 2) + (canvas.height / 2);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
         }
-        ctx.stroke();
+        animationId = requestAnimationFrame(draw);
     };
+    
+    draw();
+    return () => cancelAnimationFrame(animationId);
   }, []);
 
   return (
@@ -44,4 +53,4 @@ export const VisualizerTerminal: React.FC = () => {
       <canvas ref={canvasRef} width={400} height={150} className="w-full bg-black rounded" />
     </div>
   );
-};
+});

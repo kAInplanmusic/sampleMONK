@@ -10,7 +10,13 @@ export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, 
   const [lufs, setLufs] = useState(-23);
 
   useEffect(() => {
-    audioEngine.onLufsUpdate = (val: number) => setLufs(val);
+    const interval = setInterval(() => {
+      // Read LUFS value from audioEngine directly
+      const currentLufs = audioEngine.getLufsValue();
+      setLufs(currentLufs);
+    }, 100); // Poll every 100ms for updates
+
+    return () => clearInterval(interval); // Cleanup interval on unmount
   }, []);
 
   // ... (inside JSX)

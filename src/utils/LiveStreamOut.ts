@@ -5,8 +5,8 @@ export class LiveStreamOut {
     private masterGain: GainNode;
     private stream: MediaStreamDestination;
 
-    constructor() {
-        this.audioContext = new AudioContext();
+    constructor(audioContext: AudioContext) {
+        this.audioContext = audioContext;
         this.masterGain = this.audioContext.createGain();
         this.stream = this.audioContext.createMediaStreamDestination();
         this.masterGain.connect(this.stream);

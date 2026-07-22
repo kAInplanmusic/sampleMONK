@@ -5,7 +5,7 @@ interface BeatVisualizerProps {
   isPlaying: boolean;
 }
 
-export const BeatVisualizer: React.FC<BeatVisualizerProps> = ({ isPlaying }) => {
+export const BeatVisualizer: React.FC<BeatVisualizerProps> = React.memo(({ isPlaying }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animationRef = useRef<number | null>(null);
@@ -139,4 +139,4 @@ export const BeatVisualizer: React.FC<BeatVisualizerProps> = ({ isPlaying }) => 
       </div>
     </div>
   );
-};
+});

@@ -12,6 +12,38 @@ interface RoutingEntry {
   pan: number; // -1 to 1 (Stereo)
 }
 
+const ChannelStrip = React.memo(({ ch, onUpdate }: { ch: RoutingEntry; onUpdate: (channel: number, updates: Partial<RoutingEntry>) => void }) => {
+    return (
+        <div 
+          className="flex-1 flex flex-col bg-[#161616] rounded-md border border-neutral-800 p-2"
+        >
+          <div className={`w-full h-2 ${ch.color} rounded-t-sm mb-2`} />
+          <span className="text-[9px] font-black text-neutral-400 text-center uppercase truncate">{ch.source}</span>
+          
+          {/* Fader */}
+          <div className="flex-1 flex justify-center bg-[#080808] rounded-sm border border-neutral-900 relative my-2">
+              <input 
+                  type="range" 
+                  orient="vertical" 
+                  min="0" max="1" step="0.01" 
+                  value={ch.volume}
+                  onChange={(e) => onUpdate(ch.channel, { volume: parseFloat(e.target.value) })}
+                  className="w-2 appearance-none h-full bg-neutral-800 rounded-sm accent-blue-500" 
+              />
+          </div>
+          
+          {/* Pan */}
+          <input 
+              type="range" 
+              min="-1" max="1" step="0.1" 
+              value={ch.pan}
+              onChange={(e) => onUpdate(ch.channel, { pan: parseFloat(e.target.value) })}
+              className="w-full accent-neutral-500 h-1" 
+          />
+        </div>
+    );
+});
+
 export function MischpultTerminal() {
   const { state, lockStatus, updateState } = usePluginState('mixer', 'ACTIVE');
   const [channels, setChannels] = useState<RoutingEntry[]>(
@@ -48,34 +80,7 @@ export function MischpultTerminal() {
       {/* Mixer Matrix */}
       <div className="flex-1 p-6 flex gap-4 bg-[#111]">
         {channels.map((ch: RoutingEntry) => (
-          <div 
-            key={ch.channel} 
-            className="flex-1 flex flex-col bg-[#161616] rounded-md border border-neutral-800 p-2"
-          >
-            <div className={`w-full h-2 ${ch.color} rounded-t-sm mb-2`} />
-            <span className="text-[9px] font-black text-neutral-400 text-center uppercase truncate">{ch.source}</span>
-            
-            {/* Fader */}
-            <div className="flex-1 flex justify-center bg-[#080808] rounded-sm border border-neutral-900 relative my-2">
-                <input 
-                    type="range" 
-                    orient="vertical" 
-                    min="0" max="1" step="0.01" 
-                    value={ch.volume}
-                    onChange={(e) => updateChannel(ch.channel, { volume: parseFloat(e.target.value) })}
-                    className="w-2 appearance-none h-full bg-neutral-800 rounded-sm accent-blue-500" 
-                />
-            </div>
-            
-            {/* Pan */}
-            <input 
-                type="range" 
-                min="-1" max="1" step="0.1" 
-                value={ch.pan}
-                onChange={(e) => updateChannel(ch.channel, { pan: parseFloat(e.target.value) })}
-                className="w-full accent-neutral-500 h-1" 
-            />
-          </div>
+            <ChannelStrip key={ch.channel} ch={ch} onUpdate={updateChannel} />
         ))}
       </div>
     </div>

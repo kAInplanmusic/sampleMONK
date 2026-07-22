@@ -1,0 +1,24 @@
+{
+  "worklets": [
+    {
+      "id": "spatial-panner-processor",
+      "url": "/wam/spatial/spatial-processor.js",
+      "hash": "f6e1c2a3b4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9" 
+    },
+    {
+      "id": "dsp-processor",
+      "url": "/audio/worklets/dspProcessor.js",
+      "hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+    },
+    {
+      "id": "analyzer-processor",
+      "url": "/audio/worklets/analyzerProcessor.js",
+      "hash": "1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b"
+    },
+    {
+      "id": "lufs-processor",
+      "url": "/audio/worklets/lufsProcessor.js",
+      "hash": "x1y2z3a4b5c6d7e8f9x1y2z3a4b5c6d7e8f9x1y2"
+    }
+  ]
+}

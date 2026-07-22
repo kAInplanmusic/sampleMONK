@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -6,6 +6,7 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  error?: Error;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -19,20 +20,27 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
+    this.setState({ error });
   }
 
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-black text-red-500 font-mono p-4">
-          <div className="border border-red-500/30 p-8 rounded-lg bg-red-950/10">
-            <h1 className="text-2xl font-bold mb-4">CRITICAL UI ERROR</h1>
-            <p className="text-sm">Das Sample Monk System ist abgestürzt. Bitte die Konsole prüfen.</p>
-          </div>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-red-900/20 text-white p-8">
+          <h1 className="text-2xl font-bold mb-4">Something went wrong.</h1>
+          <pre className="bg-black p-4 rounded overflow-auto max-w-full">
+            {this.state.error?.message}
+          </pre>
+          <button 
+            className="mt-4 px-4 py-2 bg-red-600 rounded"
+            onClick={() => window.location.reload()}
+          >
+            Reload App
+          </button>
         </div>
       );
     }
 
-    return this.children;
+    return this.props.children;
   }
 }

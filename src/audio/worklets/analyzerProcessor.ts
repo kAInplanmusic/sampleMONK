@@ -1,11 +1,22 @@
 // src/audio/worklets/analyzerProcessor.ts
 class AnalyzerProcessor extends AudioWorkletProcessor {
+  private sharedBuffer: Float32Array | null = null;
+
+  constructor() {
+    super();
+    this.port.onmessage = (e) => {
+      if (e.data.buffer) {
+        this.sharedBuffer = new Float32Array(e.data.buffer);
+      }
+    };
+  }
+
   process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>) {
     const input = inputs[0];
     
-    // Send raw audio data to main thread for visualization
-    if (input.length > 0) {
-      this.port.postMessage({ waveform: input[0].slice(0, 128) });
+    // Write raw audio data to the shared buffer for visualization
+    if (this.sharedBuffer && input.length > 0) {
+      this.sharedBuffer.set(input[0].slice(0, this.sharedBuffer.length));
     }
     
     return true;

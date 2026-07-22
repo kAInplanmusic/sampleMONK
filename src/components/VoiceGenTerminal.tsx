@@ -6,6 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { useAudioAI } from '../hooks/useAudioAI';
 import { PitchDetector } from '../utils/PitchDetector';
 import { audioEngine } from '../utils/audioEngine';
+import { useAudio } from '../context/AudioContext'; // <-- ADD THIS
 
 export function VoiceGenTerminal() {
   const { addSample } = useSamples();
@@ -18,6 +19,7 @@ export function VoiceGenTerminal() {
   const [hasResult, setHasResult] = useState(false);
   const [isRecordingMidi, setIsRecordingMidi] = useState(false);
   const midiIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { audioContext } = useAudio(); // <-- ADD THIS
 
   const startRecordingForMIDI = async () => {
     if (isRecordingMidi) {
@@ -27,8 +29,11 @@ export function VoiceGenTerminal() {
     }
     
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioContext = new AudioContext();
-    const detector = new PitchDetector(audioContext);
+    if (!audioContext || !audioContext.rawContext) {
+        console.warn("AudioContext not available for PitchDetector.");
+        return;
+    }
+    const detector = new PitchDetector(audioContext.rawContext);
     
     setIsRecordingMidi(true);
     const interval = setInterval(() => {
