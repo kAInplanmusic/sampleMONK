@@ -26,12 +26,18 @@ const loadWorkletWithCache = async (workletConfig: { name: string, url: string, 
             console.log(`${workletConfig.name} (${workletConfig.processorId}) loaded from cache.`);
             loadedFromCache = true;
             const blob = await cachedResponse.blob();
+            // IMPORTANT: Ensure the server serves Worklet files (JS, WASM) with correct MIME types
+            // e.g., application/javascript for .js files, application/wasm for .wasm files.
+            // Incorrect MIME types can prevent Worklets from loading.
             const blobUrl = URL.createObjectURL(blob);
             await Tone.context.audioWorklet.addModule(blobUrl);
         } else {
             console.log(`${workletConfig.name} (${workletConfig.processorId}) not in cache or hash mismatch. Fetching.`);
             const response = await fetch(hashedUrl);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            // IMPORTANT: Ensure the server serves Worklet files (JS, WASM) with correct MIME types
+            // e.g., application/javascript for .js files, application/wasm for .wasm files.
+            // Incorrect MIME types can prevent Worklets from loading.
             await cache.put(hashedUrl, response.clone()); // Cache the new response with the hashed URL
             const blob = await response.blob();
             const blobUrl = URL.createObjectURL(blob);
