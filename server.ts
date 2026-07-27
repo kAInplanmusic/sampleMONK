@@ -42,7 +42,7 @@ const PresetSchema = z.object({
 });
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 
