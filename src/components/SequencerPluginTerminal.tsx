@@ -4,11 +4,11 @@ import { TrackType, TrackPreset } from '../types';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
-import { generateRhythmicPattern } from '../utils/aiRhythmGenerator';
+import { audioEngine } from '../utils/audioEngine';
+import { SampleModuleWrapper } from './SampleModuleWrapper';
 
 interface SequencerProps {
   isPlaying: boolean;
-  currentStep: number;
   tracks: TrackPreset['patterns'];
   bpm: number;
   setBpm: (b: number) => void;
@@ -17,15 +17,36 @@ interface SequencerProps {
   onToggleStep: (track: TrackType, stepIndex: number) => void;
 }
 
-import { SampleModuleWrapper } from './SampleModuleWrapper';
-
-// ... (other imports)
-
 export const SequencerPluginTerminal = React.memo(function SequencerPluginTerminal(props: SequencerProps) {
   const { setSelectedSample } = useSamples();
   const { state, lockStatus, updateState } = usePluginState('sequencer', 'ACTIVE');
-  
-  // ... (rest of code before return)
+  const [currentStep, setCurrentStep] = useState(0);
+  const channels: TrackType[] = ['channel1', 'channel2', 'channel3', 'channel4', 'channel5', 'channel6', 'channel7', 'channel8'];
+  const [trackSamples, setTrackSamples] = useState<Record<string, AudioSample | null>>({});
+
+  useEffect(() => {
+    audioEngine.onStepUpdate = (step) => {
+        setCurrentStep(step);
+    };
+    return () => {
+        audioEngine.onStepUpdate = () => {};
+    };
+  }, []);
+
+  const handleDrop = (e: React.DragEvent, track: TrackType) => {
+    e.preventDefault();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      setTrackSamples(prev => ({ ...prev, [track]: data }));
+      setSelectedSample(data);
+    } catch (err) {
+      console.error("Invalid sample dropped", err);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
   
   return (
     <SampleModuleWrapper onSelect={setSelectedSample}>
@@ -39,7 +60,7 @@ export const SequencerPluginTerminal = React.memo(function SequencerPluginTermin
 
             <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
                 <option value="OFF">OFF</option>
-                <option value="AI_CONTROLLED">AI</option>
+                <option value="AUTO_AI">AI</option>
                 <option value="ACTIVE">ACTIVE</option>
             </select>
 
@@ -68,14 +89,8 @@ export const SequencerPluginTerminal = React.memo(function SequencerPluginTermin
                     <div key={colIndex} className="flex flex-col gap-1 items-center">
                         <button
                             onClick={() => props.onToggleStep(trackKey as TrackType, colIndex)}
-                            className={`w-8 h-8 rounded-sm ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-neutral-900'} ${props.currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white' : ''}`}
+                            className={`w-8 h-8 rounded-sm ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-neutral-900'} ${currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white' : ''}`}
                         />
-                        {state === 'PRO' && isActive && (
-                            <input 
-                                type="range" min="0" max="1" step="0.1" defaultValue="1"
-                                className="w-8 h-1 accent-emerald-500"
-                            />
-                        )}
                     </div>
                 ))}
                 </div>

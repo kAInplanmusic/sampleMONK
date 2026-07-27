@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Layers, Upload, Download, Play, Square, Scissors, Database, Loader2, Music, Mic, AudioWaveform, Zap } from 'lucide-react';
+import { Layers, Upload, Download, Play, Square, Scissors, Database, Loader2, Music, Mic, AudioWaveform, Zap, Radio } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
@@ -8,11 +8,12 @@ import { routeStemToMixer } from '../utils/StemRouter';
 
 export function StemExtractorTerminal() {
   const { addSample } = useSamples();
-  const { separateStems } = useAudioAI();
+  const { streamStems } = useAudioAI();
   const { state, lockStatus, updateState } = usePluginState('stem_extractor', 'ACTIVE');
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [extracted, setExtracted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -20,46 +21,52 @@ export function StemExtractorTerminal() {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
       setExtracted(false);
+      setError(null);
     }
   };
 
   const startExtraction = async () => {
     if (!file || (lockStatus.active && lockStatus.lockedBy !== 'localUser')) return;
+    
     setIsExtracting(true);
     setProgress(0);
+    setError(null);
     
     try {
-      const data = await separateStems(file);
-      console.log("Stem extraction response:", data);
+      const stream = streamStems(file);
+      let finalData;
       
-      const interval = setInterval(() => {
-        setProgress(p => {
-          if (p >= 100) {
-            clearInterval(interval);
-            setIsExtracting(false);
-            setExtracted(true);
-            
-            ['vocals', 'melody', 'highs', 'mids', 'lows'].forEach((stem, i) => {
-                routeStemToMixer(stem, `stem_url_${i}`);
-                const newSample: AudioSample = {
-                    id: `stem-${Date.now()}-${stem}`,
-                    name: `${file!.name.split('.')[0]}_${stem}`,
-                    category: 'mids',
-                    type: 'Stem',
-                    description: `Extracted stem from ${file!.name}`,
-                    parameters: {}
-                };
-                addSample(newSample);
-            });
-            return 100;
-          }
-          return Math.min(99, p + 2);
-        });
-      }, 500);
+      for await (const update of stream) {
+        if (typeof update === 'number') {
+            setProgress(update);
+        } else {
+            finalData = update;
+        }
+      }
       
-    } catch (error) {
-      console.error("Extraction failed:", error);
+      if (!finalData) throw new Error("No data returned from extraction engine");
+      
       setIsExtracting(false);
+      setExtracted(true);
+      
+      ['vocals', 'melody', 'highs', 'mids', 'lows'].forEach((stem, i) => {
+          routeStemToMixer(stem, `stem_url_${i}`);
+          const newSample: AudioSample = {
+              id: `stem-${Date.now()}-${stem}`,
+              name: `${file!.name.split('.')[0]}_${stem}`,
+              category: 'mids',
+              type: 'Stem',
+              description: `Extracted stem from ${file!.name}`,
+              parameters: {}
+          };
+          addSample(newSample);
+      });
+      
+    } catch (err: any) {
+      console.error("Extraction failed:", err);
+      setError(err.message || "An unexpected error occurred during extraction.");
+      setIsExtracting(false);
+      setProgress(0);
     }
   };
 
@@ -75,6 +82,12 @@ export function StemExtractorTerminal() {
             <option value="ACTIVE">ACTIVE</option>
         </select>
       </div>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-900/20 border border-red-500 text-red-400 text-xs rounded">
+            Error: {error}
+        </div>
+      )}
       
       <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" />
       <button onClick={() => fileInputRef.current?.click()} className="w-full bg-[#111] border border-dashed border-neutral-700 p-4 rounded-lg mb-4 text-xs font-bold uppercase tracking-widest hover:border-red-500 transition-colors">

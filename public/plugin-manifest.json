@@ -1,24 +1,34 @@
 {
   "worklets": [
     {
-      "id": "spatial-panner-processor",
-      "url": "/wam/spatial/spatial-processor.js",
-      "hash": "f6e1c2a3b4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9" 
+      "id": "analyzer-processor",
+      "url": "/public/worklets/analyzerProcessor.js",
+      "hash": "placeholder_hash_analyzer"
     },
     {
       "id": "dsp-processor",
-      "url": "/audio/worklets/dspProcessor.js",
-      "hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+      "url": "/public/worklets/dspProcessor.js",
+      "hash": "placeholder_hash_dsp"
     },
     {
-      "id": "analyzer-processor",
-      "url": "/audio/worklets/analyzerProcessor.js",
-      "hash": "1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b"
+      "id": "fallback-processor",
+      "url": "/public/worklets/fallbackProcessor.js",
+      "hash": "placeholder_hash_fallback"
     },
     {
       "id": "lufs-processor",
-      "url": "/audio/worklets/lufsProcessor.js",
-      "hash": "x1y2z3a4b5c6d7e8f9x1y2z3a4b5c6d7e8f9x1y2"
+      "url": "/public/worklets/lufsProcessor.js",
+      "hash": "placeholder_hash_lufs"
+    },
+    {
+      "id": "eq-processor",
+      "url": "/public/worklets/eqProcessor.js",
+      "hash": "placeholder_hash_eq"
+    },
+    {
+      "id": "mastering-processor",
+      "url": "/public/worklets/masteringProcessor.js",
+      "hash": "placeholder_hash_mastering"
     }
   ]
 }

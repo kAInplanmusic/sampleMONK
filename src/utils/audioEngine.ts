@@ -8,25 +8,33 @@ import { LatencyMonitor } from './LatencyMonitor';
 class AudioEngine {
   public initialized = false;
   private clockSync = new ClockSync();
+  
+  private async ensureInitialized() {
+    if (!this.initialized) {
+        await this.init();
+    }
+  }
+
   private pll = new PhaseLockedLoop();
   private latencyMonitor = new LatencyMonitor();
   
   // Audio Nodes
-  private masterBus!: Tone.Volume; 
+  private masterBuses: Record<string, Tone.Volume> = {};
   private masterVolume!: Tone.Volume;
   private dspNode!: AudioWorkletNode;
+  private eqNode!: AudioWorkletNode;
+  private masteringNode!: AudioWorkletNode;
   private lufsNode!: AudioWorkletNode;
   public analyzerNode!: AudioWorkletNode;
   public sharedWaveformBuffer!: Float32Array;
-  public lufsBufferView!: Float32Array; // Added for LUFS SAB
+  public lufsBufferView!: Int32Array; // Added for LUFS SAB
   
   public onWaveformUpdate: (data: Float32Array) => void = () => {};
   public getLufsValue(): number {
-      // Ensure lufsBufferView is initialized before reading
       if (this.lufsBufferView) {
-          return Atomics.load(this.lufsBufferView, 0);
+          return Atomics.load(this.lufsBufferView, 0) / 100;
       }
-      return 0; // Default or error value if not initialized
+      return 0; 
   }
 
   public analyser!: Tone.Analyser;
@@ -67,12 +75,41 @@ class AudioEngine {
     channel5: false, channel6: false, channel7: false, channel8: false
   };
   private synthNotes: number[] = Array(16).fill(0);
+  public currentStep = 0;
+  public onStepUpdate: (step: number) => void = () => {};
+  
+  // Lookahead Scheduler
+  private lookahead = 25.0; // ms
+  private scheduleArea = 0.1; // seconds
+  private nextNoteTime = 0.0;
+  private timerID: any = null;
+
+  private scheduleTick(time: number) {
+    this.tick(time);
+  }
+
+  private scheduler() {
+    while (this.nextNoteTime < Tone.context.currentTime + this.scheduleArea) {
+      this.scheduleTick(this.nextNoteTime);
+      this.advanceNote();
+    }
+    this.timerID = setTimeout(() => this.scheduler(), this.lookahead);
+  }
+
+  private advanceNote() {
+    const secondsPerBeat = 60.0 / Tone.Transport.bpm.value;
+    this.nextNoteTime += 0.25 * secondsPerBeat; // 16th note
+  }
+
+  private synthNotes: number[] = Array(16).fill(0);
   private currentStep = 0;
   private loopId: number | null = null;
   private eventQueue: Array<{ time: number; type: string; track: TrackType; velocity: number }> = [];
 
   constructor() {
-    this.masterBus = new Tone.Volume(0);
+    ['GLOBAL_MASTER', 'USER_1', 'USER_2', 'USER_3', 'USER_4'].forEach(bus => {
+      this.masterBuses[bus] = new Tone.Volume(0);
+    });
   }
 
   public async init() {
@@ -80,73 +117,45 @@ class AudioEngine {
 
     // Load routing.json
     try {
-      const response = await fetch('/routing.json'); // Fetch from public directory
+      const response = await fetch('/routing.json');
       const routingConfig = await response.json();
       console.log('Loaded routing config:', routingConfig);
-
-      // Apply global settings
       if (routingConfig.global) {
-        if (routingConfig.global.tempo) {
-          Tone.Transport.bpm.value = routingConfig.global.tempo;
-        }
-        // Assuming masterVolume refers to this.masterVolume.volume.value
-        if (routingConfig.global.masterVolume !== undefined) {
-          this.masterVolume.volume.value = routingConfig.global.masterVolume;
-        }
+        if (routingConfig.global.tempo) Tone.Transport.bpm.value = routingConfig.global.tempo;
+        if (routingConfig.global.masterVolume !== undefined) this.masterVolume.volume.value = routingConfig.global.masterVolume;
       }
-      
-      // Apply track settings from routing.json to existing synths
       if (routingConfig.tracks && Array.isArray(routingConfig.tracks)) {
         routingConfig.tracks.forEach(trackConfig => {
-          if (trackConfig.params) { // Only apply if params exist
+          if (trackConfig.params) {
             switch(trackConfig.instrument) {
-              case "kickSynth":
-                this.kickSynth.set(trackConfig.params);
-                break;
-              case "hatSynth":
-                this.hatSynth.set(trackConfig.params); 
-                break;
-              case "clapSynth":
-                this.clapSynth.set(trackConfig.params); 
-                break;
-              case "bassSynth":
-                this.bassSynth.set(trackConfig.params);
-                break;
-              // Add more cases for other instruments
+              case "kickSynth": this.kickSynth.set(trackConfig.params); break;
+              case "hatSynth": this.hatSynth.set(trackConfig.params); break;
+              case "clapSynth": this.clapSynth.set(trackConfig.params); break;
+              case "bassSynth": this.bassSynth.set(trackConfig.params); break;
             }
           }
         });
       }
-
-      // TODO: Apply effects and connections from routingConfig.buses and routingConfig.connections
-      // This would require significant refactoring to dynamically create and manage nodes.
-      // For now, we apply global and track-level settings to existing hardcoded elements.
-
     } catch (error) {
       console.error('Failed to load or parse routing.json:', error);
-      // Fallback to default hardcoded settings
     }
 
-
-    // Tone.start() and Worklets are now loaded centrally by AudioProvider
-    // We only need to ensure Tone is ready and context is available before proceeding
-    // Since AudioProvider ensures Tone.start() is called, we can directly access Tone.context.rawContext
     this.ctx = Tone.context.rawContext;
     
-    // --- WORKLET NODE INSTANTIATION ---
-    // Worklets are now loaded centrally by AudioProvider
-    this.dspNode = new AudioWorkletNode(Tone.context.rawContext, 'dsp-processor');
-    this.analyzerNode = new AudioWorkletNode(Tone.context.rawContext, 'analyzer-processor');
+    // Worklets
+    this.dspNode = new AudioWorkletNode(this.ctx, 'dsp-processor');
+    this.eqNode = new AudioWorkletNode(this.ctx, 'eq-processor');
+    this.masteringNode = new AudioWorkletNode(this.ctx, 'mastering-processor');
+    this.analyzerNode = new AudioWorkletNode(this.ctx, 'analyzer-processor');
     
-    // Initialize SharedArrayBuffer for visualization
     const sab = new SharedArrayBuffer(128 * 4);
     this.sharedWaveformBuffer = new Float32Array(sab);
     this.analyzerNode.port.postMessage({ buffer: sab });
     
-    this.lufsNode = new AudioWorkletNode(Tone.context.rawContext, 'lufs-processor');
-    const lufsSab = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT); // Single float for LUFS
-    this.lufsBufferView = new Float32Array(lufsSab); // Create a view for reading
-    this.lufsNode.port.postMessage({ buffer: lufsSab }); // Pass SAB to lufs Worklet
+    this.lufsNode = new AudioWorkletNode(this.ctx, 'lufs-processor');
+    const lufsSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    this.lufsBufferView = new Int32Array(lufsSab);
+    this.lufsNode.port.postMessage({ buffer: lufsSab });
 
     // Mastering Chain
     this.masterMePreGain = new Tone.Volume(0);
@@ -158,15 +167,11 @@ class AudioEngine {
     });
     this.masterMeLimiter = new Tone.Limiter(-1);
 
-    for (let i = 0; i < 12; i++) {
-      this.toneShiftEqBands.push(new Tone.Filter(1000, 'peaking'));
-    }
+    for (let i = 0; i < 12; i++) this.toneShiftEqBands.push(new Tone.Filter(1000, 'peaking'));
     this.toneShiftTilt = new Tone.Filter(1000, 'highshelf');
 
-    this.masterVolume = new Tone.Volume(-6); // This is now part of the chain after masterBus
-
-    // Connect masterBus to masterVolume, then masterVolume to the mastering chain
-    this.masterBus.connect(this.masterVolume); 
+    this.masterVolume = new Tone.Volume(-6);
+    this.masterBuses['GLOBAL_MASTER'].connect(this.masterVolume); 
     this.masterVolume.connect(this.masterMePreGain); 
     this.masterMePreGain.connect(this.masterMeHighpass);
     this.masterMeHighpass.connect(this.masterMeCompressor);
@@ -180,8 +185,9 @@ class AudioEngine {
     }
     prevNode.connect(this.toneShiftTilt);
     
-    // Connect Worklets & Chain
-    this.toneShiftTilt.connect(this.dspNode);
+    this.toneShiftTilt.connect(this.eqNode);
+    this.eqNode.connect(this.masteringNode);
+    this.masteringNode.connect(this.dspNode);
     this.dspNode.connect(this.lufsNode);
     this.lufsNode.connect(this.analyzerNode);
     this.analyzerNode.toDestination();
@@ -190,27 +196,31 @@ class AudioEngine {
     this.toneShiftTilt.gain.value = 0;
 
     this.analyser = new Tone.Analyser('waveform', 256);
-    this.masterBus.connect(this.analyser); // Connect analyser to masterBus
+    this.masterBuses['GLOBAL_MASTER'].connect(this.analyser);
 
-    // Synth setup ... (abbreviated)
-    this.kickSynth = new Tone.MembraneSynth().connect(this.masterBus); // Connect to masterBus
-    this.hatSynth = new Tone.MetalSynth().connect(this.masterBus); // Connect to masterBus
-    this.clapFilter = new Tone.Filter(1800, 'bandpass').connect(this.masterBus); // Connect to masterBus
-    this.clapSynth = new Tone.NoiseSynth().connect(this.clapFilter);
-    this.bassFilter = new Tone.Filter({ type: 'lowpass', frequency: 600 }).connect(this.masterBus); // Connect to masterBus
+    // Synth
+    this.kickSynth = new Tone.MembraneSynth({ pitch: 'C2', octaves: 8, envelope: { attack: 0.005, decay: 0.1, sustain: 0.02, release: 0.3, Scurve: true } }).connect(this.masterBuses['GLOBAL_MASTER']);
+    this.hatSynth = new Tone.MetalSynth({ frequency: 200, envelope: { attack: 0.001, decay: 0.1, sustain: 0.05, release: 0.05 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).connect(this.masterBuses['GLOBAL_MASTER']);
+    this.clapFilter = new Tone.Filter(1800, 'bandpass', 1.0).connect(this.masterBuses['GLOBAL_MASTER']);
+    this.clapSynth = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.0, release: 0.05 }, volume: -10 }).connect(this.clapFilter);
+    this.bassFilter = new Tone.Filter({ type: 'lowpass', frequency: 600, Q: 1.0 }).connect(this.masterBuses['GLOBAL_MASTER']);
     this.bassDelay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.25, wet: 0.3 }).connect(this.bassFilter);
     this.bassSynth = new Tone.MonoSynth().connect(this.bassDelay);
 
-    this.loopId = Tone.Transport.scheduleRepeat((time) => this.tick(time), '16n');
+    // Start scheduler
+    this.nextNoteTime = Tone.context.currentTime + 0.1;
+    this.scheduler();
 
     this.initialized = true;
   }
+
 
   public adjustLatency(oneWayLatency: number) {
       Tone.Transport.lookAhead = oneWayLatency / 1000 + 0.05; 
   }
 
   public setWorkletParam(name: string, value: number) {
+    this.ensureInitialized();
     if (!this.dspNode) return;
     this.dspNode.parameters.get(name)?.setValueAtTime(value, Tone.now());
   }
@@ -220,14 +230,23 @@ class AudioEngine {
   }
 
   public setDrumKit(kit: string) {
+    this.ensureInitialized();
     // ... kit logic
   }
 
   public updateToneShiftEQ(params: any) {
+    this.ensureInitialized();
     console.log("EQ Updated", params);
   }
   public updateMasterMe(params: any) {
+    this.ensureInitialized();
     console.log("Mastering Updated", params);
+    
+    // Apply smoothing
+    if (params.input_gain !== undefined) {
+        this.masterMePreGain.volume.rampTo(params.input_gain, 0.1);
+    }
+    // ... add more parameter smoothing as needed
   }
 
   public syncClock(pingTime: number, pongTime: number) {
@@ -237,8 +256,8 @@ class AudioEngine {
   }
   
   private tick(time: number) {
-    // ...
     this.currentStep = (this.currentStep + 1) % 16;
+    this.onStepUpdate(this.currentStep);
   }
   
   public triggerEvent(track: TrackType, velocity: number = 1.0) {
@@ -248,7 +267,7 @@ class AudioEngine {
   public async play() { await this.init(); Tone.Transport.start(); }
   public stop() { Tone.Transport.stop(); this.currentStep = 0; }
   
-  public loadTrackSample(track: TrackType, url: string | null) {
+  public async loadTrackSample(track: TrackType, url: string | null) {
     // If there's an existing player for this track, dispose of it
     if (this.samplePlayers[track]) {
       this.samplePlayers[track].stop(); // Stop playback
@@ -258,7 +277,10 @@ class AudioEngine {
     }
 
     if (url) {
-      const player = new Tone.Player(url).connect(this.masterBus);
+      // Ensure context is running before loading/decoding
+      await Tone.start();
+      
+      const player = new Tone.Player(url).connect(this.masterBuses['GLOBAL_MASTER']);
       // player.autostart = true; // Or player.start() when needed
       this.samplePlayers[track] = player;
       this.trackSampleUrl[track] = url;

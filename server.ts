@@ -4,6 +4,23 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+
+dotenv.config();
+
+const secretClient = new SecretManagerServiceClient();
+
+async function getSecret(name: string) {
+  try {
+    const [version] = await secretClient.accessSecretVersion({
+      name: `projects/${process.env.GCP_PROJECT_ID}/secrets/${name}/versions/latest`,
+    });
+    return version.payload?.data?.toString();
+  } catch (e) {
+    console.warn(`Secret ${name} not found in Secret Manager.`);
+    return null;
+  }
+}
 
 const PresetSchema = z.object({
   name: z.string(),
@@ -34,11 +51,11 @@ app.use(express.json());
 // Lazy-initialized Google Gen AI client
 let aiClient: GoogleGenAI | null = null;
 
-function getAiClient(): GoogleGenAI {
+async function getAiClient(): Promise<GoogleGenAI> {
   if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY;
+    const key = process.env.GEMINI_API_KEY || await getSecret('GEMINI_API_KEY');
     if (!key) {
-      throw new Error('GEMINI_API_KEY environment variable is not defined on the server.');
+      throw new Error('GEMINI_API_KEY environment variable or secret is not defined on the server.');
     }
     aiClient = new GoogleGenAI({ apiKey: key });
   }
@@ -54,8 +71,9 @@ app.post('/api/generate-preset', async (req, res) => {
   }
 
   try {
-    const ai = getAiClient();
-    
+    const ai = await getAiClient();
+    // ... rest of the handler
+
     const systemPrompt = `You are a professional techno and electronic music producer. Your job is to convert user's text description into a fully detailed 16-step synthesizer and drum sequencer preset pattern in structured JSON.
     The response MUST be a single raw JSON object that conforms EXACTLY to this schema:
     {
@@ -146,9 +164,9 @@ const activeImportTasks: Record<string, { url: string; status: string; progress:
 // API: HuggingFace Text-to-Audio (Placeholder for MusicGen / similar)
 app.post('/api/huggingface/generate', async (req, res) => {
   try {
-    const key = process.env.HUGGINGFACE_API_KEY;
+    const key = process.env.HUGGINGFACE_API_KEY || await getSecret('HUGGINGFACE_API_KEY');
     if (!key) {
-      return res.status(500).json({ error: 'HUGGINGFACE_API_KEY is not defined in the environment.' });
+      return res.status(500).json({ error: 'HUGGINGFACE_API_KEY is not defined in the environment or Secret Manager.' });
     }
     const { prompt } = req.body;
     
@@ -326,7 +344,16 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      setHeaders: (res, path) => {
+        if (path.endsWith('.js') || path.endsWith('.mjs')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        }
+        if (path.endsWith('.wasm')) {
+          res.setHeader('Content-Type', 'application/wasm');
+        }
+      }
+    }));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

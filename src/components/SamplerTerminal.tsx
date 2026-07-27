@@ -9,17 +9,24 @@ export const SamplerTerminal: React.FC = () => {
   const [grainSize, setGrainSize] = useState(50); // ms
   const [density, setDensity] = useState(5); // grains per sec
   const [position, setPosition] = useState(0); // 0-100%
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSampleSelect = async (sample: any) => {
+    setIsLoading(true);
+    await audioEngine.loadTrackSample('channel1', sample.url); // Assume channel1 for now
+    setIsLoading(false);
+  };
 
   const updateGrainParams = () => {
     audioEngine.setGranularParams({ grainSize, density, position });
   };
 
   return (
-    <SampleModuleWrapper onSelect={(s) => console.log('Sample selected for sampler:', s)}>
+    <SampleModuleWrapper onSelect={handleSampleSelect}>
         <div className={`p-6 bg-[#161616] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-mono shadow-2xl`}>
         <div className="flex justify-between items-center mb-6">
             <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-400" /> Sampler MONK
+                <Layers className="w-4 h-4 text-emerald-400" /> Sampler MONK {isLoading && <span className="text-emerald-500 animate-pulse">(LOADING...)</span>}
             </h3>
             <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
                 <option value="OFF">OFF</option>

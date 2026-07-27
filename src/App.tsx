@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Music } from 'lucide-react';
 import { PLUGIN_REGISTRY } from './plugins/registry';
 import { audioEngine } from './utils/audioEngine';
 import { usePluginManager } from './context/PluginManagerContext';
@@ -9,6 +10,7 @@ import { SequencerPluginTerminal } from './components/SequencerPluginTerminal';
 import { TECHNO_PRESETS } from './presets';
 import { TrackType } from './types';
 import { SafeModuleBoundary } from './components/SafeModuleBoundary';
+import { PluginButton } from './components/PluginButton';
 
 export default function App() {
   return (
@@ -92,27 +94,22 @@ function AppComponent() {
           const isActive = state !== 'OFF';
           
           return (
-            <button
+            <PluginButton
               key={plugin.id}
+              id={plugin.id}
+              icon={plugin.icon}
+              short={plugin.short}
+              isActive={isActive}
+              state={state}
               onClick={() => togglePlugin(plugin.id)}
-              className={`flex flex-col items-center justify-center h-20 rounded-xl border transition-all ${
-                isActive
-                  ? state === 'PRO'
-                    ? 'bg-purple-900/50 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)]'
-                    : 'bg-orange-900/30 border-orange-500/50 shadow-[0_0_15px_rgba(234,88,12,0.2)] animate-pulse'
-                  : 'bg-neutral-900/50 border-neutral-800 hover:bg-neutral-800'
-              }`}
-            >
-              <plugin.icon size={24} />
-              <span className="text-[10px] font-bold mt-2 uppercase">{plugin.short}</span>
-            </button>
+            />
           );
         })}
       </div>
 
       {/* 3. Persistent Waveform/Taktfenster */}
       <section className="bg-black/40 border border-neutral-800 p-4 rounded-xl mb-8">
-        <BeatVisualizer isPlaying={isPlaying} currentStep={currentStep} />
+        <BeatVisualizer isPlaying={isPlaying} />
       </section>
 
       {/* 4. Active Modules */}
@@ -144,5 +141,4 @@ function AppComponent() {
       </div>
     </div>
   );
-}
 }

@@ -9,47 +9,6 @@ interface AudioContextType {
 
 const AudioContext = createContext<AudioContextType | null>(null);
 
-// Central Worklet loading function
-// Central Worklet loading function
-const loadWorkletWithCache = async (workletConfig: { name: string, url: string, processorId: string, hash: string }) => {
-    const cacheName = 'worklet-cache-v1'; // Define your cache name
-    const cache = await caches.open(cacheName);
-    
-    // Construct a unique URL including the hash for cache busting/validation
-    const hashedUrl = `${workletConfig.url}?v=${workletConfig.hash}`;
-    let loadedFromCache = false;
-
-    try {
-        const cachedResponse = await cache.match(hashedUrl);
-
-        if (cachedResponse) {
-            console.log(`${workletConfig.name} (${workletConfig.processorId}) loaded from cache.`);
-            loadedFromCache = true;
-            const blob = await cachedResponse.blob();
-            // IMPORTANT: Ensure the server serves Worklet files (JS, WASM) with correct MIME types
-            // e.g., application/javascript for .js files, application/wasm for .wasm files.
-            // Incorrect MIME types can prevent Worklets from loading.
-            const blobUrl = URL.createObjectURL(blob);
-            await Tone.context.audioWorklet.addModule(blobUrl);
-        } else {
-            console.log(`${workletConfig.name} (${workletConfig.processorId}) not in cache or hash mismatch. Fetching.`);
-            const response = await fetch(hashedUrl);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            // IMPORTANT: Ensure the server serves Worklet files (JS, WASM) with correct MIME types
-            // e.g., application/javascript for .js files, application/wasm for .wasm files.
-            // Incorrect MIME types can prevent Worklets from loading.
-            await cache.put(hashedUrl, response.clone()); // Cache the new response with the hashed URL
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            await Tone.context.audioWorklet.addModule(blobUrl);
-        }
-    } catch (error) {
-        console.error(`Error loading ${workletConfig.name} (${workletConfig.processorId}) with cache:`, error);
-        // Re-throw to allow outer try/catch to handle fallback
-        throw error; 
-    }
-};
-
 const loadAllAudioWorklets = async () => {
     // Define a simple dummy processor in case loading fails
     const registerDummyProcessor = (processorId: string) => {
@@ -80,13 +39,11 @@ const loadAllAudioWorklets = async () => {
         console.log("Loaded plugin manifest.");
     } catch (error) {
         console.error("Failed to load plugin-manifest.json:", error);
-        // If manifest fails, we cannot cache/validate, so fallback to direct loading
-        // or just log and proceed without caching. For now, log and return.
-        return; // Cannot proceed without manifest for caching
+        return;
     }
 
     const workletsConfigFromManifest = manifest?.worklets.map(w => ({
-        name: w.id, // Using id as name for simplicity
+        name: w.id, 
         url: w.url,
         processorId: w.id,
         hash: w.hash
@@ -95,10 +52,13 @@ const loadAllAudioWorklets = async () => {
 
     for (const worklet of workletsConfigFromManifest) {
         try {
-            await loadWorkletWithCache(worklet);
-            console.log(`${worklet.name} (${worklet.processorId}) loaded successfully.`);
+            // Directly add module using the URL from the manifest
+            // The browser's HTTP cache will handle caching if appropriate headers are set.
+            // Programmatic CacheStorage for addModule is complex and typically requires a Service Worker.
+            await Tone.context.audioWorklet.addModule(worklet.url);
+            console.log(`${worklet.name} (${worklet.processorId}) loaded successfully from ${worklet.url}.`);
         } catch (error) {
-            console.error(`Failed to load ${worklet.name} from ${worklet.url} (with cache):`, error);
+            console.error(`Failed to load ${worklet.name} from ${worklet.url}:`, error);
             try {
                 await registerDummyProcessor(worklet.processorId);
                 console.warn(`Registered dummy-processor as '${worklet.processorId}' for ${worklet.name}.`);
@@ -110,7 +70,6 @@ const loadAllAudioWorklets = async () => {
     
     console.log("Attempted to load all AudioWorklets.");
 };
-
 
 export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     const isInitialized = useRef(false);

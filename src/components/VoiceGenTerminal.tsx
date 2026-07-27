@@ -8,11 +8,21 @@ import { PitchDetector } from '../utils/PitchDetector';
 import { audioEngine } from '../utils/audioEngine';
 import { useAudio } from '../context/AudioContext'; // <-- ADD THIS
 
-export function VoiceGenTerminal() {
+export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
   const { addSample } = useSamples();
   const { generateVoice } = useAudioAI();
   const { state, lockStatus, updateState } = usePluginState('voice_gen', 'ACTIVE');
   const [prompt, setPrompt] = useState('Dark warehouse techno vocals saying "Are you ready to lose control"');
+  
+  if (!enabled) {
+    return (
+        <div className="w-full h-full flex items-center justify-center bg-[#111] rounded-xl border border-neutral-800 text-neutral-600 font-mono text-xs uppercase tracking-widest">
+            Voice Generator Disabled
+        </div>
+    );
+  }
+
+  // ... (rest of the component)
   const [style, setStyle] = useState('SPOKEN'); // SPOKEN, CHANT, SINGING
   const [voice, setVoice] = useState('FEMALE_ROBOTIC');
   const [isGenerating, setIsGenerating] = useState(false);
