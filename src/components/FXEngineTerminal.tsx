@@ -20,7 +20,7 @@ export function FXEngineTerminal() {
         wet: dryWet / 100,
         power: power
     });
-    console.log(`FX ${fx} updated with wetDry ${dryWet}%`);
+    // console.log(`FX ${fx} updated with wetDry ${dryWet}%`);
   };
 
   const handleSampleDrop = (sample: AudioSample) => {

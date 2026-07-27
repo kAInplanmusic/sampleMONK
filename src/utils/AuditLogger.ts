@@ -10,7 +10,7 @@ export const logAuditEvent = async (userId: string, action: string, details: any
             details,
             timestamp: serverTimestamp()
         });
-        console.log(`Audit Log: ${action} by ${userId}`);
+        // console.log(`Audit Log: ${action} by ${userId}`);
     } catch (e) {
         console.error('Failed to log audit event:', e);
     }

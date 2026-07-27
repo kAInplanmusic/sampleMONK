@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Mic, Play, Download, Settings, RefreshCw, Volume2, AlignLeft, Wand2 } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
@@ -6,7 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { useAudioAI } from '../hooks/useAudioAI';
 import { PitchDetector } from '../utils/PitchDetector';
 import { audioEngine } from '../utils/audioEngine';
-import { useAudio } from '../context/AudioContext'; // <-- ADD THIS
+import { useAudio } from '../context/AudioContext';
 
 export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
   const { addSample } = useSamples();
@@ -14,6 +14,14 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
   const { state, lockStatus, updateState } = usePluginState('voice_gen', 'ACTIVE');
   const [prompt, setPrompt] = useState('Dark warehouse techno vocals saying "Are you ready to lose control"');
   
+  const [style, setStyle] = useState('SPOKEN'); // SPOKEN, CHANT, SINGING
+  const [voice, setVoice] = useState('FEMALE_ROBOTIC');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasResult, setHasResult] = useState(false);
+  const [isRecordingMidi, setIsRecordingMidi] = useState(false);
+  const midiIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { audioContext } = useAudio();
+
   if (!enabled) {
     return (
         <div className="w-full h-full flex items-center justify-center bg-[#111] rounded-xl border border-neutral-800 text-neutral-600 font-mono text-xs uppercase tracking-widest">
@@ -21,15 +29,6 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
         </div>
     );
   }
-
-  // ... (rest of the component)
-  const [style, setStyle] = useState('SPOKEN'); // SPOKEN, CHANT, SINGING
-  const [voice, setVoice] = useState('FEMALE_ROBOTIC');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [hasResult, setHasResult] = useState(false);
-  const [isRecordingMidi, setIsRecordingMidi] = useState(false);
-  const midiIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { audioContext } = useAudio(); // <-- ADD THIS
 
   const startRecordingForMIDI = async () => {
     if (isRecordingMidi) {
@@ -48,11 +47,11 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
     setIsRecordingMidi(true);
     const interval = setInterval(() => {
         const note = detector.getNote();
-        console.log("Detected Pitch:", note);
+        // console.log("Detected Pitch:", note);
         audioEngine.triggerEvent('channel5', 0.8);
     }, 100);
     
-    midiIntervalRef.current = interval;
+    midiIntervalRef.current = interval as any;
   };
 
 
@@ -63,7 +62,7 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
     
     try {
       const data = await generateVoice(prompt, voice);
-      console.log("Voice generation response:", data);
+      // console.log("Voice generation response:", data);
       
       // Simulate finish
       setTimeout(() => {
@@ -77,6 +76,7 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
             category: 'mids',
             type: 'Vocal',
             description: `Generated vocal: "${prompt}"`,
+            tags: ["Vocal", "AI"],
             parameters: {}
         };
         addSample(newSample);

@@ -1,24 +1,32 @@
-# SLM Integration Plan for Voice Generator
+# SLM Integration Plan: localVOICE & localLLM
 
 ## Goal
-Integrate a Small Language Model (SLM) to enhance voice generation capabilities, specifically for more natural language processing and prompt expansion before TTS synthesis.
+Integrate Small Language Models (SLMs) to allow offline voice synthesis, prompt refinement, and pattern generation without relying on external APIs.
 
-## Proposed Architecture
-- **Client-Side Pipeline:**
-    1.  User enters prompt.
-    2.  Prompt is sent to SLM (e.g., via a lightweight WebWorker running a quantized model).
-    3.  SLM expands/refines the prompt for the TTS model.
-    4.  TTS model synthesizes audio.
-- **Alternative (Server-Side):**
-    -   API endpoint `/api/voice/expand-prompt` to offload inference.
+## 1. Candidate Models
+- **Gemini Nano**: Built-in browser LLM (Chrome/Edge Canary). High efficiency, zero-latency loading.
+- **WebLLM (MLC-LLM)**: Llama-3-8B or Phi-3 running via WebGPU. Cross-browser (with WebGPU support).
+- **Transformers.js**: ONNX Runtime Web for local embeddings and small TTS models.
 
-## Action Items
-1.  **Model Selection:** Benchmark Phi-3-mini or DistilGPT-2 for prompt refinement tasks.
-2.  **Pipeline Implementation:** Update `VoiceGenTerminal` to call the SLM-expansion service.
-3.  **Data/Training:** Curate a small dataset of "raw vs. high-quality" prompts to fine-tune the SLM.
-4.  **Integration:** Ensure TTS models are compatible with expanded prompts.
+## 2. Integration Architecture
+### Layer 1: Detection
+- Check for `window.ai` (Gemini Nano).
+- Check for WebGPU capability.
 
-## Success Criteria
-- Improved vocal naturalness as rated by users.
-- Latency under 500ms for prompt expansion.
-- Fallback to original prompt if SLM inference fails.
+### Layer 2: UI Integration (VoiceGenTerminal)
+- Add "Local Model" toggle in the Voice Model selection.
+- If enabled, bypass `useAudioAI` remote calls and use a local worker.
+
+### Layer 3: Worker Implementation
+- Use a dedicated Web Worker to avoid blocking the main UI thread during model inference.
+- Shared Array Buffers for streaming generated audio fragments from the worker to the Audio Engine.
+
+## 3. Implementation Steps
+1. **Feature Detection Hook**: Create `useLocalLLM` to detect availability.
+2. **Gemini Nano Wrapper**: Implement a safe wrapper for `window.ai.createTextSession()`.
+3. **Local Prompt Refinement**: Use the SLM to convert short user inputs into detailed producer-style prompts.
+4. **Local TTS (Phase 2)**: Use Transformers.js with a small TTS model (e.g., Sherpa-ONNX) for fully offline voice generation.
+
+## 4. Resource Management
+- **Memory**: Monitor GPU/RAM usage.
+- **Persistence**: Allow users to download/cache models for offline use.

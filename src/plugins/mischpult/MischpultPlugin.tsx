@@ -4,7 +4,7 @@ import { Sliders, Volume2 } from 'lucide-react';
 export function MischpultTerminal({ plugin, currentUserId }) {
   const assignBus = (chId: number, bus: string) => {
     // Interaktion mit MasterEngine API
-    console.log(`Assigning ${chId} to ${bus}`);
+    // console.log(`Assigning ${chId} to ${bus}`);
   };
 
   return (

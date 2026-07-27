@@ -11,3 +11,4 @@ pillow
 librosa
 scikit-learn
 chromadb
+google-cloud-secret-manager

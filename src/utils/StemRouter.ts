@@ -13,5 +13,5 @@ export const routeStemToMixer = (stemType: string, stemUrl: string) => {
     
     const channel = mapping[stemType] || 'channel8';
     audioEngine.loadTrackSample(channel, stemUrl);
-    console.log(`Routed ${stemType} stem to ${channel}`);
+    // console.log(`Routed ${stemType} stem to ${channel}`);
 };

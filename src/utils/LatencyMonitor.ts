@@ -11,7 +11,7 @@ export class LatencyMonitor {
 
   public handlePong(timestamp: number): number {
     const rtt = performance.now() - timestamp;
-    console.log(`Measured RTT Latency: ${rtt.toFixed(2)}ms`);
+    // console.log(`Measured RTT Latency: ${rtt.toFixed(2)}ms`);
     return rtt / 2; // One-way latency
   }
 }

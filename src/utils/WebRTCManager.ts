@@ -66,7 +66,7 @@ class WebRTCManager {
         if (data.type === 'LATENCY_PING') {
             e.channel.send(JSON.stringify({ type: 'LATENCY_PONG', timestamp: data.timestamp }));
         }
-        console.log('Data from', targetId, data);
+        // console.log('Data from', targetId, data);
       };
     };
 

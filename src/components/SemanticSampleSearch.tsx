@@ -12,28 +12,38 @@ interface SemanticSampleSearchProps {
 export const SemanticSampleSearch: React.FC<SemanticSampleSearchProps> = ({ onSelect, filterType }) => {
   const { samples } = useSamples();
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [filteredSamples, setFilteredSamples] = useState<AudioSample[]>([]);
   const itemsPerPage = 10;
 
+  // Debounce query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+        setDebouncedQuery(query);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [query]);
+
   useEffect(() => {
     const performSearch = async () => {
-        if (!query) {
+        if (!debouncedQuery) {
             setFilteredSamples([]);
             return;
         }
         setIsLoading(true);
 
         if (isLocalEmbeddingAvailable()) {
-            const embedding = await generateLocalEmbedding(query);
-            console.log("Local embedding generated for search:", embedding.slice(0, 5));
+            const embedding = await generateLocalEmbedding(debouncedQuery);
+            // console.log("Local embedding generated for search:", embedding.slice(0, 5));
         }
 
         // Simulate API latency
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        const q = query.toLowerCase();
+        const q = debouncedQuery.toLowerCase();
         const results = samples.filter(s => 
           (s.name.toLowerCase().includes(q) || 
            s.tags.some(t => t.toLowerCase().includes(q)) ||
@@ -45,7 +55,7 @@ export const SemanticSampleSearch: React.FC<SemanticSampleSearchProps> = ({ onSe
         setIsLoading(false);
     };
     performSearch();
-  }, [query, samples, filterType]);
+  }, [debouncedQuery, samples, filterType]);
 
   const paginatedSamples = useMemo(() => {
     const startIndex = (page - 1) * itemsPerPage;

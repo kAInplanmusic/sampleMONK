@@ -89,7 +89,7 @@ export const SequencerPluginTerminal = React.memo(function SequencerPluginTermin
                     <div key={colIndex} className="flex flex-col gap-1 items-center">
                         <button
                             onClick={() => props.onToggleStep(trackKey as TrackType, colIndex)}
-                            className={`w-8 h-8 rounded-sm ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-neutral-900'} ${currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white' : ''}`}
+                            className={`w-8 h-8 rounded-sm transition-all duration-75 ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-neutral-900'} ${currentStep === colIndex && props.isPlaying ? 'ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.7)]' : ''}`}
                         />
                     </div>
                 ))}

@@ -60,7 +60,7 @@ export function SpatialPluginTerminal() {
         active: true 
     };
     setNodes(prev => [...prev, newNode]);
-    console.log('Sample added to spatial field:', sample.name);
+    // console.log('Sample added to spatial field:', sample.name);
   };
 
   const handleMacroDrop = (sample: AudioSample, btnId: string) => {
@@ -74,7 +74,7 @@ export function SpatialPluginTerminal() {
     else if (pattern === 'LISS') path = generateLissajousPath(3, 2, steps);
     else if (pattern === 'PINGPONG') path = generatePingPongPath(0.8, steps);
     else if (pattern === 'CHAOS') path = Array.from({ length: steps }, () => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 }));
-    console.log(`Triggering macro: ${pattern}`, path);
+    // console.log(`Triggering macro: ${pattern}`, path);
   };
 
   return (

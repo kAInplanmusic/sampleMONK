@@ -35,6 +35,11 @@ export const SamplerTerminal: React.FC = () => {
             </select>
         </div>
 
+        {/* Progress Bar */}
+        <div className="w-full h-1 bg-neutral-800 rounded-full mb-6 overflow-hidden">
+            <div className={`h-full ${isLoading ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-400'}`} style={{ width: isLoading ? '100%' : `${position}%` }}></div>
+        </div>
+
         <div className="space-y-6">
             <div className="space-y-2">
                 <label className="text-[10px] text-neutral-500">GRAIN SIZE ({grainSize}ms)</label>

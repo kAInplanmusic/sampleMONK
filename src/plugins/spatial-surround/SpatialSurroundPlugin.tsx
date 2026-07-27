@@ -35,7 +35,7 @@ export class SpatialSurroundPlugin implements Plugin {
         if (this._positionBuffer) { // Ensure buffer is allocated
           workletPanner.port.postMessage({ buffer: this._positionBuffer });
         }
-        console.log("SpatialSurroundPlugin: Using AudioWorkletNode for panning.");
+        // console.log("SpatialSurroundPlugin: Using AudioWorkletNode for panning.");
       } else {
         throw new Error("AudioWorkletNode not supported or context not available.");
       }
@@ -44,11 +44,11 @@ export class SpatialSurroundPlugin implements Plugin {
       this.isWorkletPanner = false;
       if (this.audioCtx && typeof this.audioCtx.createStereoPanner === 'function') {
         this.currentPanner = this.audioCtx.createStereoPanner();
-        console.log("SpatialSurroundPlugin: Using StereoPannerNode for panning.");
+        // console.log("SpatialSurroundPlugin: Using StereoPannerNode for panning.");
       } else if (this.audioCtx) {
         // Fallback to a simple GainNode if StereoPannerNode is also not available (very old browsers)
         this.currentPanner = this.audioCtx.createGain();
-        console.log("SpatialSurroundPlugin: Using GainNode as fallback for panning.");
+        // console.log("SpatialSurroundPlugin: Using GainNode as fallback for panning.");
       } else {
         console.error("SpatialSurroundPlugin: No AudioContext available to create any panner.");
       }

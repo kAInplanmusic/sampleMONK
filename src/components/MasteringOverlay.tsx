@@ -29,7 +29,7 @@ export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, 
 
   const handleSampleDrop = (sample: AudioSample) => {
     setTargetSample(sample);
-    console.log('Sample set for targeted mastering:', sample.name);
+    // console.log('Sample set for targeted mastering:', sample.name);
   };
 
   useEffect(() => {

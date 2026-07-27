@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
-import { Database, Play, Download, Clipboard, GripVertical } from 'lucide-react';
+import { Database, Play, Download, Clipboard, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { SemanticSampleSearch } from './SemanticSampleSearch';
 import { Scratchpad } from './Scratchpad';
 
+const ITEMS_PER_PAGE = 9;
+
 export function LibraryTerminal() {
   const { samples, addSample } = useSamples();
   const [category, setCategory] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filteredSamples = samples.filter(sample => {
     const matchesCategory = category === 'all' || sample.category === category;
     return matchesCategory;
   });
+
+  const totalPages = Math.ceil(filteredSamples.length / ITEMS_PER_PAGE);
+  const paginatedSamples = filteredSamples.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const handleCopy = (sample: AudioSample) => {
     navigator.clipboard.writeText(JSON.stringify(sample));
@@ -21,6 +30,12 @@ export function LibraryTerminal() {
   const handleDragStart = (e: React.DragEvent, sample: AudioSample) => {
     e.dataTransfer.setData('application/json', JSON.stringify(sample));
     e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const changePage = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
   };
 
   return (
@@ -40,7 +55,10 @@ export function LibraryTerminal() {
 
         <select 
             className="bg-[#1a1a1a] border border-neutral-800 rounded-lg px-4 py-2 text-sm focus:outline-none"
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => {
+                setCategory(e.target.value);
+                setCurrentPage(1);
+            }}
         >
             <option value="all">All Categories</option>
             <option value="bass">Bass</option>
@@ -51,7 +69,7 @@ export function LibraryTerminal() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSamples.map((sample: AudioSample) => (
+          {paginatedSamples.map((sample: AudioSample) => (
             <div 
               key={sample.id} 
               draggable
@@ -87,6 +105,32 @@ export function LibraryTerminal() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="px-6 py-4 bg-[#111] border-t border-neutral-800 flex justify-between items-center">
+        <div className="text-[10px] text-neutral-500 font-mono">
+            SHOWING {paginatedSamples.length} OF {filteredSamples.length} SAMPLES
+        </div>
+        <div className="flex items-center gap-4">
+            <button 
+                onClick={() => changePage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-1 rounded ${currentPage === 1 ? 'text-neutral-700' : 'text-fuchsia-400 hover:bg-fuchsia-900/20'}`}
+            >
+                <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-xs font-bold font-mono">
+                PAGE <span className="text-fuchsia-400">{currentPage}</span> / {totalPages}
+            </span>
+            <button 
+                onClick={() => changePage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`p-1 rounded ${currentPage === totalPages ? 'text-neutral-700' : 'text-fuchsia-400 hover:bg-fuchsia-900/20'}`}
+            >
+                <ChevronRight className="w-5 h-5" />
+            </button>
         </div>
       </div>
     </div>

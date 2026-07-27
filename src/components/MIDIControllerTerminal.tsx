@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Keyboard, Activity, Link2, RefreshCw, Cpu, Layers } from 'lucide-react';
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
@@ -23,7 +23,7 @@ export function MIDIControllerTerminal() {
             const padIndex = note % 40; // Mapping MIDI note to padIndex
             const sample = padMappings[padIndex];
             if (sample) {
-                audioEngine.previewSample('mids', undefined, sample.source);
+                audioEngine.previewSample('mids', undefined, sample.url);
             }
         }
     }
@@ -45,10 +45,16 @@ export function MIDIControllerTerminal() {
     { id: 'DAW', name: 'DAW/Mixer-Controller', type: 'Automation & Mixing' },
   ];
 
+  const groupedProfiles = profiles.reduce((acc: any, p) => {
+    if (!acc[p.type]) acc[p.type] = [];
+    acc[p.type].push(p);
+    return acc;
+  }, {});
+
   const handleSampleDrop = (sample: AudioSample, padIndex: number) => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setPadMappings(prev => ({ ...prev, [padIndex]: sample }));
-    console.log(`Sample ${sample.name} mapped to pad ${padIndex + 1}`);
+    // console.log(`Sample ${sample.name} mapped to pad ${padIndex + 1}`);
   };
 
   return (
@@ -92,7 +98,7 @@ export function MIDIControllerTerminal() {
                 <div key={type}>
                     <h4 className="text-[10px] font-bold text-neutral-600 uppercase mb-2">{type}</h4>
                     <div className="space-y-2">
-                        {items.map(p => (
+                        {(items as any[]).map(p => (
                             <button
                                 key={p.id}
                                 onClick={() => setActiveProfile(p.id)}

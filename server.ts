@@ -41,8 +41,6 @@ const PresetSchema = z.object({
   decay: z.number().min(0.1).max(0.5),
 });
 
-dotenv.config();
-
 const app = express();
 const PORT = 3000;
 
@@ -72,8 +70,7 @@ app.post('/api/generate-preset', async (req, res) => {
 
   try {
     const ai = await getAiClient();
-    // ... rest of the handler
-
+    
     const systemPrompt = `You are a professional techno and electronic music producer. Your job is to convert user's text description into a fully detailed 16-step synthesizer and drum sequencer preset pattern in structured JSON.
     The response MUST be a single raw JSON object that conforms EXACTLY to this schema:
     {
@@ -119,7 +116,7 @@ app.post('/api/generate-preset', async (req, res) => {
       console.error('Failed to parse or validate Gemini response:', responseText, parseError);
       return res.status(500).json({ 
         error: 'The AI generated an invalid preset.',
-        details: parseError instanceof z.ZodError ? parseError.errors : 'Parsing failed'
+        details: parseError instanceof z.ZodError ? parseError.issues : 'Parsing failed'
       });
     }
   } catch (error: any) {
@@ -282,7 +279,7 @@ async function processUrlsInBackground(taskId: string, urls: string[]) {
 
 app.get('/api/samples', async (req, res) => {
   try {
-    const samples = [];
+    const samples: any[] = [];
     
     // First, try loading cloud samples if DB is available
     if (db) {

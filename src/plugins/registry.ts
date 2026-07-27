@@ -19,21 +19,59 @@ import { DSPTerminal } from '../components/DSPTerminal';
 import { VisualizerTerminal } from '../components/VisualizerTerminal';
 import { SynthesizerTerminal } from '../components/SynthesizerTerminal';
 
-export const PLUGIN_REGISTRY = [
-  { id: 'mixer', name: 'mixerMONK', short: 'MIX', icon: Sliders, description: 'Zentrales Mischpult für Lautstärke, Panning, Bus-Routing.', component: MischpultTerminal },
-  { id: 'controller', name: 'controllerMONK', short: 'CTRL', icon: Keyboard, description: 'Verwaltung von MIDI, LFOs und Hardware-Mappings.', component: MIDIControllerTerminal },
-  { id: 'sequencer', name: 'sequencerMONK', short: 'SEQ', icon: Grid3X3, description: 'Touch-optimierter Step-Sequenzer.', component: SequencerPluginTerminal },
-  { id: 'spatial', name: 'spatialMONK', short: '3D', icon: Box, description: '10.0 Spatial-Audio-Modul für 2D/3D-Raumklang.', component: SpatialPluginTerminal },
-  { id: 'instrument', name: 'instrumentMONK', short: 'INS', icon: Music, description: 'Host für webbasierte virtuelle Instrumente.', component: InstrumentsTerminal },
-  { id: 'drum', name: 'drumMONK', short: 'DRM', icon: Speaker, description: 'Drumcomputer und Drum-Sampler.', component: DrumMachineTerminal },
-  { id: 'effect', name: 'effectMONK', short: 'FX', icon: Sparkles, description: 'Effektrack für Hardware-FX-Emulationen.', component: FXEngineTerminal },
-  { id: 'synth', name: 'synthesizerMONK', short: 'SYN', icon: Waves, description: 'Vielseitige Synthese-Engines.', component: SynthesizerTerminal },
-  { id: 'voice', name: 'voiceMONK', short: 'VOX', icon: Mic, description: 'KI-Vocal-Synthese, TTS und Vokoder.', component: VoiceGenTerminal },
-  { id: 'visualizer', name: 'visMONK', short: 'VIS', icon: Activity, description: 'Echtzeit-Audioanalyse.', component: VisualizerTerminal },
-  { id: 'stem', name: 'stemMONK', short: 'RMX', icon: Radio, description: 'KI-gestützte Live-Stem-Trennung.', component: StemExtractorTerminal },
-  { id: 'recording', name: 'recordingMONK', short: 'REC', icon: Activity, description: 'Audio-Interface für bit-perfektes Recording.', component: RecorderTerminal },
-  { id: 'library', name: 'biblioMONK', short: 'LIB', icon: Database, description: 'Bibliothek und Datei-Explorer.', component: LibraryTerminal },
-  { id: 'eq', name: 'eqMONK', short: 'EQ', icon: Activity, description: 'Parametrischer Equalizer.', component: EQPluginTerminal },
-  { id: 'dsp', name: 'dspMONK', short: 'DSP', icon: Zap, description: 'High-End DSP für Phasenkorrektur/Filter.', component: DSPTerminal },
-  { id: 'mastering', name: 'masteringMONK', short: 'MST', icon: Square, description: 'Finales Mastering-Tool.', component: MasteringOverlay },
-];
+const ICON_MAP: Record<string, any> = {
+  Sliders, Keyboard, Grid3X3, Box, Music, Speaker, Sparkles, Waves, 
+  Mic, Layers, Radio, Database, Activity, Zap, Cpu, Square
+};
+
+const COMPONENT_MAP: Record<string, any> = {
+  mixer: MischpultTerminal,
+  controller: MIDIControllerTerminal,
+  sequencer: SequencerPluginTerminal,
+  spatial: SpatialPluginTerminal,
+  instrument: InstrumentsTerminal,
+  drum: DrumMachineTerminal,
+  effect: FXEngineTerminal,
+  synth: SynthesizerTerminal,
+  voice: VoiceGenTerminal,
+  visualizer: VisualizerTerminal,
+  stem: StemExtractorTerminal,
+  recording: RecorderTerminal,
+  library: LibraryTerminal,
+  eq: EQPluginTerminal,
+  dsp: DSPTerminal,
+  mastering: MasteringOverlay
+};
+
+export let PLUGIN_REGISTRY: any[] = [];
+
+export const discoverPlugins = async () => {
+    try {
+        const response = await fetch('/plugin-manifest.json');
+        const manifest = await response.json();
+        
+        if (manifest.ui_plugins) {
+            PLUGIN_REGISTRY = manifest.ui_plugins.map((p: any) => ({
+                ...p,
+                icon: ICON_MAP[p.icon] || Cpu,
+                component: COMPONENT_MAP[p.id]
+            })).filter((p: any) => p.component);
+            
+            // console.log(`Discovered ${PLUGIN_REGISTRY.length} plugins from manifest.`);
+        }
+    } catch (error) {
+        console.error("Failed to discover plugins:", error);
+        // Fallback to minimal set if manifest fails
+        PLUGIN_REGISTRY = [
+            { id: 'mixer', name: 'mixerMONK', short: 'MIX', icon: Sliders, component: MischpultTerminal }
+        ];
+    }
+    return PLUGIN_REGISTRY;
+};
+
+// Initial synchronous population (can be updated later by discoverPlugins)
+PLUGIN_REGISTRY = Object.entries(COMPONENT_MAP).map(([id, component]) => {
+    // Find matching icon from manifest-like fallback logic
+    const icon = ICON_MAP[id] || Cpu; 
+    return { id, name: `${id}MONK`, short: id.substring(0,3).toUpperCase(), icon, component };
+});

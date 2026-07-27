@@ -4,6 +4,8 @@ import { calculate10ChannelPan } from './spatialMath';
 import { ClockSync } from './ClockSync';
 import { PhaseLockedLoop } from './PhaseLockedLoop';
 import { LatencyMonitor } from './LatencyMonitor';
+import { validateRouting } from './routingValidator';
+import { validatePreset } from './presetValidator';
 
 class AudioEngine {
   public initialized = false;
@@ -74,11 +76,13 @@ class AudioEngine {
     channel1: false, channel2: false, channel3: false, channel4: false,
     channel5: false, channel6: false, channel7: false, channel8: false
   };
+
   private synthNotes: number[] = Array(16).fill(0);
   public currentStep = 0;
   public onStepUpdate: (step: number) => void = () => {};
   
   // Lookahead Scheduler
+  private isPlaying = false;
   private lookahead = 25.0; // ms
   private scheduleArea = 0.1; // seconds
   private nextNoteTime = 0.0;
@@ -89,6 +93,8 @@ class AudioEngine {
   }
 
   private scheduler() {
+    if (!this.isPlaying) return;
+    
     while (this.nextNoteTime < Tone.context.currentTime + this.scheduleArea) {
       this.scheduleTick(this.nextNoteTime);
       this.advanceNote();
@@ -101,8 +107,6 @@ class AudioEngine {
     this.nextNoteTime += 0.25 * secondsPerBeat; // 16th note
   }
 
-  private synthNotes: number[] = Array(16).fill(0);
-  private currentStep = 0;
   private loopId: number | null = null;
   private eventQueue: Array<{ time: number; type: string; track: TrackType; velocity: number }> = [];
 
@@ -118,8 +122,15 @@ class AudioEngine {
     // Load routing.json
     try {
       const response = await fetch('/routing.json');
-      const routingConfig = await response.json();
-      console.log('Loaded routing config:', routingConfig);
+      const rawRoutingConfig = await response.json();
+      
+      const routingConfig = validatePreset(rawRoutingConfig);
+
+      if (!validateRouting(routingConfig as any)) {
+        throw new Error("Invalid routing configuration");
+      }
+      
+      // console.log('Loaded routing config:', routingConfig);
       if (routingConfig.global) {
         if (routingConfig.global.tempo) Tone.Transport.bpm.value = routingConfig.global.tempo;
         if (routingConfig.global.masterVolume !== undefined) this.masterVolume.volume.value = routingConfig.global.masterVolume;
@@ -140,7 +151,7 @@ class AudioEngine {
       console.error('Failed to load or parse routing.json:', error);
     }
 
-    this.ctx = Tone.context.rawContext;
+    this.ctx = Tone.context.rawContext as AudioContext;
     
     // Worklets
     this.dspNode = new AudioWorkletNode(this.ctx, 'dsp-processor');
@@ -190,7 +201,8 @@ class AudioEngine {
     this.masteringNode.connect(this.dspNode);
     this.dspNode.connect(this.lufsNode);
     this.lufsNode.connect(this.analyzerNode);
-    this.analyzerNode.toDestination();
+    // Use raw destination for AudioWorkletNode
+    this.analyzerNode.connect(this.ctx.destination);
     
     for(let i=0; i<12; i++) { this.toneShiftEqBands[i].gain.value = 0; }
     this.toneShiftTilt.gain.value = 0;
@@ -199,24 +211,21 @@ class AudioEngine {
     this.masterBuses['GLOBAL_MASTER'].connect(this.analyser);
 
     // Synth
-    this.kickSynth = new Tone.MembraneSynth({ pitch: 'C2', octaves: 8, envelope: { attack: 0.005, decay: 0.1, sustain: 0.02, release: 0.3, Scurve: true } }).connect(this.masterBuses['GLOBAL_MASTER']);
-    this.hatSynth = new Tone.MetalSynth({ frequency: 200, envelope: { attack: 0.001, decay: 0.1, sustain: 0.05, release: 0.05 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).connect(this.masterBuses['GLOBAL_MASTER']);
-    this.clapFilter = new Tone.Filter(1800, 'bandpass', 1.0).connect(this.masterBuses['GLOBAL_MASTER']);
+    this.kickSynth = new Tone.MembraneSynth({ octaves: 8, envelope: { attack: 0.005, decay: 0.1, sustain: 0.02, release: 0.3 } }).connect(this.masterBuses['GLOBAL_MASTER']);
+    this.hatSynth = new Tone.MetalSynth({ envelope: { attack: 0.001, decay: 0.1, sustain: 0.05, release: 0.05 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).connect(this.masterBuses['GLOBAL_MASTER']);
+    this.clapFilter = new Tone.Filter(1800, 'bandpass', -12).connect(this.masterBuses['GLOBAL_MASTER']);
     this.clapSynth = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.0, release: 0.05 }, volume: -10 }).connect(this.clapFilter);
     this.bassFilter = new Tone.Filter({ type: 'lowpass', frequency: 600, Q: 1.0 }).connect(this.masterBuses['GLOBAL_MASTER']);
     this.bassDelay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.25, wet: 0.3 }).connect(this.bassFilter);
     this.bassSynth = new Tone.MonoSynth().connect(this.bassDelay);
-
-    // Start scheduler
-    this.nextNoteTime = Tone.context.currentTime + 0.1;
-    this.scheduler();
 
     this.initialized = true;
   }
 
 
   public adjustLatency(oneWayLatency: number) {
-      Tone.Transport.lookAhead = oneWayLatency / 1000 + 0.05; 
+      // lookAhead is a property on Tone.context, not Transport
+      Tone.context.lookAhead = oneWayLatency / 1000 + 0.05; 
   }
 
   public setWorkletParam(name: string, value: number) {
@@ -226,7 +235,7 @@ class AudioEngine {
   }
 
   public setGranularParams(params: { grainSize: number; density: number; position: number }) {
-    console.log("AudioEngine: Applying Granular Params", params);
+    // console.log("AudioEngine: Applying Granular Params", params);
   }
 
   public setDrumKit(kit: string) {
@@ -236,11 +245,11 @@ class AudioEngine {
 
   public updateToneShiftEQ(params: any) {
     this.ensureInitialized();
-    console.log("EQ Updated", params);
+    // console.log("EQ Updated", params);
   }
   public updateMasterMe(params: any) {
     this.ensureInitialized();
-    console.log("Mastering Updated", params);
+    // console.log("Mastering Updated", params);
     
     // Apply smoothing
     if (params.input_gain !== undefined) {
@@ -264,9 +273,83 @@ class AudioEngine {
       // ...
   }
   
-  public async play() { await this.init(); Tone.Transport.start(); }
-  public stop() { Tone.Transport.stop(); this.currentStep = 0; }
+  public async play() { 
+    await this.init(); 
+    if (this.isPlaying) return;
+    this.isPlaying = true;
+    this.nextNoteTime = Tone.context.currentTime + 0.1;
+    this.scheduler();
+    Tone.Transport.start(); 
+  }
   
+  public stop() { 
+    this.isPlaying = false;
+    if (this.timerID) {
+        clearTimeout(this.timerID);
+        this.timerID = null;
+    }
+    Tone.Transport.stop(); 
+    this.currentStep = 0; 
+  }
+
+  public dispose() {
+    this.stop();
+    
+    // Dispose all synthesizers
+    this.kickSynth?.dispose();
+    this.hatSynth?.dispose();
+    this.clapSynth?.dispose();
+    this.clapFilter?.dispose();
+    this.bassSynth?.dispose();
+    this.bassFilter?.dispose();
+    this.bassDelay?.dispose();
+
+    // Dispose all sample players
+    Object.values(this.samplePlayers).forEach(p => p.dispose());
+    this.samplePlayers = {};
+
+    // Dispose mastering chain
+    this.masterMePreGain?.dispose();
+    this.masterMeHighpass?.dispose();
+    this.masterMeCompressor?.dispose();
+    this.masterMeMultiband?.dispose();
+    this.masterMeLimiter?.dispose();
+    
+    this.toneShiftEqBands.forEach(b => b.dispose());
+    this.toneShiftEqBands = [];
+    this.toneShiftTilt?.dispose();
+    
+    this.masterVolume?.dispose();
+    Object.values(this.masterBuses).forEach(b => b.dispose());
+    this.analyser?.dispose();
+
+    // Worklets don't have a direct dispose() but they should be disconnected
+    this.dspNode?.disconnect();
+    this.eqNode?.disconnect();
+    this.masteringNode?.disconnect();
+    this.lufsNode?.disconnect();
+    this.analyzerNode?.disconnect();
+
+    this.initialized = false;
+  }
+  
+  public async loadInstrument(instrumentId: number) {
+    this.ensureInitialized();
+    // console.log(`AudioEngine: Loading Instrument ${instrumentId}`);
+    // Simulate instrument loading/routing
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  public previewSample(track: TrackType, time?: number, url?: string) {
+    this.ensureInitialized();
+    if (url) {
+        const player = new Tone.Player(url).toDestination();
+        player.autostart = true;
+    } else if (this.samplePlayers[track]) {
+        this.samplePlayers[track].start(time);
+    }
+  }
+
   public async loadTrackSample(track: TrackType, url: string | null) {
     // If there's an existing player for this track, dispose of it
     if (this.samplePlayers[track]) {
@@ -279,6 +362,7 @@ class AudioEngine {
     if (url) {
       // Ensure context is running before loading/decoding
       await Tone.start();
+      await Tone.context.resume();
       
       const player = new Tone.Player(url).connect(this.masterBuses['GLOBAL_MASTER']);
       // player.autostart = true; // Or player.start() when needed

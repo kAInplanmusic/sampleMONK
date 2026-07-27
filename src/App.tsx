@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Music } from 'lucide-react';
-import { PLUGIN_REGISTRY } from './plugins/registry';
+import { PLUGIN_REGISTRY, discoverPlugins } from './plugins/registry';
 import { audioEngine } from './utils/audioEngine';
 import { usePluginManager } from './context/PluginManagerContext';
 import { useModuleState, ModuleState } from './context/ModuleStateContext';
@@ -11,6 +11,8 @@ import { TECHNO_PRESETS } from './presets';
 import { TrackType } from './types';
 import { SafeModuleBoundary } from './components/SafeModuleBoundary';
 import { PluginButton } from './components/PluginButton';
+import { FEATURE_FLAGS } from './config/featureFlags';
+import { VoiceGenTerminal } from './components/VoiceGenTerminal';
 
 export default function App() {
   return (
@@ -31,6 +33,7 @@ function AppComponent() {
   const [isStarted, setIsStarted] = useState(false);
 
   const startApp = async () => {
+      await discoverPlugins();
       await audioEngine.play();
       setIsStarted(true);
       setIsPlaying(true);
@@ -131,6 +134,8 @@ function AppComponent() {
                                       onStop={() => setIsPlaying(false)}
                                       onToggleStep={handleToggleStep}
                                   />
+                                  ) : plugin.id === 'voice' ? (
+                                    <VoiceGenTerminal enabled={FEATURE_FLAGS.VOICE_GENERATOR_ENABLED} />
                                   ) : (
                                   <plugin.component />
                                   )}

@@ -44,7 +44,7 @@ const ChannelStrip = React.memo(({ ch, onUpdate }: { ch: RoutingEntry; onUpdate:
     );
 });
 
-export function MischpultTerminal() {
+export const MischpultTerminal = React.memo(() => {
   const { state, lockStatus, updateState } = usePluginState('mixer', 'ACTIVE');
   const [channels, setChannels] = useState<RoutingEntry[]>(
     Array.from({ length: 10 }, (_, i) => ({
@@ -57,9 +57,9 @@ export function MischpultTerminal() {
     }))
   );
 
-  const updateChannel = (channel: number, updates: Partial<RoutingEntry>) => {
+  const updateChannel = React.useCallback((channel: number, updates: Partial<RoutingEntry>) => {
     setChannels(prev => prev.map(ch => ch.channel === channel ? { ...ch, ...updates } : ch));
-  };
+  }, []);
 
   return (
     <div className={`w-full h-full flex flex-col bg-[#1a1a1a] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
@@ -85,4 +85,4 @@ export function MischpultTerminal() {
       </div>
     </div>
   );
-}
+});

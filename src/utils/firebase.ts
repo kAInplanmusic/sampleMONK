@@ -44,7 +44,7 @@ export async function testConnection() {
   if (!db) return;
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firestore connection test: SUCCESS");
+    // console.log("Firestore connection test: SUCCESS");
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.error("Please check your Firebase configuration: Client is offline.");

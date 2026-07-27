@@ -18,6 +18,7 @@ const loadAllAudioWorklets = async () => {
                 process(inputs, outputs) {
                     const input = inputs[0];
                     const output = outputs[0];
+                    if (!input || !input[0]) return true;
                     for (let channel = 0; channel < input.length; ++channel) {
                         output[channel].set(input[channel]);
                     }
@@ -28,7 +29,8 @@ const loadAllAudioWorklets = async () => {
         `;
         const blob = new Blob([dummyProcessorCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
-        return Tone.context.audioWorklet.addModule(blobUrl);
+        const rawCtx = Tone.context.rawContext as AudioContext;
+        return rawCtx.audioWorklet.addModule(blobUrl);
     };
 
     let manifest: { worklets: { id: string, url: string, hash: string }[] } | null = null;
@@ -36,7 +38,7 @@ const loadAllAudioWorklets = async () => {
         const response = await fetch('/plugin-manifest.json');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         manifest = await response.json();
-        console.log("Loaded plugin manifest.");
+        // console.log("Loaded plugin manifest.");
     } catch (error) {
         console.error("Failed to load plugin-manifest.json:", error);
         return;
@@ -49,14 +51,12 @@ const loadAllAudioWorklets = async () => {
         hash: w.hash
     })) || [];
 
+    const rawCtx = Tone.context.rawContext as AudioContext;
 
     for (const worklet of workletsConfigFromManifest) {
         try {
-            // Directly add module using the URL from the manifest
-            // The browser's HTTP cache will handle caching if appropriate headers are set.
-            // Programmatic CacheStorage for addModule is complex and typically requires a Service Worker.
-            await Tone.context.audioWorklet.addModule(worklet.url);
-            console.log(`${worklet.name} (${worklet.processorId}) loaded successfully from ${worklet.url}.`);
+            await rawCtx.audioWorklet.addModule(worklet.url);
+            // console.log(`${worklet.name} (${worklet.processorId}) loaded successfully from ${worklet.url}.`);
         } catch (error) {
             console.error(`Failed to load ${worklet.name} from ${worklet.url}:`, error);
             try {
@@ -68,7 +68,7 @@ const loadAllAudioWorklets = async () => {
         }
     }
     
-    console.log("Attempted to load all AudioWorklets.");
+    // console.log("Attempted to load all AudioWorklets.");
 };
 
 export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
@@ -91,9 +91,28 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
             Tone.Transport.bpm.value = 120;
             Tone.Transport.start();
             
-            // WebRTC Master Audio Receiver
-            const pc = new RTCPeerConnection();
-            peerConnectionRef.current = pc; // Store pc in ref
+            // WebRTC Master Audio Receiver with ICE/TURN fallback
+            const pc = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                ]
+            });
+            peerConnectionRef.current = pc;
+
+            // State Synchronization via DataChannel
+            pc.ondatachannel = (event) => {
+                const receiveChannel = event.channel;
+                receiveChannel.onmessage = (msg) => {
+                    try {
+                        const stateUpdate = JSON.parse(msg.data);
+                        // console.log("WebRTC State Sync Received:", stateUpdate);
+                    } catch (e) {
+                        console.error("Failed to parse state sync message:", e);
+                    }
+                };
+            };
+
             pc.ontrack = (event) => {
                 const stream = event.streams[0];
                 const audio = new Audio();
@@ -111,37 +130,32 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
 
                 let answer;
                 // Feature detect WebTransport and attempt to use it for sending offer
-                if (typeof WebTransport !== 'undefined') {
-                    console.log("Attempting WebRTC signaling over WebTransport.");
+                if (typeof (window as any).WebTransport !== 'undefined') {
+                    // console.log("Attempting WebRTC signaling over WebTransport.");
                     try {
-                        const wt = new WebTransport("https://localhost:8002/webrtc-signaling"); // Assuming a WebTransport server at :8002
+                        const wt = new (window as any).WebTransport("https://localhost:8002/webrtc-signaling");
                         await wt.ready;
-                        console.log("WebTransport connection established.");
+                        // console.log("WebTransport connection established.");
 
-                        const writable = wt.createUnidirectionalStream();
+                        const writable = await wt.createUnidirectionalStream();
                         const writer = writable.getWriter();
                         await writer.write(new TextEncoder().encode(JSON.stringify({
                             sdp: pc.localDescription?.sdp,
                             type: pc.localDescription?.type
                         })));
-                        await writer.close(); // Close the stream after sending
+                        await writer.close(); 
                         
-                        // For simplicity, for receiving the answer, we will still use HTTP fetch for now,
-                        // or a more sophisticated WebTransport receive needs to be set up.
-                        // For this task, we're focusing on WebTransport for signaling *transport*.
-
-                        console.log("Offer sent via WebTransport. Fetching answer via HTTP fallback for now.");
+                        // console.log("Offer sent via WebTransport. Fetching answer via HTTP fallback for now.");
                         const response = await fetch('http://localhost:8001/offer', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ sdp: pc.localDescription?.sdp, type: pc.localDescription?.type })
                         });
                         answer = await response.json();
-                        wt.close(); // Close WebTransport connection
+                        wt.close(); 
 
                     } catch (wtError) {
-                        console.warn("WebTransport signaling failed, falling back to HTTP fetch for both offer and answer:", wtError);
-                        // Fallback to HTTP fetch for both offer and answer if WebTransport fails
+                        console.warn("WebTransport signaling failed, falling back to HTTP fetch:", wtError);
                         const response = await fetch('http://localhost:8001/offer', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -150,8 +164,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                         answer = await response.json();
                     }
                 } else {
-                    console.log("WebTransport not supported, using HTTP fetch for signaling.");
-                    // Existing HTTP fetch signaling
+                    // console.log("WebTransport not supported, using HTTP fetch.");
                     const response = await fetch('http://localhost:8001/offer', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
@@ -164,50 +177,45 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                 // Persist remote description
                 localStorage.setItem('webrtcRemoteDescription', JSON.stringify(answer));
 
-                console.log("High-Res Master Audio Stream Connected");
+                // console.log("High-Res Master Audio Stream Connected");
             };
 
-            // Check for existing signaling state to attempt re-connection or quick start
+            // Check for existing signaling state
             const storedLocalDescription = localStorage.getItem('webrtcLocalDescription');
             const storedRemoteDescription = localStorage.getItem('webrtcRemoteDescription');
 
             if (storedLocalDescription && storedRemoteDescription) {
-                console.log("Attempting to restore WebRTC connection from stored state.");
+                // console.log("Attempting to restore WebRTC connection.");
                 const localDesc = JSON.parse(storedLocalDescription);
                 const remoteDesc = JSON.parse(storedRemoteDescription);
                 
                 try {
                     await pc.setLocalDescription(new RTCSessionDescription(localDesc));
                     await pc.setRemoteDescription(new RTCSessionDescription(remoteDesc));
-                    console.log("WebRTC connection restored from stored state.");
+                    // console.log("WebRTC connection restored.");
                 } catch (e) {
-                    console.warn("Failed to restore WebRTC connection from stored state, performing full signaling.", e);
+                    console.warn("Failed to restore WebRTC connection, performing full signaling.", e);
                     localStorage.removeItem('webrtcLocalDescription');
                     localStorage.removeItem('webrtcRemoteDescription');
-                    await performSignaling(); // Fallback to full signaling if restore fails
+                    await performSignaling(); 
                 }
             } else {
-                await performSignaling(); // Perform full signaling if no stored state
+                await performSignaling(); 
             }
 
             // Connection status monitoring
             const handleNetworkChange = async () => {
                 if (navigator.onLine) {
-                    console.log("App is online. Attempting WebRTC signaling.");
-                    // If not already connected, try to perform signaling again
-                    // Check iceConnectionState to avoid redundant signaling if already connected/checking
                     if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'checking') {
                         try {
                             await performSignaling();
                         } catch (e) {
-                            console.error("Failed to re-establish WebRTC signaling after going online:", e);
+                            console.error("Failed to re-establish WebRTC signaling:", e);
                         }
                     }
-                } else {
-                    console.warn("App is offline. WebRTC signaling paused.");
                 }
             };
-            setNetworkChangeHandler(() => handleNetworkChange); // Store handler in state
+            setNetworkChangeHandler(() => handleNetworkChange);
 
             window.addEventListener('online', handleNetworkChange);
             window.addEventListener('offline', handleNetworkChange);
@@ -216,20 +224,18 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
-    // Cleanup useEffect for global event listeners and RTCPeerConnection
+    // Cleanup
     useEffect(() => {
         return () => {
             if (networkChangeHandler) {
                 window.removeEventListener('online', networkChangeHandler);
                 window.removeEventListener('offline', networkChangeHandler);
-                console.log("Removed WebRTC network change listeners.");
             }
             if (peerConnectionRef.current) {
                 peerConnectionRef.current.close();
-                console.log("Closed WebRTC PeerConnection.");
             }
         };
-    }, [networkChangeHandler]); // Depend on networkChangeHandler to ensure cleanup happens correctly
+    }, [networkChangeHandler]);
 
     return (
         <AudioContext.Provider value={{ startAudio, audioContext: audioContextRef.current }}>

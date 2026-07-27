@@ -37,18 +37,18 @@ export function InstrumentsTerminal() {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setDroppedSample(sample);
     // Tell audioEngine to map this sample to the active instrument slot
-    audioEngine.loadTrackSample('channel1', sample.source); // Simplified mapping
+    if (sample.url) {
+        audioEngine.loadTrackSample('channel1', sample.url); 
+    }
   };
 
   const loadInstrument = async (inst: Instrument) => {
-    if (!masterEngine) return;
     setIsLoading(true);
     setActiveInstrument(inst);
     
     try {
-      await masterEngine.loadInstrument(inst.id);
-      // Stub: notify audioEngine to route audio through this instrument
-      console.log('Routing through instrument:', inst.name);
+      await audioEngine.loadInstrument(inst.id);
+      // console.log('Routing through instrument:', inst.name);
     } catch (error) {
       console.error(`Failed to load instrument: ${inst.name}`, error);
     } finally {

@@ -39,7 +39,12 @@ export const BeatVisualizer: React.FC<BeatVisualizerProps> = React.memo(({ isPla
           data, 
           isPlaying 
       });
-      animationRef.current = requestAnimationFrame(update);
+
+      if (isPlaying) {
+        animationRef.current = requestAnimationFrame(update);
+      } else {
+        animationRef.current = null;
+      }
     };
 
     update();

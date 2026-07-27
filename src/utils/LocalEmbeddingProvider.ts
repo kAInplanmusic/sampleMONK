@@ -5,7 +5,7 @@
  * In a real implementation, this would use @xenova/transformers to generate vectors locally.
  */
 export const generateLocalEmbedding = async (text: string): Promise<number[]> => {
-    console.log(`Generating local embedding for: ${text}`);
+    // console.log(`Generating local embedding for: ${text}`);
     // Simulate async generation time
     await new Promise(resolve => setTimeout(resolve, 50));
     

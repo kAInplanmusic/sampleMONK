@@ -31,7 +31,7 @@ export class DspEnginePlugin implements Plugin {
 
   toggleAutoMode() {
     this.autoMode = !this.autoMode;
-    console.log(`DSP AutoMode: ${this.autoMode ? 'ON' : 'OFF'}`);
+    // console.log(`DSP AutoMode: ${this.autoMode ? 'ON' : 'OFF'}`);
   }
 
   async requestLock(userId: string): Promise<boolean> {

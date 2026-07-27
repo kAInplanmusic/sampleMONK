@@ -5,6 +5,7 @@ export interface AudioSample {
   type: string; // e.g. "Kick", "Acid Bass", "Clap", "Rimshot", "Open Hat", "Shaker"
   url?: string;  // Public domain/archive.org free electronic sound preview link (if available) or synthesised synth preset name
   description: string;
+  tags?: string[];
   parameters: {
     frequency?: number;
     decay?: number;

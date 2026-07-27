@@ -26,7 +26,7 @@ export const SynthesizerTerminal: React.FC = React.memo(() => {
         host.setParameter('cutoff', cutoff);
         host.setParameter('decay', decay);
         host.setParameter('engine', engine === 'SUBTRACTIVE' ? 0 : engine === 'FM' ? 1 : 2);
-        console.log("WASM Synth loaded");
+        // console.log("WASM Synth loaded");
     });
   }, []);
 
@@ -79,22 +79,24 @@ export const SynthesizerTerminal: React.FC = React.memo(() => {
         <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 flex items-center gap-2">
             <Waves className="w-4 h-4 text-violet-400" /> Synth MONK
         </h3>
-        <select value={engine} onChange={handleEngineChange} className="bg-black text-white text-xs p-1 rounded">
+        <select value={engine} onChange={handleEngineChange} className="bg-black text-white text-xs p-1 rounded" disabled={!isLoaded}>
             <option value="SUBTRACTIVE">SUBTRACTIVE</option>
             <option value="FM">FM</option>
             <option value="WAVETABLE">WAVETABLE</option>
         </select>
       </div>
 
+      {!isLoaded && <div className="text-xs text-yellow-500 mb-4">Loading Synthesizer...</div>}
+
       <div className="grid grid-cols-2 gap-6">
           <div className="space-y-4">
             <label className="text-[10px] text-neutral-500">FILTER CUTOFF</label>
-            <input type="range" min="20" max="20000" value={cutoff} onChange={e => handleCutoffChange(Number(e.target.value))} className="w-full accent-violet-500" />
+            <input type="range" min="20" max="20000" value={cutoff} onChange={e => handleCutoffChange(Number(e.target.value))} className="w-full accent-violet-500" disabled={!isLoaded} />
             <div className="text-xs">{cutoff} Hz</div>
           </div>
           <div className="space-y-4">
             <label className="text-[10px] text-neutral-500">ADSR DECAY</label>
-            <input type="range" min="0" max="1" step="0.01" value={decay} onChange={e => handleDecayChange(Number(e.target.value))} className="w-full accent-violet-500" />
+            <input type="range" min="0" max="1" step="0.01" value={decay} onChange={e => handleDecayChange(Number(e.target.value))} className="w-full accent-violet-500" disabled={!isLoaded} />
           </div>
       </div>
     </div>

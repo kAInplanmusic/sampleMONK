@@ -6,7 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 import { SampleModuleWrapper } from './SampleModuleWrapper';
 
-export const DrumMachineTerminal: React.FC = () => {
+export const DrumMachineTerminal: React.FC = React.memo(() => {
   const { addSample } = useSamples();
   const { state, lockStatus, updateState } = usePluginState('drum', 'ACTIVE');
   const [padSamples, setPadSamples] = useState<Record<number, AudioSample>>({});
@@ -14,16 +14,16 @@ export const DrumMachineTerminal: React.FC = () => {
 
   const kits = ['TR-909', 'TR-8', 'MPC-60', '808-Classic', 'Elektro-Box', 'BoomBap-HipHop', 'Lo-Fi M8'];
 
-  const handleKitChange = (kit: string) => {
+  const handleKitChange = React.useCallback((kit: string) => {
     setActiveKit(kit);
     audioEngine.setDrumKit(kit);
-    console.log(`Loaded Drum Engine: ${kit}`);
-  };
+    // console.log(`Loaded Drum Engine: ${kit}`);
+  }, []);
 
-  const handleSampleDrop = (sample: AudioSample, index: number) => {
+  const handleSampleDrop = React.useCallback((sample: AudioSample, index: number) => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setPadSamples(prev => ({ ...prev, [index]: sample }));
-  };
+  }, [lockStatus.active, lockStatus.lockedBy]);
 
   return (
     <SampleModuleWrapper onSelect={addSample}>
@@ -62,4 +62,4 @@ export const DrumMachineTerminal: React.FC = () => {
       </div>
     </SampleModuleWrapper>
   );
-};
+});

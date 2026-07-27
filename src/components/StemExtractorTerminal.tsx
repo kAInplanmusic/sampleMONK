@@ -84,8 +84,9 @@ export function StemExtractorTerminal() {
       </div>
       
       {error && (
-        <div className="mb-4 p-3 bg-red-900/20 border border-red-500 text-red-400 text-xs rounded">
-            Error: {error}
+        <div className="mb-4 p-3 bg-red-900/20 border border-red-500 text-red-400 text-xs rounded flex justify-between items-center">
+            <span>Error: {error}</span>
+            <button onClick={startExtraction} className="text-red-300 font-bold underline text-[10px]">Retry</button>
         </div>
       )}
       
