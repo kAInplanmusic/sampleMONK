@@ -265,12 +265,57 @@ class AudioEngine {
   }
   
   private tick(time: number) {
+    const step = this.currentStep;
+
+    // Trigger Synths
+    if (this.patterns.channel1[step] && !this.mutedStems.channel1) {
+      this.kickSynth.triggerAttackRelease('C1', '8n', time);
+    }
+    if (this.patterns.channel2[step] && !this.mutedStems.channel2) {
+      this.hatSynth.triggerAttackRelease('16n', time);
+    }
+    if (this.patterns.channel3[step] && !this.mutedStems.channel3) {
+      this.clapSynth.triggerAttackRelease('16n', time);
+    }
+    if (this.patterns.channel7[step] && !this.mutedStems.channel7) {
+      const note = MUSIC_SCALES[this.currentScaleName as keyof typeof MUSIC_SCALES]?.[this.synthNotes[step] % 8] || 'C2';
+      this.bassSynth.triggerAttackRelease(note, '16n', time);
+    }
+
+    // Trigger Samplers
+    (['channel4', 'channel5', 'channel6', 'channel8'] as TrackType[]).forEach(track => {
+      if (this.patterns[track][step] && !this.mutedStems[track]) {
+        if (this.samplePlayers[track]) {
+          this.samplePlayers[track].start(time);
+        }
+      }
+    });
+
     this.currentStep = (this.currentStep + 1) % 16;
     this.onStepUpdate(this.currentStep);
   }
-  
+
   public triggerEvent(track: TrackType, velocity: number = 1.0) {
-      // ...
+    if (!this.initialized) return;
+    this.processEvent({ track, velocity }, Tone.now());
+  }
+
+  private processEvent(event: { track: TrackType; velocity: number }, time: number) {
+    if (this.mutedStems[event.track]) return;
+
+    switch(event.track) {
+      case 'channel1': this.kickSynth.triggerAttackRelease('C1', '8n', time, event.velocity); break;
+      case 'channel2': this.hatSynth.triggerAttackRelease('16n', time, event.velocity); break;
+      case 'channel3': this.clapSynth.triggerAttackRelease('16n', time, event.velocity); break;
+      case 'channel7': 
+        const note = MUSIC_SCALES[this.currentScaleName as keyof typeof MUSIC_SCALES]?.[0] || 'C2';
+        this.bassSynth.triggerAttackRelease(note, '16n', time, event.velocity); 
+        break;
+      default:
+        if (this.samplePlayers[event.track]) {
+          this.samplePlayers[event.track].start(time);
+        }
+    }
   }
   
   public async play() { 
