@@ -11,37 +11,55 @@ const io = new Server(server, {
   }
 });
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+// Simple structured logging
+const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
 
-  // WebRTC Signaling
+io.on('connection', (socket) => {
+  log(`User connected: ${socket.id}`);
+
+  // WebRTC Signaling with validation
   socket.on('offer', (data) => {
+    if (!data.target || !data.offer) {
+      log(`Invalid offer received from ${socket.id}`);
+      return;
+    }
     socket.to(data.target).emit('offer', {
       offer: data.offer,
       sender: socket.id
     });
+    log(`Offer relayed from ${socket.id} to ${data.target}`);
   });
 
   socket.on('answer', (data) => {
+    if (!data.target || !data.answer) {
+      log(`Invalid answer received from ${socket.id}`);
+      return;
+    }
     socket.to(data.target).emit('answer', {
       answer: data.answer,
       sender: socket.id
     });
+    log(`Answer relayed from ${socket.id} to ${data.target}`);
   });
 
   socket.on('ice-candidate', (data) => {
+    if (!data.target || !data.candidate) {
+      log(`Invalid ICE candidate received from ${socket.id}`);
+      return;
+    }
     socket.to(data.target).emit('ice-candidate', {
       candidate: data.candidate,
       sender: socket.id
     });
+    log(`ICE candidate relayed from ${socket.id} to ${data.target}`);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+  socket.on('disconnect', (reason) => {
+    log(`User disconnected: ${socket.id}, reason: ${reason}`);
   });
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`Signaling server running on port ${PORT}`);
+  log(`Signaling server running on port ${PORT}`);
 });

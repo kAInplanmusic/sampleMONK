@@ -115,6 +115,16 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
             });
             peerConnectionRef.current = pc;
 
+            // Set high-fidelity codec preferences
+            const transceiver = pc.addTransceiver('audio', { direction: 'recvonly' });
+            const capabilities = RTCRtpReceiver.getCapabilities('audio');
+            if (capabilities) {
+                const opusCodec = capabilities.codecs.find(c => c.mimeType === 'audio/opus');
+                if (opusCodec) {
+                    transceiver.setCodecPreferences([opusCodec]);
+                }
+            }
+
             // Initialize DataChannel for sync
             const channel = pc.createDataChannel('sync');
             syncDataChannelRef.current = channel;
