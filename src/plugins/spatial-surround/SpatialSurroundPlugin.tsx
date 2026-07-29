@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PluginBase } from '../PluginBase';
 import { PluginState, LockStatus, Plugin } from '../types';
 import { hubConnector } from '../../hubConnector';
@@ -114,7 +114,7 @@ export class SpatialSurroundPlugin implements Plugin {
   }
 }
 
-export const SpatialSurroundUI: React.FC<{plugin: SpatialSurroundPlugin, currentUserId: string}> = ({ plugin, currentUserId }) => {
+export const SpatialSurroundUI = React.memo(({ plugin, currentUserId }: {plugin: SpatialSurroundPlugin, currentUserId: string}) => {
   const [uiPosX, setUiPosX] = useState(0); // Normalized X (-1 to 1)
   const [uiPosY, setUiPosY] = useState(0); // Normalized Y (-1 to 1)
 
@@ -169,5 +169,4 @@ export const SpatialSurroundUI: React.FC<{plugin: SpatialSurroundPlugin, current
       )}
     />
   );
-};
-
+});

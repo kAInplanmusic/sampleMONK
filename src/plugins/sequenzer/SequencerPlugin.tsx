@@ -22,7 +22,7 @@ export class SequencerPlugin implements Plugin {
   }
 }
 
-export const SequencerUI: React.FC<{plugin: SequencerPlugin, currentUserId: string}> = ({ plugin, currentUserId }) => {
+export const SequencerUI = React.memo(({ plugin, currentUserId }: {plugin: SequencerPlugin, currentUserId: string}) => {
   return (
     <PluginBase
       name={plugin.config.name}
@@ -33,4 +33,4 @@ export const SequencerUI: React.FC<{plugin: SequencerPlugin, currentUserId: stri
       renderProUI={() => <div>Sequencer Advanced Interface</div>}
     />
   );
-};
+});

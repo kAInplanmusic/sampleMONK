@@ -1,0 +1,24 @@
+# Stage 1: Rust Builder
+FROM rust:1.97-slim AS rust-builder
+WORKDIR /usr/src/app
+COPY services/mixer/Cargo.toml services/mixer/Cargo.lock ./
+COPY services/mixer/src ./src
+RUN cargo build --release
+
+# Stage 2: Node Builder
+FROM node:20-alpine AS node-builder
+WORKDIR /app
+COPY package*.json ./
+COPY --from=rust-builder /usr/src/app/target/release/librust_mixer.so ./services/mixer/
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 3: Final Production Image
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=node-builder /app/dist ./dist
+COPY --from=node-builder /app/node_modules ./node_modules
+COPY --from=node-builder /app/package.json ./
+EXPOSE 3000
+CMD ["npm", "start"]

@@ -52,25 +52,26 @@ export class DspEnginePlugin implements Plugin {
   }
 }
 
-export const DspEngineUI: React.FC<{plugin: DspEnginePlugin, currentUserId: string}> = ({ plugin, currentUserId }) => {
+export const DspEngineUI = React.memo(({ plugin, currentUserId }: {plugin: DspEnginePlugin, currentUserId: string}) => {
   return (
     <PluginBase
-      name={plugin.config.config.name}
+      name={plugin.config.name}
       state={plugin.state}
       lockStatus={plugin.lockStatus}
       currentUserId={currentUserId}
       onStateChange={(s) => plugin.updateState(s)}
       renderProUI={() => (
-        <div className="flex flex-col gap-4">
-            <button 
-                onClick={() => plugin.toggleAutoMode()}
-                className={`p-2 rounded border ${plugin.autoMode ? 'bg-orange-600' : 'bg-neutral-800'}`}
-            >
-                AUTO-MODE {plugin.autoMode ? 'ON' : 'OFF'}
-            </button>
-            <p className="text-[10px] text-neutral-500"> DSP-Engine ist transparent (Bypass) bis KI-Regelung aktiv.</p>
+        <div className="flex flex-col gap-2">
+          <div>DSP Advanced Interface</div>
+          <button 
+              onClick={() => plugin.toggleAutoMode()}
+              className={`p-2 rounded border ${plugin.autoMode ? 'bg-orange-600' : 'bg-neutral-800'}`}
+          >
+              AUTO-MODE {plugin.autoMode ? 'ON' : 'OFF'}
+          </button>
+          <p className="text-[10px] text-neutral-500"> DSP-Engine ist transparent (Bypass) bis KI-Regelung aktiv.</p>
         </div>
       )}
     />
   );
-};
+});

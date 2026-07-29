@@ -26,7 +26,7 @@ export class InstrumentePlugin implements Plugin {
   }
 }
 
-export const InstrumenteUI: React.FC<{plugin: InstrumentePlugin, currentUserId: string}> = ({ plugin, currentUserId }) => {
+export const InstrumenteUI = React.memo(({ plugin, currentUserId }: {plugin: InstrumentePlugin, currentUserId: string}) => {
   return (
     <PluginBase
       name={plugin.config.name}
@@ -37,4 +37,4 @@ export const InstrumenteUI: React.FC<{plugin: InstrumentePlugin, currentUserId: 
       renderProUI={() => <div>Instrumente Terminal UI</div>}
     />
   );
-};
+});

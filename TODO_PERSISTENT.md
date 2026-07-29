@@ -18,6 +18,6 @@
 
 ## Next Steps (from ARCH_ROADMAP.md)
 - [ ] Phase 2: Client-Side UI Optimization (React.memo, OffscreenCanvas)
-- [ ] Phase 3: Server-Side Mixer Migration (Rust)
-- [ ] Phase 4: WebGPU Spatialization
-- [ ] Phase 5: Infrastructure (Docker)
+- [x] Phase 3: Server-Side Mixer Migration (Rust) - COMPLETED
+- [x] Phase 4: WebGPU Spatialization - COMPLETED
+- [x] Phase 5: Infrastructure (Docker) - COMPLETED
