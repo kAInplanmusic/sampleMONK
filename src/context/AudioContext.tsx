@@ -115,9 +115,17 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
 
             pc.ontrack = (event) => {
                 const stream = event.streams[0];
-                const audio = new Audio();
-                audio.srcObject = stream;
-                audio.play();
+                
+                // Integrate into Tone.js Signal Chain
+                const audioCtx = Tone.context.rawContext as AudioContext;
+                const sourceNode = audioCtx.createMediaStreamSource(stream);
+                
+                // Connect to Tone's master destination (or your custom chain)
+                const toneSource = Tone.context.createMediaStreamSource(stream);
+                // Connect to master output to enable processing
+                (toneSource as any).connect(Tone.Destination);
+                
+                console.log("High-Res Master Audio Stream connected to Tone.js Graph");
             };
 
             // Function to handle signaling over network
