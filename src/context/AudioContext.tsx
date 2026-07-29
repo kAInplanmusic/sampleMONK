@@ -75,6 +75,21 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     const isInitialized = useRef(false);
     const audioContextRef = useRef<Tone.Context | null>(null); // To store Tone.context
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null); // To store RTCPeerConnection
+    const syncDataChannelRef = useRef<RTCDataChannel | null>(null); // To store RTCDataChannel
+
+    // Clock sync broadcaster
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (syncDataChannelRef.current && syncDataChannelRef.current.readyState === 'open') {
+                syncDataChannelRef.current.send(JSON.stringify({
+                    type: 'CLOCK_SYNC',
+                    masterTime: Tone.Transport.seconds,
+                    masterBpm: Tone.Transport.bpm.value
+                }));
+            }
+        }, 100); // 10Hz sync
+        return () => clearInterval(interval);
+    }, []);
 
     // State to hold the handleNetworkChange function so it can be removed
     const [networkChangeHandler, setNetworkChangeHandler] = useState<(() => Promise<void>) | null>(null);
@@ -100,10 +115,14 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
             });
             peerConnectionRef.current = pc;
 
+            // Initialize DataChannel for sync
+            const channel = pc.createDataChannel('sync');
+            syncDataChannelRef.current = channel;
+
             // State Synchronization via DataChannel
             pc.ondatachannel = (event) => {
-                const receiveChannel = event.channel;
-                receiveChannel.onmessage = (msg) => {
+                syncDataChannelRef.current = event.channel;
+                syncDataChannelRef.current.onmessage = (msg) => {
                     try {
                         const stateUpdate = JSON.parse(msg.data);
                         if (stateUpdate.type === 'CLOCK_SYNC') {
