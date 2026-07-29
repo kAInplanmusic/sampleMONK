@@ -106,7 +106,12 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                 receiveChannel.onmessage = (msg) => {
                     try {
                         const stateUpdate = JSON.parse(msg.data);
-                        // console.log("WebRTC State Sync Received:", stateUpdate);
+                        if (stateUpdate.type === 'CLOCK_SYNC') {
+                            // Sync master time and tempo
+                            Tone.Transport.seconds = stateUpdate.masterTime;
+                            Tone.Transport.bpm.value = stateUpdate.masterBpm;
+                            console.log("Clock synchronized to master:", stateUpdate.masterTime);
+                        }
                     } catch (e) {
                         console.error("Failed to parse state sync message:", e);
                     }
