@@ -139,7 +139,7 @@ export function SpatialPluginTerminal() {
              <div className="grid grid-cols-2 gap-2">
                  {Object.entries(macroMappings).map(([id, pattern]) => (
                     <DropTarget key={id} onDrop={(sample) => handleMacroDrop(sample, id)} className="bg-neutral-800 rounded text-[9px] font-bold hover:bg-lime-600 p-2 text-center">
-                        <button onClick={() => triggerMacro(pattern)} className="w-full h-full">{pattern}</button>
+                       <button onClick={() => triggerMacro(String(pattern))} className="w-full h-full">{pattern}</button>
                     </DropTarget>
                  ))}
              </div>

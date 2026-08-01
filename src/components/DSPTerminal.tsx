@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, Power, Settings, Cpu, Zap, Sliders } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
+import { audioEngine } from '../utils/audioEngine';
 
 export function DSPTerminal() {
   const { state, lockStatus, updateState } = usePluginState('dsp', 'ACTIVE');

@@ -1,9 +1,7 @@
 // src/types/composition.ts
 import { TrackType } from '../types';
 
-export interface ArrangementPattern {
-    [key in TrackType]: boolean[];
-}
+export type ArrangementPattern = Record<TrackType, boolean[]>;
 
 export interface CompositionResponse {
     task_id: string;

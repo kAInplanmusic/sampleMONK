@@ -23,7 +23,7 @@ export function MIDIControllerTerminal() {
             const padIndex = note % 40; // Mapping MIDI note to padIndex
             const sample = padMappings[padIndex];
             if (sample) {
-                audioEngine.previewSample('mids', undefined, sample.url);
+                audioEngine.previewSample('channel5', undefined, sample.url);
             }
         }
     }

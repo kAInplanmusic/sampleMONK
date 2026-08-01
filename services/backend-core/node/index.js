@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 
 const wss = new WebSocket.Server({ port: 8080 });
+const IDLE_TIMEOUT_MS = Number(process.env.SIGNALING_IDLE_TIMEOUT_MS || 20 * 60 * 1000);
 
 // State-Management
 const clients = new Map(); // userId -> ws
@@ -16,8 +17,20 @@ function broadcast(msg) {
 
 wss.on('connection', (ws) => {
   let userId = null;
+  let idleTimer = null;
+
+  const refreshIdleTimer = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      console.log(`Closing idle signaling client ${userId || 'unknown'} after ${IDLE_TIMEOUT_MS}ms.`);
+      ws.close(4000, 'Idle timeout');
+    }, IDLE_TIMEOUT_MS);
+  };
+
+  refreshIdleTimer();
 
   ws.on('message', (message) => {
+    refreshIdleTimer();
     let data;
     try {
       data = JSON.parse(message);
@@ -56,6 +69,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    if (idleTimer) clearTimeout(idleTimer);
     if (userId) {
       console.log(`User ${userId} left.`);
       clients.delete(userId);

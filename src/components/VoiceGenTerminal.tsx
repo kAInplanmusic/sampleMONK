@@ -37,12 +37,12 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
         return;
     }
     
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    if (!audioContext || !audioContext.rawContext) {
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!audioContext) {
         console.warn("AudioContext not available for PitchDetector.");
         return;
     }
-    const detector = new PitchDetector(audioContext.rawContext);
+    const detector = new PitchDetector(audioContext);
     
     setIsRecordingMidi(true);
     const interval = setInterval(() => {

@@ -5,9 +5,28 @@ import { Cpu, Radio, Sparkles, SlidersHorizontal, Activity, Layers, Power } from
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 
-export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, onClose: () => void, plugin: 'master_me' | 'tone_shift_eq'}) {
+type PresetKey = keyof typeof MASTERING_PRESETS;
+type MasteringTab = 'master_me' | 'tone_shift_eq';
+
+interface MasteringOverlayProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+  plugin?: MasteringTab;
+}
+
+export function MasteringOverlay({
+  isOpen = true,
+  onClose = () => {},
+  plugin = 'master_me',
+}: MasteringOverlayProps) {
+  const initialPresetKey = Object.keys(MASTERING_PRESETS)[0] as PresetKey;
   const [activeTab, setActiveTab] = useState<'master_me' | 'tone_shift_eq'>(plugin);
   const [lufs, setLufs] = useState(-23);
+  const [autoMode, setAutoMode] = useState(false);
+  const [targetSample, setTargetSample] = useState<AudioSample | null>(null);
+  const [activePreset, setActivePreset] = useState<PresetKey>(initialPresetKey);
+  const [masterMeParams, setMasterMeParams] = useState(MASTERING_PRESETS[initialPresetKey].master_me);
+  const [toneShiftParams, setToneShiftParams] = useState(MASTERING_PRESETS[initialPresetKey].tone_shift);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -18,14 +37,6 @@ export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, 
 
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, []);
-
-  // ... (inside JSX)
-  <div className="flex items-center gap-2 px-4 py-2 bg-black rounded border border-neutral-800">
-    <Activity className="w-4 h-4 text-emerald-500" />
-    <span className="font-mono text-xs text-neutral-400">LUFS:</span>
-    <span className="font-mono text-sm font-bold text-emerald-400">{lufs.toFixed(1)}</span>
-  </div>
-
 
   const handleSampleDrop = (sample: AudioSample) => {
     setTargetSample(sample);
@@ -63,8 +74,8 @@ export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, 
     });
   };
 
-  function applyPreset(presetKey: string) {
-    const preset = MASTERING_PRESETS[presetKey as keyof typeof MASTERING_PRESETS];
+  function applyPreset(presetKey: PresetKey) {
+    const preset = MASTERING_PRESETS[presetKey];
     if (!preset) return;
     setActivePreset(presetKey);
     setMasterMeParams(preset.master_me);
@@ -93,6 +104,12 @@ export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, 
           </div>
 
           <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 px-4 py-2 bg-black rounded border border-neutral-800">
+              <Activity className="w-4 h-4 text-emerald-500" />
+              <span className="font-mono text-xs text-neutral-400">LUFS:</span>
+              <span className="font-mono text-sm font-bold text-emerald-400">{lufs.toFixed(1)}</span>
+            </div>
+
             {/* Auto Mode Toggle */}
             <button 
               onClick={() => setAutoMode(!autoMode)}
@@ -138,13 +155,23 @@ export function MasteringOverlay({ isOpen, onClose, plugin }: {isOpen: boolean, 
                 {Object.entries(MASTERING_PRESETS).map(([key, preset]) => (
                   <button
                     key={key}
-                    onClick={() => applyPreset(key)}
+                    onClick={() => applyPreset(key as PresetKey)}
                     className={`w-full text-left px-4 py-3 rounded-lg font-mono text-xs transition-all border ${activePreset === key ? 'bg-sky-500/10 border-sky-500/50 text-sky-300 shadow-[inset_0_0_15px_rgba(14,165,233,0.1)]' : 'bg-black/20 border-neutral-800/50 text-neutral-400 hover:bg-white/5 hover:border-neutral-700'}`}
                   >
                     <div className="font-bold tracking-tight">{preset.name}</div>
                   </button>
                 ))}
               </div>
+
+              <DropTarget
+                label="Target Sample"
+                onDrop={handleSampleDrop}
+                className="mt-4 bg-black/20 border-sky-500/10 p-4"
+              >
+                <div className="text-xs font-mono text-neutral-400">
+                  {targetSample ? targetSample.name : 'Drop a sample for targeted mastering'}
+                </div>
+              </DropTarget>
             </div>
           </div>
 

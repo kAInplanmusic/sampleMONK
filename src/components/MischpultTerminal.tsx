@@ -24,7 +24,6 @@ const ChannelStrip = React.memo(({ ch, onUpdate }: { ch: RoutingEntry; onUpdate:
           <div className="flex-1 flex justify-center bg-[#080808] rounded-sm border border-neutral-900 relative my-2">
               <input 
                   type="range" 
-                  orient="vertical" 
                   min="0" max="1" step="0.01" 
                   value={ch.volume}
                   onChange={(e) => onUpdate(ch.channel, { volume: parseFloat(e.target.value) })}

@@ -13,7 +13,13 @@ export const usePluginState = (pluginId: string, initialState: PluginState = 'OF
     if (!lockStatus.active) {
       setState(newState);
       // Sync via WebRTC DataChannel
-      webRTCManager.sendToAllPeers({ type: 'PLUGIN_STATE_UPDATE', pluginId, state: newState });
+      webRTCManager.sendToAllPeers({
+        type: 'PLUGIN_STATE_UPDATE',
+        pluginId,
+        state: newState,
+        senderId: 'localUser',
+        timestamp: Date.now(),
+      });
     }
   };
 

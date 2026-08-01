@@ -1,8 +1,6 @@
 import axios from 'axios';
 import { useState, useEffect } from 'react';
-
-// Backend API URL - can be configured via environment variables
-const API_BASE_URL = 'http://localhost:8000/api'; 
+import { API_BASE_URL } from '../config/runtime';
 
 export const useAIStatus = () => {
     const [isOnline, setIsOnline] = useState<boolean | null>(null);

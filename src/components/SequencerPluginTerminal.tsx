@@ -9,6 +9,7 @@ import { SampleModuleWrapper } from './SampleModuleWrapper';
 
 interface SequencerProps {
   isPlaying: boolean;
+  currentStep?: number;
   tracks: TrackPreset['patterns'];
   bpm: number;
   setBpm: (b: number) => void;

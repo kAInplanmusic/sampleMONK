@@ -5,10 +5,12 @@ resource "google_cloud_run_v2_service" "signaling_service" {
 
   template {
     service_account = google_service_account.cloud_run_sa.email
+    timeout         = "1800s"
+    max_instance_request_concurrency = 100
     
     scaling {
-      min_instance_count = 1
-      max_instance_count = 5
+      min_instance_count = 0
+      max_instance_count = 10
     }
 
     containers {
@@ -17,13 +19,20 @@ resource "google_cloud_run_v2_service" "signaling_service" {
       resources {
         limits = {
           cpu    = "1000m"
-          memory = "512Mi"
+          memory = "1Gi"
         }
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
       
       env {
         name  = "PORT"
         value = "3001"
+      }
+
+      env {
+        name  = "SIGNALING_IDLE_TIMEOUT_MS"
+        value = "1200000"
       }
     }
   }
@@ -36,10 +45,12 @@ resource "google_cloud_run_v2_service" "backend_service" {
 
   template {
     service_account = google_service_account.cloud_run_sa.email
+    timeout         = "900s"
+    max_instance_request_concurrency = 20
     
     scaling {
-      min_instance_count = 1
-      max_instance_count = 10
+      min_instance_count = 0
+      max_instance_count = 20
     }
 
     containers {
@@ -48,8 +59,10 @@ resource "google_cloud_run_v2_service" "backend_service" {
       resources {
         limits = {
           cpu    = "2000m"
-          memory = "2Gi"
+          memory = "4Gi"
         }
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
 
       env {

@@ -78,8 +78,10 @@ class AudioEngine {
   };
 
   private synthNotes: number[] = Array(16).fill(0);
+  public currentScaleName: keyof typeof MUSIC_SCALES = 'A Minor Pentatonic';
   public currentStep = 0;
   public onStepUpdate: (step: number) => void = () => {};
+  public onBeatCallback: (step: number) => void = () => {};
   
   // Lookahead Scheduler
   private isPlaying = false;
@@ -258,6 +260,14 @@ class AudioEngine {
     // ... add more parameter smoothing as needed
   }
 
+  public setEffectParams(_: { type: string; wet: number; power: boolean }) {
+    this.ensureInitialized();
+  }
+
+  public setOnBeatCallback(callback: (step: number) => void) {
+    this.onBeatCallback = callback;
+  }
+
   public syncClock(pingTime: number, pongTime: number) {
       this.clockSync.handlePong(pongTime, pingTime);
       const drift = this.pll.update(pongTime - pingTime); 
@@ -293,6 +303,7 @@ class AudioEngine {
 
     this.currentStep = (this.currentStep + 1) % 16;
     this.onStepUpdate(this.currentStep);
+    this.onBeatCallback(this.currentStep);
   }
 
   public triggerEvent(track: TrackType, velocity: number = 1.0) {

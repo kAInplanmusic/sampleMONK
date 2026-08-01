@@ -3,7 +3,7 @@
 export class LiveStreamOut {
     private audioContext: AudioContext;
     private masterGain: GainNode;
-    private stream: MediaStreamDestination;
+    private stream: MediaStreamAudioDestinationNode;
 
     constructor(audioContext: AudioContext) {
         this.audioContext = audioContext;
