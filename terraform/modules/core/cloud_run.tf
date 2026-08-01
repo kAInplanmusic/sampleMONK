@@ -34,6 +34,11 @@ resource "google_cloud_run_v2_service" "signaling_service" {
         name  = "SIGNALING_IDLE_TIMEOUT_MS"
         value = "1200000"
       }
+
+      env {
+        name  = "SIGNALING_ALLOWED_ORIGINS"
+        value = var.app_url
+      }
     }
   }
 }

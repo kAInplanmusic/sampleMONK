@@ -5,6 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { URL } from 'url';
 
 dotenv.config();
 
@@ -46,6 +47,54 @@ const PORT = Number(process.env.PORT || 8080);
 
 app.use(express.json());
 
+// --- Security: Firebase Auth middleware for API routes ---
+import { getAuth } from 'firebase-admin/auth';
+
+async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+  }
+  const token = authHeader.split('Bearer ')[1];
+  try {
+    const auth = getAuth();
+    const decoded = await auth.verifyIdToken(token);
+    (req as any).user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired authentication token' });
+  }
+}
+
+// --- Security: SSRF protection for URL fetching ---
+const BLOCKED_HOSTS = [
+  'metadata.google.internal',
+  'metadata.google',
+  '169.254.169.254',
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '[::1]',
+];
+
+function isUrlSafe(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    // Only allow http and https
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    // Block cloud metadata and loopback addresses
+    if (BLOCKED_HOSTS.some(h => hostname === h || hostname.endsWith('.' + h))) return false;
+    // Block private/internal IP ranges
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
+    // Block link-local
+    if (hostname.startsWith('169.254.')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
@@ -65,7 +114,7 @@ async function getAiClient(): Promise<GoogleGenAI> {
 }
 
 // API: Generate a custom techno preset using Gemini AI
-app.post('/api/generate-preset', async (req, res) => {
+app.post('/api/generate-preset', requireAuth, async (req, res) => {
   const { prompt } = req.body;
 
   if (!prompt || typeof prompt !== 'string') {
@@ -163,7 +212,7 @@ const activeImportTasks: Record<string, { url: string; status: string; progress:
 
 
 // API: HuggingFace Text-to-Audio (Placeholder for MusicGen / similar)
-app.post('/api/huggingface/generate', async (req, res) => {
+app.post('/api/huggingface/generate', requireAuth, async (req, res) => {
   try {
     const key = process.env.HUGGINGFACE_API_KEY || await getSecret('HUGGINGFACE_API_KEY');
     if (!key) {
@@ -189,10 +238,15 @@ app.post('/api/huggingface/generate', async (req, res) => {
   }
 });
 
-app.post('/api/import-zip', async (req, res) => {
+app.post('/api/import-zip', requireAuth, async (req, res) => {
   const { urls } = req.body;
   if (!urls || !Array.isArray(urls)) {
     return res.status(400).json({ error: 'Please provide an array of URLs' });
+  }
+  // Validate all URLs before processing
+  const unsafeUrls = urls.filter(u => typeof u !== 'string' || !isUrlSafe(u));
+  if (unsafeUrls.length > 0) {
+    return res.status(400).json({ error: 'One or more URLs are invalid or blocked (internal/private addresses are not allowed)' });
   }
   if (!bucket || !db) {
     return res.status(500).json({ error: 'Firebase Admin not configured. Please add FIREBASE_SERVICE_ACCOUNT to env vars.' });
@@ -206,7 +260,7 @@ app.post('/api/import-zip', async (req, res) => {
   return res.json({ message: 'Import started in background', taskId });
 });
 
-app.get('/api/import-status/:taskId', (req, res) => {
+app.get('/api/import-status/:taskId', requireAuth, (req, res) => {
   const taskId = req.params.taskId;
   return res.json({ status: activeImportTasks[taskId] || { status: 'unknown' } });
 });
@@ -281,7 +335,7 @@ async function processUrlsInBackground(taskId: string, urls: string[]) {
   activeImportTasks[taskId].status = 'completed';
 }
 
-app.get('/api/samples', async (req, res) => {
+app.get('/api/samples', requireAuth, async (req, res) => {
   try {
     const samples: any[] = [];
     

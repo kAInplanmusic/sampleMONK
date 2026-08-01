@@ -5,9 +5,13 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const IDLE_TIMEOUT_MS = Number(process.env.SIGNALING_IDLE_TIMEOUT_MS || 20 * 60 * 1000);
+const ALLOWED_ORIGINS = process.env.SIGNALING_ALLOWED_ORIGINS
+  ? process.env.SIGNALING_ALLOWED_ORIGINS.split(',')
+  : [];
+
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : false,
     methods: ["GET", "POST"]
   }
 });
