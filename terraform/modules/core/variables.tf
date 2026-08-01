@@ -8,3 +8,9 @@ variable "region" {
   type        = string
   default     = "europe-west1"
 }
+
+variable "app_url" {
+  description = "The public application URL for CORS origin allowlist"
+  type        = string
+  default     = ""
+}

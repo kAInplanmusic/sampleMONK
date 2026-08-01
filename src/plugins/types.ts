@@ -1,8 +1,10 @@
-export type PluginState = 'OFF' | 'AI_CONTROLLED' | 'ACTIVE';
+export type PluginState = 'OFF' | 'AUTO_AI' | 'PRO';
 export interface LockStatus {
   lockedBy: string | null;
   timestamp: number;
   active: boolean;
+  /** Lock auto-expires after TTL (ms). Default 5 minutes. */
+  ttl?: number;
 }
 export interface Plugin {
   config: { id: string, name: string, colorScheme: string };

@@ -12,7 +12,7 @@ import { audioEngine } from '../utils/audioEngine';
 import { TrackType } from '../types';
 
 export function SpatialPluginTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('spatial', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('spatial', 'PRO');
   const [setup, setSetup] = useState<SpatialSetup | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [spatialMode, setSpatialMode] = useState<'ON_TOP' | 'SEPARATION'>('ON_TOP');

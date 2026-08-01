@@ -32,6 +32,7 @@ class AudioEngine {
   public lufsBufferView!: Int32Array; // Added for LUFS SAB
   
   public onWaveformUpdate: (data: Float32Array) => void = () => {};
+  public onLufsChange: (value: number) => void = () => {};
   public getLufsValue(): number {
       if (this.lufsBufferView) {
           return Atomics.load(this.lufsBufferView, 0) / 100;

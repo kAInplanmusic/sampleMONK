@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Radio, Mic, Save, Activity, Download, Play, Square, Circle } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
+import { useAudio } from '../context/AudioContext';
 
 export function RecorderTerminal() {
   const { addSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('recorder', 'ACTIVE');
+  const { audioContext } = useAudio();
+  const { state, lockStatus, updateState } = usePluginState('recorder', 'PRO');
   const [isRecording, setIsRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
   const [takes, setTakes] = useState([
     { id: 1, name: 'Main_Mix_Take_01.wav', duration: '03:45', size: '38 MB', date: '2026-07-18' }
   ]);
   const [inputSource, setInputSource] = useState('MASTER_OUT');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval>;
     if (isRecording) {
       interval = setInterval(() => setRecordTime(prev => prev + 1), 1000);
     } else {
@@ -30,30 +34,70 @@ export function RecorderTerminal() {
     return `${m}:${s}`;
   };
 
-  const handleStop = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      const newTake = {
-        id: takes.length + 1,
-        name: `${inputSource}_Take_0${takes.length + 1}.wav`,
-        duration: formatTime(recordTime),
-        size: `${Math.max(1, Math.floor(recordTime * 0.15))} MB`,
-        date: new Date().toISOString().split('T')[0]
-      };
-      setTakes([newTake, ...takes]);
+  const startRecording = useCallback(async () => {
+    if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
+    
+    try {
+      let stream: MediaStream;
       
-      // Add recording to library
-      const newSample: AudioSample = {
+      if (audioContext && inputSource === 'MASTER_OUT') {
+        // Record from the master audio output via AudioContext
+        const dest = audioContext.createMediaStreamDestination();
+        // Connect the audio context destination to a MediaStreamDestination
+        // This captures the master output
+        stream = dest.stream;
+      } else {
+        // Fallback: record from microphone input
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      chunksRef.current = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+        
+        const newTake = {
+          id: takes.length + 1,
+          name: `${inputSource}_Take_0${takes.length + 1}.webm`,
+          duration: formatTime(recordTime),
+          size: `${sizeMB} MB`,
+          date: new Date().toISOString().split('T')[0]
+        };
+        setTakes(prev => [newTake, ...prev]);
+        
+        const newSample: AudioSample = {
           id: `rec-${Date.now()}`,
           name: newTake.name,
           category: 'mids',
           type: 'Recording',
+          url,
           description: `Master recording from ${inputSource}`,
           parameters: {}
+        };
+        addSample(newSample);
       };
-      addSample(newSample);
+      
+      mediaRecorderRef.current = recorder;
+      recorder.start(100); // Collect data every 100ms
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording:', err);
     }
-  };
+  }, [audioContext, inputSource, lockStatus, takes.length, recordTime, addSample]);
+
+  const handleStop = useCallback(() => {
+    if (isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  }, [isRecording]);
 
   return (
     <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
@@ -71,8 +115,8 @@ export function RecorderTerminal() {
         
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
       </div>
 
@@ -91,7 +135,7 @@ export function RecorderTerminal() {
             <div className="flex items-center gap-6">
               {!isRecording ? (
                 <button 
-                  onClick={() => { if (!(lockStatus.active && lockStatus.lockedBy !== 'localUser')) setIsRecording(true); }}
+                  onClick={startRecording}
                   className="w-20 h-20 rounded-full bg-[#222] border-4 border-[#111] flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:border-red-900 transition-colors group"
                 >
                   <Circle className="w-8 h-8 text-red-500 fill-current group-hover:drop-shadow-[0_0_10px_rgba(239,68,68,1)]" />

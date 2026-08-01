@@ -8,7 +8,7 @@ import { SampleModuleWrapper } from './SampleModuleWrapper';
 
 export const DrumMachineTerminal: React.FC = React.memo(() => {
   const { addSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('drum', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('drum', 'PRO');
   const [padSamples, setPadSamples] = useState<Record<number, AudioSample>>({});
   const [activeKit, setActiveKit] = useState('TR-808');
 
@@ -33,8 +33,8 @@ export const DrumMachineTerminal: React.FC = React.memo(() => {
           
           <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
               <option value="OFF">OFF</option>
-              <option value="AI_CONTROLLED">AI</option>
-              <option value="ACTIVE">ACTIVE</option>
+              <option value="AUTO_AI">AI</option>
+              <option value="PRO">ACTIVE</option>
           </select>
         </div>
 

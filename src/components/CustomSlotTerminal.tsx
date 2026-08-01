@@ -5,7 +5,7 @@ import { usePluginState } from '../hooks/usePluginState';
 
 export function CustomSlotTerminal() {
   const { samples, addSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('custom_slot', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('custom_slot', 'PRO');
   const [activeTab, setActiveTab] = useState('RUNTIME');
   const [isCompiling, setIsCompiling] = useState(false);
   
@@ -31,8 +31,8 @@ export function CustomSlotTerminal() {
         
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
         
         <div className="flex bg-[#1a1a1a] rounded-lg border border-neutral-800 p-1">

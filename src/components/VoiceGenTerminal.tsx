@@ -11,7 +11,7 @@ import { useAudio } from '../context/AudioContext';
 export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
   const { addSample } = useSamples();
   const { generateVoice } = useAudioAI();
-  const { state, lockStatus, updateState } = usePluginState('voice_gen', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('voice_gen', 'PRO');
   const [prompt, setPrompt] = useState('Dark warehouse techno vocals saying "Are you ready to lose control"');
   
   const [style, setStyle] = useState('SPOKEN'); // SPOKEN, CHANT, SINGING
@@ -108,8 +108,8 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
         
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
       </div>
 

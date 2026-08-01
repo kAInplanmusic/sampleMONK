@@ -14,8 +14,7 @@ service cloud.firestore {
         // ODER wenn der modifizierende User der aktuelle "Besitzer" des Locks ist.
         allow update: if request.auth != null && (
           resource.data.lockedBy == null || 
-          resource.data.lockedBy == request.auth.uid ||
-          request.resource.data.lockedBy == null
+          resource.data.lockedBy == request.auth.uid
         );
         
         allow create, delete: if request.auth != null;

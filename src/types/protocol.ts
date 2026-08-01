@@ -18,7 +18,7 @@ export interface BaseMessage {
 export interface PluginStateMessage extends BaseMessage {
   type: 'PLUGIN_STATE_UPDATE';
   pluginId: string;
-  state: 'OFF' | 'AI_CONTROLLED' | 'ACTIVE';
+  state: 'OFF' | 'AUTO_AI' | 'PRO';
 }
 
 export interface FXUpdateMessage extends BaseMessage {

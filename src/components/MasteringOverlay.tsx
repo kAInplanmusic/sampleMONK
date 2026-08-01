@@ -29,13 +29,25 @@ export function MasteringOverlay({
   const [toneShiftParams, setToneShiftParams] = useState(MASTERING_PRESETS[initialPresetKey].tone_shift);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Read LUFS value from audioEngine directly
-      const currentLufs = audioEngine.getLufsValue();
-      setLufs(currentLufs);
-    }, 100); // Poll every 100ms for updates
+    // Event-driven LUFS: register callback on audioEngine, fall back to polling
+    let interval: ReturnType<typeof setInterval> | undefined;
+    
+    if (typeof audioEngine.onLufsChange === 'function') {
+      audioEngine.onLufsChange = (value: number) => setLufs(value);
+    } else {
+      // Fallback: poll at reduced rate (4Hz instead of 10Hz)
+      interval = setInterval(() => {
+        const currentLufs = audioEngine.getLufsValue();
+        if (currentLufs !== 0) setLufs(currentLufs);
+      }, 250);
+    }
 
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    return () => {
+      if (interval) clearInterval(interval);
+      if (typeof audioEngine.onLufsChange === 'function') {
+        audioEngine.onLufsChange = () => {};
+      }
+    };
   }, []);
 
   const handleSampleDrop = (sample: AudioSample) => {

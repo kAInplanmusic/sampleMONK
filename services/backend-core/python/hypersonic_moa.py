@@ -13,10 +13,11 @@ class HyperSonicMOA:
     async def call_gemini(self, prompt: str, context: str = "") -> str:
         if not self.gemini_key:
             return "Gemini API Key is not configured."
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.gemini_key}"
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        headers = {"x-goog-api-key": self.gemini_key, "Content-Type": "application/json"}
         payload = {"contents": [{"parts": [{"text": f"{prompt}\n\nContext: {context}"}]}]}
         try:
-            response = await self.client.post(url, json=payload)
+            response = await self.client.post(url, json=payload, headers=headers)
             if response.status_code == 200:
                 result = response.json()
                 return result['candidates'][0]['content']['parts'][0]['text']
