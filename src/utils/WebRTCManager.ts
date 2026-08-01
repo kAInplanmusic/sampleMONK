@@ -1,17 +1,23 @@
 import { io, Socket } from 'socket.io-client';
 import { WebRTCMessage } from '../types/protocol';
+import { SOCKET_IO_SIGNALING_URL } from '../config/runtime';
 
 class WebRTCManager {
-  private socket: Socket;
+  private socket: Socket | null = null;
   private peerConnections: Map<string, RTCPeerConnection> = new Map();
   private dataChannels: Map<string, RTCDataChannel> = new Map();
   private localStream: MediaStream | null = null;
   public onRemoteStream: (stream: MediaStream, senderId: string) => void = () => {};
 
   constructor() {
-    this.socket = io('http://localhost:3001');
-    this.setupSignaling();
-    this.initLocalAudio();
+    if (SOCKET_IO_SIGNALING_URL) {
+      this.socket = io(SOCKET_IO_SIGNALING_URL, {
+        autoConnect: true,
+        transports: ['websocket', 'polling'],
+      });
+      this.setupSignaling();
+      this.initLocalAudio();
+    }
   }
 
   private async initLocalAudio() {
@@ -23,6 +29,8 @@ class WebRTCManager {
   }
 
   private setupSignaling() {
+    if (!this.socket) return;
+
     this.socket.on('offer', async (data) => {
       const pc = this.createPeerConnection(data.sender);
       await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -40,6 +48,10 @@ class WebRTCManager {
       const pc = this.peerConnections.get(data.sender);
       if (pc) pc.addIceCandidate(new RTCIceCandidate(data.candidate));
     });
+
+    this.socket.on('connect_error', (error) => {
+      console.warn('Signaling connection failed:', error.message);
+    });
   }
 
   private createPeerConnection(targetId: string): RTCPeerConnection {
@@ -53,7 +65,7 @@ class WebRTCManager {
     }
 
     pc.onicecandidate = (e) => {
-      if (e.candidate) this.socket.emit('ice-candidate', { target: targetId, candidate: e.candidate });
+      if (e.candidate) this.socket?.emit('ice-candidate', { target: targetId, candidate: e.candidate });
     };
 
     pc.ondatachannel = (e) => {
@@ -85,7 +97,7 @@ class WebRTCManager {
     
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    this.socket.emit('offer', { target: targetId, offer });
+    this.socket?.emit('offer', { target: targetId, offer });
   }
 
   public sendToAllPeers(data: WebRTCMessage) {

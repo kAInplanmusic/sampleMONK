@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { rtcConfig } from '../config/webrtc';
+import { SIGNALING_WS_URL } from '../config/runtime';
 
 export function useWebRTC(userId: string | null, roomId: string | null, localStream: MediaStream | null) {
   const [peers, setPeers] = useState<Map<string, RTCPeerConnection>>(new Map());
@@ -7,10 +8,10 @@ export function useWebRTC(userId: string | null, roomId: string | null, localStr
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!userId || !roomId) return;
+    if (!userId || !roomId || !SIGNALING_WS_URL) return;
 
     // Signaling Server
-    socketRef.current = new WebSocket('ws://localhost:8080');
+    socketRef.current = new WebSocket(SIGNALING_WS_URL);
 
     socketRef.current.onopen = () => {
       socketRef.current?.send(JSON.stringify({ type: 'init', sender: userId }));

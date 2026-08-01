@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useRef, useEffect, useState } from 'react';
 import * as Tone from 'tone';
+import { SIGNALING_HTTP_URL, SIGNALING_TRANSPORT_URL } from '../config/runtime';
 
 // Define the shape of the context value
 interface AudioContextType {
@@ -171,11 +172,15 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                 localStorage.setItem('webrtcLocalDescription', JSON.stringify(pc.localDescription));
 
                 let answer;
+                if (!SIGNALING_HTTP_URL) {
+                    console.warn('WebRTC signaling is disabled: no production signaling endpoint configured.');
+                    return;
+                }
                 // Feature detect WebTransport and attempt to use it for sending offer
-                if (typeof (window as any).WebTransport !== 'undefined') {
+                if (SIGNALING_TRANSPORT_URL && typeof (window as any).WebTransport !== 'undefined') {
                     // console.log("Attempting WebRTC signaling over WebTransport.");
                     try {
-                        const wt = new (window as any).WebTransport("https://localhost:8002/webrtc-signaling");
+                        const wt = new (window as any).WebTransport(SIGNALING_TRANSPORT_URL);
                         await wt.ready;
                         // console.log("WebTransport connection established.");
 
@@ -188,7 +193,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                         await writer.close(); 
                         
                         // console.log("Offer sent via WebTransport. Fetching answer via HTTP fallback for now.");
-                        const response = await fetch('http://localhost:8001/offer', {
+                        const response = await fetch(`${SIGNALING_HTTP_URL}/offer`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ sdp: pc.localDescription?.sdp, type: pc.localDescription?.type })
@@ -198,7 +203,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
 
                     } catch (wtError) {
                         console.warn("WebTransport signaling failed, falling back to HTTP fetch:", wtError);
-                        const response = await fetch('http://localhost:8001/offer', {
+                        const response = await fetch(`${SIGNALING_HTTP_URL}/offer`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ sdp: pc.localDescription?.sdp, type: pc.localDescription?.type })
@@ -207,7 +212,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                     }
                 } else {
                     // console.log("WebTransport not supported, using HTTP fetch.");
-                    const response = await fetch('http://localhost:8001/offer', {
+                    const response = await fetch(`${SIGNALING_HTTP_URL}/offer`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ sdp: pc.localDescription?.sdp, type: pc.localDescription?.type })

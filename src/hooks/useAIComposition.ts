@@ -1,8 +1,7 @@
 // src/hooks/useAIComposition.ts
 import axios from 'axios';
 import { CompositionResponse, ArrangementSchema } from '../types/composition';
-
-const API_BASE_URL = 'http://localhost:8000/api'; 
+import { API_BASE_URL } from '../config/runtime';
 
 export const useAIComposition = () => {
   

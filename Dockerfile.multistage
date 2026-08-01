@@ -20,5 +20,5 @@ WORKDIR /app
 COPY --from=node-builder /app/dist ./dist
 COPY --from=node-builder /app/node_modules ./node_modules
 COPY --from=node-builder /app/package.json ./
-EXPOSE 3000
+EXPOSE 8080
 CMD ["npm", "start"]
