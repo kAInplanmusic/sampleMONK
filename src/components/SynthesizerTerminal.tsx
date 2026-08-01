@@ -33,7 +33,7 @@ export const SynthesizerTerminal: React.FC = React.memo(() => {
 
     // Cleanup on unmount
     return () => {
-      try { host.dispose?.(); } catch { /* best-effort */ }
+      try { host.dispose(); } catch { /* best-effort */ }
     };
   }, []);
 

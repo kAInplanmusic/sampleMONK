@@ -30,4 +30,8 @@ export class WasmPluginHost {
       this.instance.setParameter(name, value);
     }
   }
+
+  dispose() {
+    this.instance = null;
+  }
 }
