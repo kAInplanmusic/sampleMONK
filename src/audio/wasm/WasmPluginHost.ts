@@ -24,4 +24,10 @@ export class WasmPluginHost {
       this.instance.process(input, output);
     }
   }
+
+  setParameter(name: string, value: number) {
+    if (this.instance) {
+      this.instance.setParameter(name, value);
+    }
+  }
 }

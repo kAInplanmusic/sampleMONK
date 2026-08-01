@@ -5,7 +5,7 @@ import { SIGNALING_HTTP_URL, SIGNALING_TRANSPORT_URL } from '../config/runtime';
 // Define the shape of the context value
 interface AudioContextType {
     startAudio: () => Promise<void>;
-    audioContext: Tone.Context | null; // Expose Tone.context
+    audioContext: globalThis.AudioContext | null;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -74,7 +74,7 @@ const loadAllAudioWorklets = async () => {
 
 export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     const isInitialized = useRef(false);
-    const audioContextRef = useRef<Tone.Context | null>(null); // To store Tone.context
+    const audioContextRef = useRef<globalThis.AudioContext | null>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null); // To store RTCPeerConnection
     const syncDataChannelRef = useRef<RTCDataChannel | null>(null); // To store RTCDataChannel
 
@@ -98,7 +98,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     const startAudio = async () => {
         if (!isInitialized.current) {
             await Tone.start();
-            audioContextRef.current = Tone.context; // Store Tone.context
+            audioContextRef.current = Tone.context.rawContext as globalThis.AudioContext;
 
             // Load all necessary Worklets
             await loadAllAudioWorklets();

@@ -260,6 +260,14 @@ class AudioEngine {
     // ... add more parameter smoothing as needed
   }
 
+  public setEffectParams(_: { type: string; wet: number; power: boolean }) {
+    this.ensureInitialized();
+  }
+
+  public setOnBeatCallback(callback: (step: number) => void) {
+    this.onBeatCallback = callback;
+  }
+
   public syncClock(pingTime: number, pongTime: number) {
       this.clockSync.handlePong(pongTime, pingTime);
       const drift = this.pll.update(pongTime - pingTime); 
@@ -290,14 +298,6 @@ class AudioEngine {
         if (this.samplePlayers[track]) {
           this.samplePlayers[track].start(time);
         }
-      }
-
-      public setEffectParams(_: { type: string; wet: number; power: boolean }) {
-        this.ensureInitialized();
-      }
-
-      public setOnBeatCallback(callback: (step: number) => void) {
-        this.onBeatCallback = callback;
       }
     });
 

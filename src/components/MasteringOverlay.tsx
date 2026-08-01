@@ -155,7 +155,7 @@ export function MasteringOverlay({
                 {Object.entries(MASTERING_PRESETS).map(([key, preset]) => (
                   <button
                     key={key}
-                    onClick={() => applyPreset(key)}
+                    onClick={() => applyPreset(key as PresetKey)}
                     className={`w-full text-left px-4 py-3 rounded-lg font-mono text-xs transition-all border ${activePreset === key ? 'bg-sky-500/10 border-sky-500/50 text-sky-300 shadow-[inset_0_0_15px_rgba(14,165,233,0.1)]' : 'bg-black/20 border-neutral-800/50 text-neutral-400 hover:bg-white/5 hover:border-neutral-700'}`}
                   >
                     <div className="font-bold tracking-tight">{preset.name}</div>
