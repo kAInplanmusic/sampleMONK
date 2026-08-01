@@ -45,9 +45,14 @@ const loadAllAudioWorklets = async () => {
         return;
     }
 
+    const normalizeWorkletUrls = (url: string): string[] => {
+        const normalized = url.startsWith('/public/') ? url.replace('/public/', '/') : url;
+        return Array.from(new Set([url, normalized]));
+    };
+
     const workletsConfigFromManifest = manifest?.worklets.map(w => ({
         name: w.id, 
-        url: w.url,
+        urls: normalizeWorkletUrls(w.url),
         processorId: w.id,
         hash: w.hash
     })) || [];
@@ -55,11 +60,23 @@ const loadAllAudioWorklets = async () => {
     const rawCtx = Tone.context.rawContext as AudioContext;
 
     for (const worklet of workletsConfigFromManifest) {
+        let loaded = false;
         try {
-            await rawCtx.audioWorklet.addModule(worklet.url);
-            // console.log(`${worklet.name} (${worklet.processorId}) loaded successfully from ${worklet.url}.`);
+            for (const candidateUrl of worklet.urls) {
+                try {
+                    await rawCtx.audioWorklet.addModule(candidateUrl);
+                    loaded = true;
+                    break;
+                } catch {
+                    // Try next candidate
+                }
+            }
+
+            if (!loaded) {
+                throw new Error(`No valid URL for ${worklet.name}`);
+            }
         } catch (error) {
-            console.error(`Failed to load ${worklet.name} from ${worklet.url}:`, error);
+            console.error(`Failed to load ${worklet.name}:`, error);
             try {
                 await registerDummyProcessor(worklet.processorId);
                 console.warn(`Registered dummy-processor as '${worklet.processorId}' for ${worklet.name}.`);
