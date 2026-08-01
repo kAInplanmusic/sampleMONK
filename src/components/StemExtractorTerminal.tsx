@@ -9,25 +9,47 @@ import { routeStemToMixer } from '../utils/StemRouter';
 export function StemExtractorTerminal() {
   const { addSample } = useSamples();
   const { streamStems } = useAudioAI();
-  const { state, lockStatus, updateState } = usePluginState('stem_extractor', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('stem_extractor', 'PRO');
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [extracted, setExtracted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const ALLOWED_AUDIO_TYPES = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac', 'audio/ogg', 'audio/aiff'];
+  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selected = e.target.files[0];
+      // Validate file type
+      if (selected.type && !ALLOWED_AUDIO_TYPES.includes(selected.type)) {
+        setError(`Unsupported file type: ${selected.type}. Please upload WAV, MP3, FLAC, OGG, or AIFF.`);
+        return;
+      }
+      // Validate file size
+      if (selected.size > MAX_FILE_SIZE) {
+        setError(`File too large (${(selected.size / 1024 / 1024).toFixed(0)} MB). Maximum is 500 MB.`);
+        return;
+      }
+      setFile(selected);
       setExtracted(false);
       setError(null);
     }
   };
 
+  const cancelExtraction = () => {
+    abortRef.current?.abort();
+    setIsExtracting(false);
+    setProgress(0);
+  };
+
   const startExtraction = async () => {
     if (!file || (lockStatus.active && lockStatus.lockedBy !== 'localUser')) return;
     
+    abortRef.current = new AbortController();
     setIsExtracting(true);
     setProgress(0);
     setError(null);
@@ -78,8 +100,8 @@ export function StemExtractorTerminal() {
         </h3>
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
       </div>
       
@@ -96,11 +118,11 @@ export function StemExtractorTerminal() {
       </button>
 
       <button 
-        disabled={isExtracting || !file}
-        onClick={startExtraction}
-        className={`w-full py-3 rounded text-sm font-black uppercase tracking-widest ${isExtracting ? 'bg-neutral-800 text-neutral-500' : 'bg-red-600 hover:bg-red-500'}`}
+        disabled={!file && !isExtracting}
+        onClick={isExtracting ? cancelExtraction : startExtraction}
+        className={`w-full py-3 rounded text-sm font-black uppercase tracking-widest ${isExtracting ? 'bg-neutral-800 text-neutral-500' : !file ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'}`}
       >
-        {isExtracting ? `Extracting ${progress}%...` : "Run Extraction"}
+        {isExtracting ? `Extracting ${progress}%... (Click to Cancel)` : "Run Extraction"}
       </button>
     </div>
   );

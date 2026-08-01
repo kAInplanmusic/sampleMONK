@@ -20,7 +20,7 @@ interface SequencerProps {
 
 export const SequencerPluginTerminal = React.memo(function SequencerPluginTerminal(props: SequencerProps) {
   const { setSelectedSample } = useSamples();
-  const { state, lockStatus, updateState } = usePluginState('sequencer', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('sequencer', 'PRO');
   const [currentStep, setCurrentStep] = useState(0);
   const channels: TrackType[] = ['channel1', 'channel2', 'channel3', 'channel4', 'channel5', 'channel6', 'channel7', 'channel8'];
   const [trackSamples, setTrackSamples] = useState<Record<string, AudioSample | null>>({});
@@ -62,7 +62,7 @@ export const SequencerPluginTerminal = React.memo(function SequencerPluginTermin
             <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
                 <option value="OFF">OFF</option>
                 <option value="AUTO_AI">AI</option>
-                <option value="ACTIVE">ACTIVE</option>
+                <option value="PRO">ACTIVE</option>
             </select>
 
             <div className="flex gap-4 items-center">

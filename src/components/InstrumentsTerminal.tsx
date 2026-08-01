@@ -23,14 +23,66 @@ const INSTRUMENT_CATEGORIES = [
   { name: 'Weltmusik & Chor', icon: Layers }
 ];
 
+const PRESET_INSTRUMENTS: Instrument[] = [
+  { id: 1, name: 'Grand Piano', category: 'Tasteninstrumente', type: 'soundfont' },
+  { id: 2, name: 'Electric Piano (Rhodes)', category: 'Tasteninstrumente', type: 'sampler' },
+  { id: 3, name: 'Organ (Hammond B3)', category: 'Tasteninstrumente', type: 'synth' },
+  { id: 4, name: 'Harpsichord', category: 'Tasteninstrumente', type: 'soundfont' },
+  { id: 5, name: 'Celesta', category: 'Tasteninstrumente', type: 'soundfont' },
+  { id: 6, name: 'Accordion', category: 'Tasteninstrumente', type: 'sampler' },
+  { id: 7, name: 'Clavinet', category: 'Tasteninstrumente', type: 'sampler' },
+  { id: 8, name: 'Marimba', category: 'Tasteninstrumente', type: 'soundfont' },
+  { id: 9, name: 'Vibraphone', category: 'Tasteninstrumente', type: 'soundfont' },
+  { id: 10, name: 'Glockenspiel', category: 'Tasteninstrumente', type: 'soundfont' },
+  { id: 11, name: 'Violin', category: 'Streichinstrumente', type: 'soundfont' },
+  { id: 12, name: 'Viola', category: 'Streichinstrumente', type: 'soundfont' },
+  { id: 13, name: 'Cello', category: 'Streichinstrumente', type: 'soundfont' },
+  { id: 14, name: 'Contrabass', category: 'Streichinstrumente', type: 'soundfont' },
+  { id: 15, name: 'String Ensemble', category: 'Streichinstrumente', type: 'soundfont' },
+  { id: 16, name: 'Harp', category: 'Streichinstrumente', type: 'soundfont' },
+  { id: 17, name: 'Acoustic Guitar (Nylon)', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 18, name: 'Acoustic Guitar (Steel)', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 19, name: 'Electric Guitar (Clean)', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 20, name: 'Electric Guitar (Overdrive)', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 21, name: 'Electric Bass', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 22, name: 'Banjo', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 23, name: 'Ukulele', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 24, name: 'Mandolin', category: 'Zupfinstrumente', type: 'sampler' },
+  { id: 25, name: 'Sitar', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 26, name: 'Trumpet', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 27, name: 'Trombone', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 28, name: 'French Horn', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 29, name: 'Tuba', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 30, name: 'Saxophone (Alto)', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 31, name: 'Saxophone (Tenor)', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 32, name: 'Clarinet', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 33, name: 'Oboe', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 34, name: 'Flute', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 35, name: 'Piccolo', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 36, name: 'Bassoon', category: 'Blasinstrumente', type: 'soundfont' },
+  { id: 37, name: 'Harmonica', category: 'Blasinstrumente', type: 'sampler' },
+  { id: 38, name: 'Pan Flute', category: 'Weltmusik & Chor', type: 'soundfont' },
+  { id: 39, name: 'Shakuhachi', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 40, name: 'Kalimba', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 41, name: 'Didgeridoo', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 42, name: 'Koto', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 43, name: 'Erhu', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 44, name: 'Steel Drum', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 45, name: 'Choir (Aah)', category: 'Weltmusik & Chor', type: 'soundfont' },
+  { id: 46, name: 'Choir (Ooh)', category: 'Weltmusik & Chor', type: 'soundfont' },
+  { id: 47, name: 'Theremin', category: 'Weltmusik & Chor', type: 'synth' },
+  { id: 48, name: 'Bagpipe', category: 'Weltmusik & Chor', type: 'sampler' },
+  { id: 49, name: 'Timpani', category: 'Weltmusik & Chor', type: 'soundfont' },
+  { id: 50, name: 'Tubular Bells', category: 'Weltmusik & Chor', type: 'soundfont' },
+];
+
 export function InstrumentsTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('instruments', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('instruments', 'PRO');
   const [activeCategory, setActiveCategory] = useState('Tasteninstrumente');
   const [search, setSearch] = useState('');
-  const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const [instruments] = useState<Instrument[]>(PRESET_INSTRUMENTS);
   const [activeInstrument, setActiveInstrument] = useState<Instrument | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [masterEngine, setMasterEngine] = useState<any>(null);
   const [droppedSample, setDroppedSample] = useState<AudioSample | null>(null);
 
   const handleSampleDrop = (sample: AudioSample) => {
@@ -71,8 +123,8 @@ export function InstrumentsTerminal() {
         </h2>
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
       </div>
 

@@ -6,7 +6,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 
 export function FXEngineTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('effect', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('effect', 'PRO');
   const [power, setPower] = useState(true);
   const [activeFx, setActiveFx] = useState('REVERB');
   const [wetDry, setWetDry] = useState(50);
@@ -118,8 +118,8 @@ export function FXEngineTerminal() {
         
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
         
         <button 
@@ -163,7 +163,62 @@ export function FXEngineTerminal() {
                 </div>
              </div>
          </div>
-         {/* ... rest of columns */}
+         {/* Center Column: FX Selection & Visualizer */}
+         <div className="col-span-6 flex flex-col gap-6">
+             <div className="bg-black rounded-2xl border border-neutral-800 p-4 shadow-inner">
+                 <canvas ref={canvasRef} width={600} height={120} className="w-full h-full rounded-xl" />
+             </div>
+             
+             <div className="bg-[#1a1a1a] rounded-2xl border border-neutral-800 p-6 flex flex-col gap-4 flex-1 shadow-inner">
+                 <h3 className="font-bold text-sm tracking-widest uppercase text-neutral-400 flex items-center gap-2">
+                    <Radio className="w-4 h-4 text-rose-500" /> EFFECT ALGORITHMS
+                 </h3>
+                 <div className="grid grid-cols-4 gap-3">
+                     {fxList.map(fx => (
+                         <button 
+                             key={fx.id}
+                             onClick={() => handleFxChange(fx.id)}
+                             className={`py-3 px-2 rounded-xl border text-[10px] font-black tracking-widest transition-all ${activeFx === fx.id ? 'bg-rose-900/40 border-rose-500 text-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'bg-[#111] border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400'}`}
+                         >
+                             {fx.label}
+                         </button>
+                     ))}
+                 </div>
+             </div>
+         </div>
+
+         {/* Right Column: Controls */}
+         <div className="col-span-3 flex flex-col gap-6">
+             <div className="bg-[#1a1a1a] rounded-2xl border border-neutral-800 p-6 flex flex-col gap-4 shadow-inner">
+                 <h3 className="font-bold text-sm tracking-widest uppercase text-neutral-400 flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-rose-500" /> WET / DRY
+                 </h3>
+                 <input
+                     type="range"
+                     min="0" max="100"
+                     value={wetDry}
+                     onChange={(e) => setWetDry(Number(e.target.value))}
+                     className="w-full accent-rose-500"
+                 />
+                 <div className="flex justify-between text-[10px] font-mono text-neutral-500">
+                     <span>DRY</span>
+                     <span className="text-rose-400 font-bold">{wetDry}%</span>
+                     <span>WET</span>
+                 </div>
+             </div>
+             
+             <div className="bg-[#1a1a1a] rounded-2xl border border-neutral-800 p-6 flex flex-col gap-4 flex-1 shadow-inner">
+                 <h3 className="font-bold text-sm tracking-widest uppercase text-neutral-400 flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-rose-500" /> SIGNAL STATUS
+                 </h3>
+                 <div className="flex flex-col gap-2 text-[10px] font-mono text-neutral-500">
+                     <div className="flex justify-between"><span>ALGORITHM</span><span className="text-rose-400">{activeFx}</span></div>
+                     <div className="flex justify-between"><span>MIX</span><span className="text-neutral-300">{wetDry}%</span></div>
+                     <div className="flex justify-between"><span>SOURCE</span><span className="text-neutral-300">{sourceSample?.name || 'MASTER BUS'}</span></div>
+                     <div className="flex justify-between"><span>STATUS</span><span className={power ? 'text-green-400' : 'text-red-400'}>{power ? 'ACTIVE' : 'BYPASS'}</span></div>
+                 </div>
+             </div>
+         </div>
       </div>
     </div>
   );

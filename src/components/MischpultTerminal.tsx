@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Sliders } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { usePluginState } from '../hooks/usePluginState';
+import { audioEngine } from '../utils/audioEngine';
 
 interface RoutingEntry {
   channel: number;
@@ -44,7 +45,7 @@ const ChannelStrip = React.memo(({ ch, onUpdate }: { ch: RoutingEntry; onUpdate:
 });
 
 export const MischpultTerminal = React.memo(() => {
-  const { state, lockStatus, updateState } = usePluginState('mixer', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('mixer', 'PRO');
   const [channels, setChannels] = useState<RoutingEntry[]>(
     Array.from({ length: 10 }, (_, i) => ({
       channel: i,
@@ -56,8 +57,20 @@ export const MischpultTerminal = React.memo(() => {
     }))
   );
 
-  const updateChannel = React.useCallback((channel: number, updates: Partial<RoutingEntry>) => {
-    setChannels(prev => prev.map(ch => ch.channel === channel ? { ...ch, ...updates } : ch));
+  const updateChannel = useCallback((channel: number, updates: Partial<RoutingEntry>) => {
+    setChannels(prev => prev.map(ch => {
+      if (ch.channel !== channel) return ch;
+      const updated = { ...ch, ...updates };
+      // Apply volume/pan changes to audio engine
+      if (updates.volume !== undefined) {
+        const dbVolume = updated.volume > 0 ? 20 * Math.log10(updated.volume) : -Infinity;
+        audioEngine.setWorkletParam(`ch${channel}_volume`, dbVolume);
+      }
+      if (updates.pan !== undefined) {
+        audioEngine.setWorkletParam(`ch${channel}_pan`, updated.pan);
+      }
+      return updated;
+    }));
   }, []);
 
   return (
@@ -71,8 +84,8 @@ export const MischpultTerminal = React.memo(() => {
         </div>
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
       </div>
 

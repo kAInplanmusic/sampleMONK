@@ -4,7 +4,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 
 export function DSPTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('dsp', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('dsp', 'PRO');
   const [power, setPower] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -82,8 +82,8 @@ export function DSPTerminal() {
         
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
         
         <button 

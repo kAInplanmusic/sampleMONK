@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Keyboard, Activity, Link2, RefreshCw, Cpu, Layers } from 'lucide-react';
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
@@ -8,7 +8,7 @@ import { useHID } from '../hooks/useHID';
 import { audioEngine } from '../utils/audioEngine';
 
 export function MIDIControllerTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('midi', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('midi', 'PRO');
   const { midiAccess, lastMessage } = useMIDI();
   const { devices } = useHID();
   const [activeProfile, setActiveProfile] = useState('APC40');
@@ -16,16 +16,29 @@ export function MIDIControllerTerminal() {
   const [padMappings, setPadMappings] = useState<Record<number, AudioSample>>({});
 
   useEffect(() => {
-    if (lastMessage) {
-        const [status, note, velocity] = lastMessage.data!;
-        // Handle Note On (status 144)
-        if (status === 144 && velocity > 0) {
-            const padIndex = note % 40; // Mapping MIDI note to padIndex
-            const sample = padMappings[padIndex];
-            if (sample) {
-                audioEngine.previewSample('channel5', undefined, sample.url);
-            }
+    if (!lastMessage?.data || lastMessage.data.length < 3) return;
+    
+    const [status, note, velocity] = lastMessage.data;
+    // Validate MIDI data ranges
+    if (typeof status !== 'number' || typeof note !== 'number' || typeof velocity !== 'number') return;
+    
+    const messageType = status & 0xF0; // Extract message type (upper nibble)
+    
+    // Handle Note On (0x90 = 144)
+    if (messageType === 0x90 && velocity > 0) {
+        const padIndex = note % 40;
+        const sample = padMappings[padIndex];
+        if (sample?.url) {
+            audioEngine.previewSample('channel5', undefined, sample.url);
         }
+    }
+    // Handle Control Change (0xB0 = 176) - faders, knobs
+    else if (messageType === 0xB0) {
+        const ccNumber = note;
+        const ccValue = velocity;
+        // Map CC values to engine parameters (0-127 → normalized)
+        const normalized = ccValue / 127;
+        audioEngine.setWorkletParam(`cc_${ccNumber}`, normalized);
     }
   }, [lastMessage, padMappings]);
   
@@ -45,11 +58,11 @@ export function MIDIControllerTerminal() {
     { id: 'DAW', name: 'DAW/Mixer-Controller', type: 'Automation & Mixing' },
   ];
 
-  const groupedProfiles = profiles.reduce((acc: any, p) => {
+  const groupedProfiles = useMemo(() => profiles.reduce((acc: any, p) => {
     if (!acc[p.type]) acc[p.type] = [];
     acc[p.type].push(p);
     return acc;
-  }, {});
+  }, {}), []);
 
   const handleSampleDrop = (sample: AudioSample, padIndex: number) => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
@@ -75,8 +88,8 @@ export function MIDIControllerTerminal() {
         
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
         
         <div className={`px-4 py-2 rounded border flex items-center gap-2 text-xs font-bold tracking-widest ${isConnected ? 'bg-emerald-900/20 border-emerald-500/50 text-emerald-400' : 'bg-red-900/20 border-red-500/50 text-red-400'}`}>

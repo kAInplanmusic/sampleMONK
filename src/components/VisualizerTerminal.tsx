@@ -4,7 +4,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 
 export const VisualizerTerminal: React.FC = React.memo(() => {
-  const { state, lockStatus, updateState } = usePluginState('visualizer', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('visualizer', 'PRO');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -17,8 +17,8 @@ export const VisualizerTerminal: React.FC = React.memo(() => {
     
     const draw = () => {
         const waveform = audioEngine.sharedWaveformBuffer;
-        if (waveform) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (waveform && waveform.length > 0) {
             ctx.beginPath();
             ctx.strokeStyle = '#14b8a6';
             ctx.lineWidth = 2;
@@ -46,8 +46,8 @@ export const VisualizerTerminal: React.FC = React.memo(() => {
         </h3>
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
       </div>
       <canvas ref={canvasRef} width={400} height={150} className="w-full bg-black rounded" />

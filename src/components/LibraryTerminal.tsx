@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Database, Play, Download, Clipboard, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
@@ -12,19 +12,20 @@ export function LibraryTerminal() {
   const [category, setCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredSamples = samples.filter(sample => {
-    const matchesCategory = category === 'all' || sample.category === category;
-    return matchesCategory;
-  });
+  const filteredSamples = useMemo(() => 
+    samples.filter(sample => category === 'all' || sample.category === category),
+    [samples, category]
+  );
 
-  const totalPages = Math.ceil(filteredSamples.length / ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(filteredSamples.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
   const paginatedSamples = filteredSamples.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (safePage - 1) * ITEMS_PER_PAGE,
+    safePage * ITEMS_PER_PAGE
   );
 
   const handleCopy = (sample: AudioSample) => {
-    navigator.clipboard.writeText(JSON.stringify(sample));
+    navigator.clipboard.writeText(JSON.stringify(sample, null, 2));
   };
 
   const handleDragStart = (e: React.DragEvent, sample: AudioSample) => {

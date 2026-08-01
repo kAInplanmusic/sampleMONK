@@ -80,7 +80,13 @@ const createFallbackRegistry = () =>
     };
   });
 
-export let PLUGIN_REGISTRY: any[] = [];
+let _pluginRegistry: readonly any[] = [];
+
+/** Read-only accessor – prevents external mutation of the registry. */
+export const getPluginRegistry = (): readonly any[] => _pluginRegistry;
+
+/** @deprecated Use getPluginRegistry() instead. Kept for backward compatibility. */
+export const PLUGIN_REGISTRY: any[] = [] as any;
 
 export const discoverPlugins = async () => {
     try {
@@ -95,8 +101,11 @@ export const discoverPlugins = async () => {
             })).filter((p: any) => p.component);
 
             if (discoveredPlugins.length === EXPECTED_PLUGIN_COUNT) {
-                PLUGIN_REGISTRY = discoveredPlugins;
-                return PLUGIN_REGISTRY;
+                _pluginRegistry = Object.freeze(discoveredPlugins);
+                // Keep backward-compat array in sync
+                PLUGIN_REGISTRY.length = 0;
+                PLUGIN_REGISTRY.push(...discoveredPlugins);
+                return _pluginRegistry;
             }
              
             console.warn(
@@ -106,9 +115,14 @@ export const discoverPlugins = async () => {
     } catch (error) {
         console.error("Failed to discover plugins:", error);
     }
-    PLUGIN_REGISTRY = createFallbackRegistry();
-    return PLUGIN_REGISTRY;
+    const fallback = Object.freeze(createFallbackRegistry());
+    _pluginRegistry = fallback;
+    PLUGIN_REGISTRY.length = 0;
+    PLUGIN_REGISTRY.push(...fallback);
+    return _pluginRegistry;
 };
 
-// Initial synchronous population (can be updated later by discoverPlugins)
-PLUGIN_REGISTRY = createFallbackRegistry();
+// Initial synchronous population
+const _initial = createFallbackRegistry();
+_pluginRegistry = Object.freeze(_initial);
+PLUGIN_REGISTRY.push(..._initial);

@@ -12,7 +12,7 @@ interface AccessContextType {
 const AccessContext = createContext<AccessContextType | undefined>(undefined);
 
 export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [role, setRole] = useState<UserRole>('ADMIN');
+  const [role, setRole] = useState<UserRole>('VIEWER');
 
   const canPerformAction = (action: string) => {
     if (role === 'ADMIN') return true;

@@ -11,14 +11,15 @@ const DEFAULT_SYNTH_PARAMS = {
 };
 
 export const SynthesizerTerminal: React.FC = React.memo(() => {
-  const { state, lockStatus, updateState } = usePluginState('synth', 'ACTIVE');
-  const [host] = useState(new WasmPluginHost());
+  const { state, lockStatus, updateState } = usePluginState('synth', 'PRO');
+  const hostRef = React.useRef(new WasmPluginHost());
   const [isLoaded, setIsLoaded] = useState(false);
   const [cutoff, setCutoff] = useState(DEFAULT_SYNTH_PARAMS.cutoff);
   const [decay, setDecay] = useState(DEFAULT_SYNTH_PARAMS.decay);
   const [engine, setEngine] = useState(DEFAULT_SYNTH_PARAMS.engine);
 
   useEffect(() => {
+    const host = hostRef.current;
     // Load plugin on startup
     host.loadPlugin('/plugins/synth_core.wasm').then(() => {
         setIsLoaded(true);
@@ -26,11 +27,18 @@ export const SynthesizerTerminal: React.FC = React.memo(() => {
         host.setParameter('cutoff', cutoff);
         host.setParameter('decay', decay);
         host.setParameter('engine', engine === 'SUBTRACTIVE' ? 0 : engine === 'FM' ? 1 : 2);
-        // console.log("WASM Synth loaded");
+    }).catch(err => {
+        console.error('Failed to load WASM synth plugin:', err);
     });
+
+    // Cleanup on unmount
+    return () => {
+      try { host.dispose?.(); } catch { /* best-effort */ }
+    };
   }, []);
 
   const validateAndSetParameter = (param: string, value: number | string) => {
+    const host = hostRef.current;
     if (!isLoaded || !host) {
       console.warn(`Attempted to set ${param} before synth is loaded`);
       return false;

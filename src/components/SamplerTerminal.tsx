@@ -5,7 +5,7 @@ import { audioEngine } from '../utils/audioEngine';
 import { SampleModuleWrapper } from './SampleModuleWrapper';
 
 export const SamplerTerminal: React.FC = () => {
-  const { state, lockStatus, updateState } = usePluginState('sampler', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('sampler', 'PRO');
   const [grainSize, setGrainSize] = useState(50); // ms
   const [density, setDensity] = useState(5); // grains per sec
   const [position, setPosition] = useState(0); // 0-100%
@@ -30,8 +30,8 @@ export const SamplerTerminal: React.FC = () => {
             </h3>
             <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
                 <option value="OFF">OFF</option>
-                <option value="AI_CONTROLLED">AI</option>
-                <option value="ACTIVE">ACTIVE</option>
+                <option value="AUTO_AI">AI</option>
+                <option value="PRO">ACTIVE</option>
             </select>
         </div>
 

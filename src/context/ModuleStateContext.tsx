@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 export type ModuleState = 'OFF' | 'AUTO_AI' | 'PRO';
+
+const STORAGE_KEY = 'samplemonk_module_states';
 
 interface ModuleContextType {
   moduleStates: Record<string, ModuleState>;
@@ -9,12 +11,27 @@ interface ModuleContextType {
 
 const ModuleStateContext = createContext<ModuleContextType | undefined>(undefined);
 
-export const ModuleStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [moduleStates, setModuleStates] = useState<Record<string, ModuleState>>({});
+const loadPersistedStates = (): Record<string, ModuleState> => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore corrupt data */ }
+  return {};
+};
 
-  const setModuleState = (id: string, state: ModuleState) => {
+export const ModuleStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [moduleStates, setModuleStates] = useState<Record<string, ModuleState>>(loadPersistedStates);
+
+  // Persist to localStorage on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(moduleStates));
+    } catch { /* quota exceeded – non-critical */ }
+  }, [moduleStates]);
+
+  const setModuleState = useCallback((id: string, state: ModuleState) => {
     setModuleStates(prev => ({ ...prev, [id]: state }));
-  };
+  }, []);
 
   return (
     <ModuleStateContext.Provider value={{ moduleStates, setModuleState }}>

@@ -4,7 +4,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 
 export function EQPluginTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('eq', 'ACTIVE');
+  const { state, lockStatus, updateState } = usePluginState('eq', 'PRO');
   const [power, setPower] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -28,7 +28,7 @@ export function EQPluginTerminal() {
     
     // Update audioEngine
     audioEngine.updateToneShiftEQ({
-        bands: bands.map((b, i) => ({ freq: parseInt(b.freq), gain: newGains[i], q: 1 }))
+        bands: bands.map((b, i) => ({ freq: parseFloat(b.freq) || parseInt(b.freq), gain: newGains[i], q: 1 }))
     });
   };
 
@@ -130,8 +130,8 @@ export function EQPluginTerminal() {
         
         <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
-            <option value="AI_CONTROLLED">AI</option>
-            <option value="ACTIVE">ACTIVE</option>
+            <option value="AUTO_AI">AI</option>
+            <option value="PRO">ACTIVE</option>
         </select>
         
         <button 
