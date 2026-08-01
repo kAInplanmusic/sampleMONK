@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Music } from 'lucide-react';
 import { PLUGIN_REGISTRY, discoverPlugins } from './plugins/registry';
 import { audioEngine } from './utils/audioEngine';
@@ -13,6 +13,7 @@ import { SafeModuleBoundary } from './components/SafeModuleBoundary';
 import { PluginButton } from './components/PluginButton';
 import { FEATURE_FLAGS } from './config/featureFlags';
 import { VoiceGenTerminal } from './components/VoiceGenTerminal';
+import { useAudio } from './context/AudioContext';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
 }
 
 function AppComponent() {
+  const { startAudio } = useAudio();
   const { moduleStates, setModuleState } = useModuleState();
   const { requestLock, releaseLock } = usePluginManager();
   
@@ -32,7 +34,15 @@ function AppComponent() {
   const [patterns, setPatterns] = useState(TECHNO_PRESETS[0].patterns);
   const [isStarted, setIsStarted] = useState(false);
 
+  useEffect(() => {
+    audioEngine.onStepUpdate = setCurrentStep;
+    return () => {
+      audioEngine.onStepUpdate = () => {};
+    };
+  }, []);
+
   const startApp = async () => {
+      await startAudio();
       await discoverPlugins();
       await audioEngine.play();
       setIsStarted(true);
@@ -68,9 +78,13 @@ function AppComponent() {
     else if (currentState === 'AUTO_AI') nextState = 'PRO';
     else if (currentState === 'PRO') nextState = 'OFF';
     
+    if (nextState === 'PRO') {
+      const lockGranted = requestLock(id, 'localUser');
+      if (!lockGranted) return;
+    } else {
+      releaseLock(id, 'localUser');
+    }
     setModuleState(id, nextState);
-    if (nextState === 'PRO') requestLock(id, 'localUser');
-    else releaseLock(id, 'localUser');
   };
 
   const handleToggleStep = (track: TrackType, stepIndex: number) => {

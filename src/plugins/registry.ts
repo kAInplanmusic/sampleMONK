@@ -43,6 +43,43 @@ const COMPONENT_MAP: Record<string, any> = {
   mastering: MasteringOverlay
 };
 
+const DEFAULT_PLUGIN_METADATA: Record<string, { name: string; short: string; icon: string }> = {
+  mixer: { name: 'mixerMONK', short: 'MIX', icon: 'Sliders' },
+  controller: { name: 'controllerMONK', short: 'CTRL', icon: 'Keyboard' },
+  sequencer: { name: 'sequencerMONK', short: 'SEQ', icon: 'Grid3X3' },
+  spatial: { name: 'spatialMONK', short: '3D', icon: 'Box' },
+  instrument: { name: 'instrumentMONK', short: 'INS', icon: 'Music' },
+  drum: { name: 'drumMONK', short: 'DRM', icon: 'Speaker' },
+  effect: { name: 'effectMONK', short: 'FX', icon: 'Sparkles' },
+  synth: { name: 'synthesizerMONK', short: 'SYN', icon: 'Waves' },
+  voice: { name: 'voiceMONK', short: 'VOX', icon: 'Mic' },
+  visualizer: { name: 'visMONK', short: 'VIS', icon: 'Activity' },
+  stem: { name: 'stemMONK', short: 'RMX', icon: 'Radio' },
+  recording: { name: 'recordingMONK', short: 'REC', icon: 'Activity' },
+  library: { name: 'biblioMONK', short: 'LIB', icon: 'Database' },
+  eq: { name: 'eqMONK', short: 'EQ', icon: 'Activity' },
+  dsp: { name: 'dspMONK', short: 'DSP', icon: 'Zap' },
+  mastering: { name: 'masteringMONK', short: 'MST', icon: 'Square' },
+};
+
+const EXPECTED_PLUGIN_COUNT = 16;
+
+const createFallbackRegistry = () =>
+  Object.keys(COMPONENT_MAP).map((id) => {
+    const metadata = DEFAULT_PLUGIN_METADATA[id] || {
+      name: `${id}MONK`,
+      short: id.substring(0, 3).toUpperCase(),
+      icon: 'Cpu',
+    };
+    return {
+      id,
+      name: metadata.name,
+      short: metadata.short,
+      icon: ICON_MAP[metadata.icon] || Cpu,
+      component: COMPONENT_MAP[id],
+    };
+  });
+
 export let PLUGIN_REGISTRY: any[] = [];
 
 export const discoverPlugins = async () => {
@@ -50,28 +87,28 @@ export const discoverPlugins = async () => {
         const response = await fetch('/plugin-manifest.json');
         const manifest = await response.json();
         
-        if (manifest.ui_plugins) {
-            PLUGIN_REGISTRY = manifest.ui_plugins.map((p: any) => ({
+        if (Array.isArray(manifest.ui_plugins)) {
+            const discoveredPlugins = manifest.ui_plugins.map((p: any) => ({
                 ...p,
                 icon: ICON_MAP[p.icon] || Cpu,
                 component: COMPONENT_MAP[p.id]
             })).filter((p: any) => p.component);
-            
-            // console.log(`Discovered ${PLUGIN_REGISTRY.length} plugins from manifest.`);
+
+            if (discoveredPlugins.length === EXPECTED_PLUGIN_COUNT) {
+                PLUGIN_REGISTRY = discoveredPlugins;
+                return PLUGIN_REGISTRY;
+            }
+             
+            console.warn(
+                `Plugin manifest mismatch: expected ${EXPECTED_PLUGIN_COUNT}, got ${discoveredPlugins.length}. Falling back to built-in registry.`,
+            );
         }
     } catch (error) {
         console.error("Failed to discover plugins:", error);
-        // Fallback to minimal set if manifest fails
-        PLUGIN_REGISTRY = [
-            { id: 'mixer', name: 'mixerMONK', short: 'MIX', icon: Sliders, component: MischpultTerminal }
-        ];
     }
+    PLUGIN_REGISTRY = createFallbackRegistry();
     return PLUGIN_REGISTRY;
 };
 
 // Initial synchronous population (can be updated later by discoverPlugins)
-PLUGIN_REGISTRY = Object.entries(COMPONENT_MAP).map(([id, component]) => {
-    // Find matching icon from manifest-like fallback logic
-    const icon = ICON_MAP[id] || Cpu; 
-    return { id, name: `${id}MONK`, short: id.substring(0,3).toUpperCase(), icon, component };
-});
+PLUGIN_REGISTRY = createFallbackRegistry();

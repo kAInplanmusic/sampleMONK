@@ -2,32 +2,32 @@
   "worklets": [
     {
       "id": "analyzer-processor",
-      "url": "/public/worklets/analyzerProcessor.js",
+      "url": "/worklets/analyzerProcessor.js",
       "hash": "placeholder_hash_analyzer"
     },
     {
       "id": "dsp-processor",
-      "url": "/public/worklets/dspProcessor.js",
+      "url": "/worklets/dspProcessor.js",
       "hash": "placeholder_hash_dsp"
     },
     {
       "id": "fallback-processor",
-      "url": "/public/worklets/fallbackProcessor.js",
+      "url": "/worklets/fallbackProcessor.js",
       "hash": "placeholder_hash_fallback"
     },
     {
       "id": "lufs-processor",
-      "url": "/public/worklets/lufsProcessor.js",
+      "url": "/worklets/lufsProcessor.js",
       "hash": "placeholder_hash_lufs"
     },
     {
       "id": "eq-processor",
-      "url": "/public/worklets/eqProcessor.js",
+      "url": "/worklets/eqProcessor.js",
       "hash": "placeholder_hash_eq"
     },
     {
       "id": "mastering-processor",
-      "url": "/public/worklets/masteringProcessor.js",
+      "url": "/worklets/masteringProcessor.js",
       "hash": "placeholder_hash_mastering"
     }
   ],
