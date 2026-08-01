@@ -6,7 +6,7 @@ export class LatencyMonitor {
 
   public startMeasurement() {
     this.startTime = performance.now();
-    webRTCManager.sendToAllPeers({ type: 'LATENCY_PING', timestamp: this.startTime });
+    webRTCManager.sendToAllPeers({ type: 'LATENCY_PING', timestamp: this.startTime } as any);
   }
 
   public handlePong(timestamp: number): number {

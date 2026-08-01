@@ -77,8 +77,8 @@ export class SpatialSurroundPlugin implements Plugin {
       if (this.isWorkletPanner && (this.currentPanner instanceof AudioWorkletNode)) {
         // Write to SAB instead of postMessage
         if (this._positionBufferView) {
-            Atomics.store(this._positionBufferView, 0, safeX); // Store X at index 0
-            Atomics.store(this._positionBufferView, 1, safeY); // Store Y at index 1
+            this._positionBufferView[0] = safeX;
+            this._positionBufferView[1] = safeY;
         }
       } else if (!this.isWorkletPanner && (this.currentPanner instanceof StereoPannerNode)) {
         this.currentPanner.pan.setValueAtTime(this.mapXYToPan(safeX, safeY), this.audioCtx?.currentTime || 0);

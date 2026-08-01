@@ -9,6 +9,7 @@ class WebRTCManager {
   private localStream: MediaStream | null = null;
   private lastActivitySentAt = 0;
   public onRemoteStream: (stream: MediaStream, senderId: string) => void = () => {};
+  public onDataChannelMessage: (message: any) => void = () => {};
 
   constructor() {
     if (SOCKET_IO_SIGNALING_URL) {
@@ -100,6 +101,7 @@ class WebRTCManager {
         if (data.type === 'LATENCY_PING') {
             e.channel.send(JSON.stringify({ type: 'LATENCY_PONG', timestamp: data.timestamp }));
         }
+        this.onDataChannelMessage(data);
         // console.log('Data from', targetId, data);
       };
     };
@@ -128,6 +130,10 @@ class WebRTCManager {
         channel.send(JSON.stringify(data));
       }
     });
+  }
+
+  public sendData(data: any) {
+    this.sendToAllPeers(data as WebRTCMessage);
   }
 }
 

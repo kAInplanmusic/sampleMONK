@@ -1,27 +1,5 @@
 import React from 'react';
 import { useDevice } from '../hooks/useDevice';
-import { usePluginStatus } from '../hooks/usePluginStatus';
-import { PluginIcon } from './PluginIcon';
-
-// Mock list of 16 plugins - mapped to existing Terminal components
-const plugins = [
-  { id: 'custom-slot', name: 'Custom Slot', component: 'CustomSlotTerminal' },
-  { id: 'drum-synths', name: 'Drum Synths', component: 'DrumMachineTerminal' },
-  { id: 'dsp-engine', name: 'DSP Engine', component: 'DSPTerminal' },
-  { id: 'equalizer', name: 'Equalizer', component: 'EQPluginTerminal' },
-  { id: 'extension-slot', name: 'Extension Slot', component: 'CustomSlotTerminal' },
-  { id: 'fx-engine', name: 'FX Engine', component: 'FXEngineTerminal' },
-  { id: 'instrumente', name: 'Instrumente', component: 'InstrumentsTerminal' },
-  { id: 'masteringTool', name: 'Mastering', component: 'MasteringOverlay' },
-  { id: 'midi-controller', name: 'MIDI', component: 'MIDIControllerTerminal' },
-  { id: 'mischpult', name: 'Mischpult', component: 'MischpultTerminal' },
-  { id: 'recorder', name: 'Recorder', component: 'RecorderTerminal' },
-  { id: 'sample-bibliothek', name: 'Library', component: 'SampleMonkLogo' }, // Placeholder
-  { id: 'sequenzer', name: 'Sequenzer', component: 'SequencerPluginTerminal' },
-  { id: 'spatial-surround', name: 'Spatial', component: 'SpatialPluginTerminal' },
-  { id: 'stem-extractor', name: 'Stem', component: 'StemExtractorTerminal' },
-  { id: 'voice-generator', name: 'Voice', component: 'VoiceGenTerminal' },
-];
 
 interface StreamLayoutProps {
   children: React.ReactNode;

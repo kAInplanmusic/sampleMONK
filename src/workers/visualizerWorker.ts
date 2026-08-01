@@ -6,6 +6,7 @@ let canvasHeight = 0;
 let sharedBuffer: Float32Array | null = null;
 let isPlaying = false;
 let lastDrawTime = 0;
+let animationId: number | null = null;
 const DRAW_INTERVAL = 1000 / 60; // 60 FPS
 
 const draw = (time: number) => {
