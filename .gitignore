@@ -12,3 +12,15 @@ public/samples/instruments/general_midi.sf2
 *.zip
 *.sfArk
 /public/samples/
+
+# Rust build artifacts
+**/target/
+
+# OS files
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

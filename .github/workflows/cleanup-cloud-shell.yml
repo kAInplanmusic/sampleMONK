@@ -1,0 +1,61 @@
+name: "🧹 Cloud Shell Disk Cleanup"
+
+# Trigger: Manuell über GitHub UI (Actions Tab → "Run workflow" Button)
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur Vorschau (nichts löschen)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  cleanup:
+    name: "Cleanup Cloud Shell Home Disk"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "🔐 Authenticate to Google Cloud"
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - name: "☁️ Set up Cloud SDK"
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: "📊 Check disk usage (before)"
+        run: |
+          echo "=== Cloud Shell Home Disk Usage (BEFORE) ==="
+          gcloud cloud-shell ssh --command="df -h \$HOME && echo '---' && du -sh ~/* ~/.* 2>/dev/null | sort -rh | head -20" \
+            --authorize-session
+
+      - name: "🧹 Run cleanup"
+        run: |
+          # Upload and execute the cleanup script on Cloud Shell
+          DRY_RUN_FLAG=""
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          # Transfer script to Cloud Shell and execute
+          gcloud cloud-shell scp localhost:scripts/cleanup-cloud-shell.sh cloudshell:~/cleanup-cloud-shell.sh \
+            --authorize-session
+
+          gcloud cloud-shell ssh --command="chmod +x ~/cleanup-cloud-shell.sh && bash ~/cleanup-cloud-shell.sh $DRY_RUN_FLAG && rm -f ~/cleanup-cloud-shell.sh" \
+            --authorize-session
+
+      - name: "📊 Check disk usage (after)"
+        if: inputs.dry_run == 'false'
+        run: |
+          echo "=== Cloud Shell Home Disk Usage (AFTER) ==="
+          gcloud cloud-shell ssh --command="df -h \$HOME" \
+            --authorize-session
