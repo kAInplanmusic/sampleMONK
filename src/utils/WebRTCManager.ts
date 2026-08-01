@@ -7,6 +7,7 @@ class WebRTCManager {
   private peerConnections: Map<string, RTCPeerConnection> = new Map();
   private dataChannels: Map<string, RTCDataChannel> = new Map();
   private localStream: MediaStream | null = null;
+  private lastActivitySentAt = 0;
   public onRemoteStream: (stream: MediaStream, senderId: string) => void = () => {};
 
   constructor() {
@@ -16,8 +17,29 @@ class WebRTCManager {
         transports: ['websocket', 'polling'],
       });
       this.setupSignaling();
+      this.setupActivityHeartbeat();
       this.initLocalAudio();
     }
+  }
+
+  private setupActivityHeartbeat() {
+    if (typeof window === 'undefined') return;
+
+    const signalActivity = () => {
+      if (!this.socket?.connected) return;
+      const now = Date.now();
+      if (now - this.lastActivitySentAt < 60000) return;
+      this.lastActivitySentAt = now;
+      this.socket.emit('activity');
+    };
+
+    ['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
+      window.addEventListener(eventName, signalActivity, { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') signalActivity();
+    });
   }
 
   private async initLocalAudio() {
