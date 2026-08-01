@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { URL } from 'url';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -46,6 +47,26 @@ const app = express();
 const PORT = Number(process.env.PORT || 8080);
 
 app.use(express.json());
+
+// --- Security: Rate limiting ---
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10, // 10 AI generation requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many AI generation requests, please try again later.' }
+});
+
+// Apply rate limiting to all /api routes
+app.use('/api', apiLimiter);
 
 // --- Security: Firebase Auth middleware for API routes ---
 import { getAuth } from 'firebase-admin/auth';
@@ -114,7 +135,7 @@ async function getAiClient(): Promise<GoogleGenAI> {
 }
 
 // API: Generate a custom techno preset using Gemini AI
-app.post('/api/generate-preset', requireAuth, async (req, res) => {
+app.post('/api/generate-preset', aiLimiter, requireAuth, async (req, res) => {
   const { prompt } = req.body;
 
   if (!prompt || typeof prompt !== 'string') {
@@ -212,7 +233,7 @@ const activeImportTasks: Record<string, { url: string; status: string; progress:
 
 
 // API: HuggingFace Text-to-Audio (Placeholder for MusicGen / similar)
-app.post('/api/huggingface/generate', requireAuth, async (req, res) => {
+app.post('/api/huggingface/generate', aiLimiter, requireAuth, async (req, res) => {
   try {
     const key = process.env.HUGGINGFACE_API_KEY || await getSecret('HUGGINGFACE_API_KEY');
     if (!key) {
