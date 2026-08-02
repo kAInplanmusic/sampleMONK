@@ -22,3 +22,7 @@ Die Architektur folgt einem strikten, linearen Signalfluss von der Quelle bis zu
    - `recordingMONK` (XII) (Finaler Capture des Master-Outputs)
    - `spatialMONK` (IV) (Parallel/Nachgelagert: 10.0 Spatial-Audio Raumverteilung)
    - `Live Web Master Out` (Streaming-Interface)
+
+## Vertiefende Referenz
+
+Für die geplante digitale/analoge Interface-Bridge zwischen App, Edge-DSP, Cluster-Failover und 10-Kanal-Ausgangsstufe siehe `ARCH_DIG_ANA_BRIDGE.md`.

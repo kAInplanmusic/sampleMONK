@@ -30,6 +30,11 @@ Das System besteht aus 16 dedizierten Modulen, die über den `MischpultMONK` (I)
 | XV | dspMONK | Phasenkorrektur, Dynamische Filter. |
 | XVI | masteringMONK | Limiter, Soft-Knee-Kompression, LUFS-Metering. |
 
+### Architektur-Vertiefungen
+* `ARCHITECTURE.md` – lineare Signalfluss-Architektur
+* `ARCH_WEBRTC.md` – Kollaboration und Kontrollpfade
+* `ARCH_DIG_ANA_BRIDGE.md` – 10-Kanal-Spatial-Audio-Bridge mit Edge-DSP, Failover und Netzwerkpfaden
+
 ---
 
 ## ☁️ Infrastruktur & Integration
