@@ -32,6 +32,10 @@ jobs:
       - name: "☁️ Set up Cloud SDK"
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: "🔧 Enable Cloud Shell API"
+        run: |
+          gcloud services enable cloudshell.googleapis.com --project="$(gcloud config get-value project)"
+
       - name: "📊 Check disk usage (before)"
         run: |
           echo "=== Cloud Shell Home Disk Usage (BEFORE) ==="
