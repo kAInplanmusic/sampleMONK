@@ -33,6 +33,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: "🔧 Enable Cloud Shell API"
+        continue-on-error: true
         run: |
           gcloud services enable cloudshell.googleapis.com --project="$(gcloud config get-value project)"
 
