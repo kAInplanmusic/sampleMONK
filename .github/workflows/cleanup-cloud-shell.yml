@@ -33,8 +33,10 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: "🔧 Enable Cloud Shell API"
+        continue-on-error: true
         run: |
-          gcloud services enable cloudshell.googleapis.com --project="$(gcloud config get-value project)"
+          gcloud services enable cloudshell.googleapis.com --project="$(gcloud config get-value project)" || \
+            echo "⚠️  Could not enable Cloud Shell API (may already be enabled or insufficient permissions – continuing)"
 
       - name: "📊 Check disk usage (before)"
         run: |

@@ -32,7 +32,7 @@ resource "google_cloud_run_v2_service" "signaling_service" {
 
       env {
         name  = "SIGNALING_IDLE_TIMEOUT_MS"
-        value = "1200000"
+        value = "1800000"
       }
 
       env {
