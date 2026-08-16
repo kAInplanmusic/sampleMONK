@@ -1,0 +1,43 @@
+# =============================================================================
+# sampleMONK · Dockerfile.hetzner
+# -----------------------------------------------------------------------------
+# Optimiert fuer Hetzner Cloud VPS:
+#   - nutzt das VOR-KOMPILIERTE native Mixer-Modul (services/mixer/*.node)
+#     statt den Rust-Mixer im Build neu zu kompilieren → schneller, robuster.
+#   - serviert die App + REST API + WebRTC-Signaling in EINEM Container/Port.
+# Build:  docker build -f Dockerfile.hetzner -t samplemonk:hetzner .
+# =============================================================================
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Nur package.json/lock zuerst kopieren (besseres Layer-Caching)
+COPY package.json ./
+COPY package-lock.json* ./ || true
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+# =============================================================================
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Gebautes Frontend + gebuenzeltes Server-Bundle
+COPY --from=builder /app/dist ./dist
+
+# (Distanz: naives Modul wird zur Laufzeit aus services/mixer/geladen)
+COPY --from=builder /app/services ./services
+
+# node_modules aus dem Builder (inkl. socket.io-Server fuer integriertes Signaling)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+
+# Nicht-root Nutzer
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN chown -R appuser:appgroup /app
+USER appuser
+
+EXPOSE 8080
+CMD ["npm", "start"]

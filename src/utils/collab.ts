@@ -1,8 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { db } from './firebase';
-import { doc, onSnapshot, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { useState, useEffect, useCallback } from 'react';
 
-// A simple local identity for demo purposes
+/**
+ * Kollaboration – GOOGLE/FIRESTORE-ENTKOPPELT.
+ *
+ * Frueher synchronisierte dieses Modul eine Multiplayer-Session ueber Firestore.
+ * Jetzt laeuft alles ausschliesslich LOKAL im Browser (keine Cloud-Verbindung).
+ * Die Export-Oberflaeche (`useCollabSession`, `localUser`, Lock-/Update-Methoden)
+ * bleibt erhalten, damit die App kompiliert und die lokale UI unveraendert laeuft.
+ */
+
+// Lokale Identitaet (persistiert im Browser)
 const getLocalUserId = () => {
   let id = localStorage.getItem('samplemonk_user_id');
   if (!id) {
@@ -82,136 +89,54 @@ const DEFAULT_SESSION: CollabSession = {
   activeUsers: {}
 };
 
-export function useCollabSession(sessionId: string = 'main_studio') {
-  const [session, setSession] = useState<CollabSession | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    if (!db) return;
-    
-    const docRef = doc(db, 'sessions', sessionId);
-    
-    // Heartbeat & initialization
-    const initSession = async () => {
-      const snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        await setDoc(docRef, {
-           ...DEFAULT_SESSION,
-           activeUsers: {
-             [localUser.id]: {
-               name: localUser.name,
-               color: localUser.color,
-               lastSeen: Date.now()
-             }
-           },
-           updatedAt: serverTimestamp()
-        });
-      } else {
-        await updateDoc(docRef, {
-          [`activeUsers.${localUser.id}`]: {
-            name: localUser.name,
-            color: localUser.color,
-            lastSeen: Date.now()
-          },
-          updatedAt: serverTimestamp()
-        });
-      }
-    };
-    
-    initSession();
-
-    // Heartbeat every 10s
-    const heartbeat = setInterval(() => {
-      updateDoc(docRef, {
-        [`activeUsers.${localUser.id}.lastSeen`]: Date.now(),
-        updatedAt: serverTimestamp()
-      }).catch(console.error);
-    }, 10000);
-
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as CollabSession;
-        // Clean up stale users (inactive for 30s)
-        const now = Date.now();
-        let cleanedUsers = { ...data.activeUsers };
-        let userChanged = false;
-        
-        for (const [uid, user] of Object.entries(cleanedUsers)) {
-          if (now - user.lastSeen > 30000 && uid !== localUser.id) {
-            delete cleanedUsers[uid];
-            userChanged = true;
-          }
-        }
-        
-        if (userChanged) {
-          data.activeUsers = cleanedUsers;
-          // also drop locks for offline users
-          const newLocks = { ...data.locks };
-          for (const [mod, uid] of Object.entries(newLocks)) {
-             if (!cleanedUsers[uid]) {
-                delete newLocks[mod];
-             }
-          }
-          data.locks = newLocks;
-          updateDoc(docRef, { activeUsers: cleanedUsers, locks: newLocks });
-        }
-
-        setSession(data);
-        setIsConnected(true);
-      }
-    });
-
-    return () => {
-      clearInterval(heartbeat);
-      unsubscribe();
-    };
-  }, [sessionId]);
-
-  // Methods to update session
-  const acquireLock = useCallback((moduleId: string) => {
-    if (!db || !session) return false;
-    // Check if someone else has it
-    if (session.locks[moduleId] && session.locks[moduleId] !== localUser.id) {
-      return false; // locked by someone else
+// Lokaler Session-State (kein Firestore).
+function createLocalSession(): CollabSession {
+  return {
+    ...DEFAULT_SESSION,
+    activeUsers: {
+      [localUser.id]: { name: localUser.name, color: localUser.color, lastSeen: Date.now() }
     }
-    updateDoc(doc(db, 'sessions', sessionId), {
-      [`locks.${moduleId}`]: localUser.id
+  };
+}
+
+export function useCollabSession(_sessionId: string = 'main_studio') {
+  const [session, setSession] = useState<CollabSession>(createLocalSession);
+  const [isConnected] = useState(true); // lokal immer "verbunden"
+
+  // Nichts weiter zu beobachten – reine lokale Session.
+  useEffect(() => {
+    // Intentionally empty: no remote listeners in local mode.
+  }, []);
+
+  const acquireLock = useCallback((moduleId: string) => {
+    setSession(prev => {
+      if (prev.locks[moduleId] && prev.locks[moduleId] !== localUser.id) {
+        return prev; // von einem anderen gehalten
+      }
+      return { ...prev, locks: { ...prev.locks, [moduleId]: localUser.id } };
     });
     return true;
-  }, [session, sessionId]);
+  }, []);
 
   const releaseLock = useCallback((moduleId: string) => {
-    if (!db || !session) return;
-    if (session.locks[moduleId] === localUser.id) {
-       updateDoc(doc(db, 'sessions', sessionId), {
-         [`locks.${moduleId}`]: null
-       });
-    }
-  }, [session, sessionId]);
+    setSession(prev => {
+      const locks = { ...prev.locks };
+      if (locks[moduleId] === localUser.id) delete locks[moduleId];
+      return { ...prev, locks };
+    });
+  }, []);
 
   const updatePlayback = useCallback((updates: Partial<CollabSession['playback']>) => {
-    if (!db) return;
-    updateDoc(doc(db, 'sessions', sessionId), {
-      playback: { ...session?.playback, ...updates },
-      updatedAt: serverTimestamp()
-    });
-  }, [session, sessionId]);
+    setSession(prev => ({ ...prev, playback: { ...prev.playback, ...updates } }));
+  }, []);
 
   const updateSequencer = useCallback((updates: Partial<CollabSession['sequencer']>) => {
-    if (!db) return;
-    updateDoc(doc(db, 'sessions', sessionId), {
-      sequencer: { ...session?.sequencer, ...updates },
-      updatedAt: serverTimestamp()
-    });
-  }, [session, sessionId]);
+    setSession(prev => ({ ...prev, sequencer: { ...prev.sequencer, ...updates } }));
+  }, []);
 
   const updateMastering = useCallback((updates: Partial<CollabSession['mastering']>) => {
-    if (!db) return;
-    updateDoc(doc(db, 'sessions', sessionId), {
-      mastering: { ...session?.mastering, ...updates },
-      updatedAt: serverTimestamp()
-    });
-  }, [session, sessionId]);
+    setSession(prev => ({ ...prev, mastering: { ...prev.mastering, ...updates } }));
+  }, []);
 
   return {
     session,
@@ -222,8 +147,8 @@ export function useCollabSession(sessionId: string = 'main_studio') {
     updatePlayback,
     updateSequencer,
     updateMastering,
-    // Helper to check if locked by someone else
-    isLocked: (moduleId: string) => session?.locks[moduleId] && session.locks[moduleId] !== localUser.id,
-    getLockOwner: (moduleId: string) => session?.locks[moduleId] ? session.activeUsers[session.locks[moduleId]] : null
+    isLocked: (moduleId: string) => !!(session.locks[moduleId] && session.locks[moduleId] !== localUser.id),
+    getLockOwner: (moduleId: string) =>
+      session.locks[moduleId] ? session.activeUsers[session.locks[moduleId]] : null
   };
 }

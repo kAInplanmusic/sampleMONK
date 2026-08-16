@@ -1,112 +1,142 @@
-import os
-import json
-import httpx
+#!/usr/bin/env python3
+"""
+HyperSonicMOA – GOOGLE/FIRESTORE-ENTKOPPELT (lokaler Rebuild).
+
+Dies ist eine vollstaendig NEUGEBAUTE, selbstgehostete Orchestrierung. Sie besteht
+ausschliesslich aus LOKALEN Komponenten:
+
+  * Optionaler lokaler LLM via Ollama (POST http://127.0.0.1:11434/api/generate)
+    → moderner, selbstgehosteter Standard (gleiche Auswahl wie in config.yaml).
+  * Deterministische, lokale Fallback-Generierung (regex-basierter Extraktor
+    + Template) WENN kein Ollama erreichbar ist.
+
+Es wird KEINERLEI Google-, Firebase-, DeepSeek- oder HuggingFace-Endpunkt
+aufgerufen. Die Klasse behaelt die API (`HyperSonicMOA.run_pipeline`) bei, damit
+aufrufender Code unveraendert funktioniert.
+"""
 import asyncio
+import json
+import os
+import re
+
+import httpx
+
+# Optional: Ollama Endpunkt (self-hosted). Leer lassen => immer lokaler Fallback.
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1")
+
 
 class HyperSonicMOA:
-    def __init__(self, gemini_key: str, hf_token: str, deepseek_key: str = None):
-        self.gemini_key = gemini_key
-        self.hf_token = hf_token
-        self.deepseek_key = deepseek_key
+    """Selbstgehostete Multi-Agent-Orchestrierung (kein Cloud-Backend)."""
+
+    def __init__(self, gemini_key: str = "", hf_token: str = "", deepseek_key: str = None):
+        # Fruehere Google/Cloud-Keys werden bewusst NICHT mehr benoetigt.
+        # Sie werden ignoriert; nur die Client-/Konfiguration bleibt erhalten.
         self.client = httpx.AsyncClient(timeout=60.0)
+        self.ollama_url = OLLAMA_URL
+        self.ollama_model = OLLAMA_MODEL
 
-    async def call_gemini(self, prompt: str, context: str = "") -> str:
-        if not self.gemini_key:
-            return "Gemini API Key is not configured."
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
-        headers = {"x-goog-api-key": self.gemini_key, "Content-Type": "application/json"}
-        payload = {"contents": [{"parts": [{"text": f"{prompt}\n\nContext: {context}"}]}]}
+    # ------------------------------------------------------------------ #
+    #  Lokaler LLM (Ollama) mit graceful degradation
+    # ------------------------------------------------------------------ #
+    async def _ollama(self, prompt: str) -> str | None:
+        """Ruft ein lokales Ollama-Modell auf. Liefert None bei Fehler/Nichtverfügbarkeit."""
+        if not self.ollama_url:
+            return None
         try:
-            response = await self.client.post(url, json=payload, headers=headers)
-            if response.status_code == 200:
-                result = response.json()
-                return result['candidates'][0]['content']['parts'][0]['text']
-            return f"Gemini Error {response.status_code}: {response.text}"
-        except Exception as e:
-            return f"Gemini Call Failed: {str(e)}"
+            payload = {
+                "model": self.ollama_model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.7},
+            }
+            resp = await self.client.post(self.ollama_url, json=payload, timeout=60.0)
+            if resp.status_code == 200:
+                return resp.json().get("response", "")
+        except Exception as e:  # pragma: no cover
+            print(f"[HyperSonicMOA] Ollama nicht erreichbar ({e}); nutze lokalen Fallback.")
+        return None
 
-    async def call_deepseek(self, prompt: str) -> str:
-        if not self.deepseek_key:
-            # Fallback to Gemini if no DeepSeek key is provided
-            print("DeepSeek key missing, falling back to Gemini for Phase 2 (DSP Reasoning).")
-            return await self.call_gemini(f"Analyze the DSP logic and mathematical modeling for: {prompt}")
-            
-        headers = {
-            "Authorization": f"Bearer {self.deepseek_key}", 
-            "Content-Type": "application/json"
+    # ------------------------------------------------------------------ #
+    #  Deterministischer lokaler Fallback-Generator (kein Netzwerk)
+    # ------------------------------------------------------------------ #
+    def _extract_specs(self, report_text: str) -> tuple[str, str]:
+        """Extrahiert grob Name/Kategorie aus einem Text (regex-basiert, lokal)."""
+        name = re.search(r"(?i)(?:name|geraet|synth|drum|sampler)[\s:=]+([A-Za-z0-9\- ]+)", report_text)
+        cat = re.search(r"(?i)kategorie[\s:=]+(synth|drum|sampler|modular|effekt|dynamics|sequenzer)", report_text)
+        name_v = name.group(1).strip() if name else "Vintage Rebuild"
+        cat_v = cat.group(1).strip().title() if cat else "Synth"
+        return name_v, cat_v
+
+    def _template_module(self, report_text: str) -> dict:
+        """Erzeugt ein plausibles Modul-JSON lokal, ganz ohne cloud-AI."""
+        name, cat = self._extract_specs(report_text)
+        return {
+            "id": re.sub(r"[^a-z0-9]", "", name.lower())[:20] or "local_rebuild",
+            "name": name,
+            "kategorie": cat,
+            "core_prinzip": "Lokaler, deterministischer Nachbau auf Basis der Eingabe.",
+            "controls": [
+                {"name": "Cutoff", "type": "Drehregler", "description": "Filterfrequenz"},
+                {"name": "Resonanz", "type": "Drehregler", "description": "Filterresonanz"},
+                {"name": "Envelope", "type": "Drehregler", "description": "Hüllkurven-Charakter"},
+            ],
+            "user_friendly_score": 7,
+            "kosten": "$",
+            "nutzen": "Klarer, druckvoller Klang mit breitem Anwendungsbereich.",
+            "nachbau_idee": "Op-Amp-basierte Filterkette mit diskreter Transistorstufe und RC-Envelope.",
+            "technische_details": "Lokale, rein deterministische Spezifikation (keine Cloud-AI).",
         }
-        payload = {
-            "model": "deepseek-reasoner",
-            "messages": [{"role": "user", "content": prompt}]
-        }
-        try:
-            response = await self.client.post("https://api.deepseek.com/v1/chat/completions", json=payload, headers=headers)
-            if response.status_code == 200:
-                return response.json()['choices'][0]['message']['content']
-            return f"DeepSeek Error {response.status_code}: {response.text}"
-        except Exception as e:
-            return f"DeepSeek Call Failed: {str(e)}"
 
-    async def call_huggingface(self, prompt: str, model: str = "meta-llama/Llama-3.1-70B-Instruct") -> str:
-        if not self.hf_token:
-            return "Hugging Face Token is not configured."
-        headers = {"Authorization": f"Bearer {self.hf_token}"}
-        url = f"https://api-inference.huggingface.co/models/{model}"
-        try:
-            response = await self.client.post(url, json={"inputs": prompt}, headers=headers)
-            if response.status_code == 200:
-                res_data = response.json()
-                if isinstance(res_data, list) and len(res_data) > 0:
-                    return res_data[0].get('generated_text', '')
-                return str(res_data)
-            return f"Hugging Face Error {response.status_code}: {response.text}"
-        except Exception as e:
-            return f"Hugging Face Call Failed: {str(e)}"
-
+    # ------------------------------------------------------------------ #
+    #  Öffentliche Methoden (kompatibel zur alten API)
+    # ------------------------------------------------------------------ #
     async def run_pipeline(self, report_text: str) -> str:
-        print("🚀 Phase 1: Historische Extraktion (Gemini)...")
-        raw_structure = await self.call_gemini("Extrahiere Hardware-Specs und Chip-Architekturen.", report_text)
-        
-        print("⚙️ Phase 2: DSP-Logik & Code-Validierung (DeepSeek-R1 / Fallback)...")
-        dsp_logic = await self.call_deepseek(f"Erstelle mathematische Modelle und diskrete Differenzengleichungen fuer diese Hardware-Spezifikationen: {raw_structure}")
-        
-        print("🎨 Phase 3: UX & Tone-Mapping (Llama-3.1 @ Hugging Face)...")
-        ui_design = await self.call_huggingface(f"Erstelle vereinfachte UI-Regler (Kombination von Drehreglern, Schiebereglern oder Tasten) fuer diese DSP-Modellierungslogik: {dsp_logic}")
-        
-        print("💎 Phase 4: Final Validation & JSON Assembly (Gemini Pro)...")
-        final_prompt = """
-        Fasse alles in ein High-End JSON-Modul zusammen.
-        Es MUSS exakt die folgende Struktur als valides JSON-Objekt (nicht Array, sondern ein einzelnes Objekt) haben, ohne markdown code-blocks:
-        {
-          "id": "generiert_id_kleingeschrieben",
-          "name": "Echter Name des Geräts",
-          "kategorie": "Synth" oder "Drum" oder "Sampler" oder "Modular" oder "Effekt" oder "Dynamics" oder "Sequenzer",
-          "core_prinzip": "Ultrakurze Zusammenfassung des Klangprinzips (max. 15 Wörter)",
-          "controls": [
-            { "name": "Parameter1", "type": "Drehregler" oder "Schieberegler" oder "Taste", "description": "Kurze Beschreibung des Parameters" },
-            { "name": "Parameter2", "type": "Drehregler" oder "Schieberegler" oder "Taste", "description": "Kurze Beschreibung des Parameters" },
-            { "name": "Parameter3", "type": "Drehregler" oder "Schieberegler" oder "Taste", "description": "Kurze Beschreibung des Parameters" }
-          ],
-          "user_friendly_score": 1 bis 10 (int),
-          "kosten": "$" oder "$$" oder "$$$",
-          "nutzen": "Klangcharakterbeschreibung",
-          "nachbau_idee": "Komplexe Nachbau-Idee und DSP-Details",
-          "technische_details": "Technische Details wie Originale Chips, Schaltungsaufbau"
-        }
-        Input 1 (Raw Specs): """ + raw_structure + """
-        Input 2 (DSP Logic): """ + dsp_logic + """
-        Input 3 (UI Design): """ + ui_design + """
-        Gib NUR das reine valide JSON-Objekt aus! Keine zusätzlichen Erklärungen!
         """
-        final_module = await self.call_gemini(final_prompt)
-        
-        # Clean potential markdown JSON wrappers
-        cleaned = final_module.strip()
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        return cleaned.strip()
+        Fuehrt die (frueher 4-stufige) MOA-Pipeline aus. Statt externer Gemini/
+        DeepSeek/HuggingFace nutzt sie Ollama (falls erreichbar) oder den
+        deterministischen lokalen Template-Generator.
+        """
+        # 1) Versuche lokales LLM
+        prompt = (
+            "Generiere ein valides JSON-Modul fuer ein Vintage-Synthesizer-Effektgeraet. "
+            "Struktur: {id,name,kategorie,core_prinzip,controls[3],user_friendly_score,kosten,nutzen,"
+            "nachbau_idee,technische_details}. Nur das JSON, keine Erklärungen.\n\nReport:\n" + report_text
+        )
+        raw = await self._ollama(prompt)
+
+        if raw and raw.strip():
+            cleaned = raw.strip()
+            if cleaned.startswith("```json"):
+                cleaned = cleaned[7:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            try:
+                # Validieren, dass es valides JSON ist
+                parsed = json.loads(cleaned)
+                return json.dumps(parsed, ensure_ascii=False)
+            except json.JSONDecodeError:
+                print("[HyperSonicMOA] Ollama-Antwort war kein valides JSON; nutze Fallback.")
+
+        module = self._template_module(report_text)
+        return json.dumps(module, ensure_ascii=False)
 
     async def close(self):
         await self.client.aclose()
+
+
+# ---------------------------------------------------------------------- #
+#  Komfort-CLI:  python hypersonic_moa.py  "Mein Report-Text..."
+# ---------------------------------------------------------------------- #
+async def _main():
+    import sys
+    text = " ".join(sys.argv[1:]) or "Ein analoger Polysynth mit 4 Stimmen."
+    moa = HyperSonicMOA()
+    try:
+        out = await moa.run_pipeline(text)
+        print(out)
+    finally:
+        await moa.close()
+
+if __name__ == "__main__":
+    asyncio.run(_main())

@@ -1,37 +1,57 @@
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+
+/**
+ * Room-Hook – GOOGLE/FIRESTORE-ENTKOPPELT.
+ *
+ * Frueher wurden B2B-Raeume ueber Firestore (Collection `rooms`) verwaltet.
+ * Jetzt arbeiten Raeume rein LOKAL im Browser (in-memory). Die Export-Oberflaeche
+ * (`useRoom`, `RoomUser`) bleibt erhalten.
+ */
 
 export interface RoomUser {
   uid: string;
   name: string;
 }
 
+// Lokaler Room-Registry (in-memory, pro Tab).
+const localRooms: Record<string, { hostId: string; users: RoomUser[] }> = {};
+
 export function useRoom(roomId: string | null, userId: string | null) {
-  const [room, setRoom] = useState<{ hostId: string; users: RoomUser[] } | null>(null);
+  const [room, setRoom] = useState<{ hostId: string; users: RoomUser[] } | null>(
+    roomId ? localRooms[roomId] ?? null : null
+  );
 
   useEffect(() => {
     if (!roomId) return;
-
-    const unsub = onSnapshot(doc(db, 'rooms', roomId), (doc) => {
-      if (doc.exists()) {
-        setRoom(doc.data() as any);
-      }
-    });
-
-    return () => unsub();
+    setRoom(localRooms[roomId] ?? null);
   }, [roomId]);
 
   const kickUser = async (targetUserId: string) => {
-    if (!room || room.hostId !== userId) return; // Only host can kick
-    
-    const userToKick = room.users.find(u => u.uid === targetUserId);
-    if (userToKick) {
-      await updateDoc(doc(db, 'rooms', roomId!), {
-        users: arrayRemove(userToKick)
-      });
-    }
+    if (!room || !roomId) return;
+    if (room.hostId !== userId) return; // Only host can kick
+    const next = {
+      ...room,
+      users: room.users.filter(u => u.uid !== targetUserId),
+    };
+    localRooms[roomId] = next;
+    setRoom(next);
   };
 
   return { room, kickUser };
+}
+
+// Lokale Hilfsfunktionen (von B2BModal genutzt)
+export function localHostRoom(userId: string, username: string): string {
+  const roomId = Math.random().toString(36).substring(7).toUpperCase();
+  localRooms[roomId] = { hostId: userId, users: [{ uid: userId, name: username }] };
+  return roomId;
+}
+
+export function localJoinRoom(roomId: string, userId: string, username: string): boolean {
+  const room = localRooms[roomId];
+  if (!room) return false;
+  if (!room.users.some(u => u.uid === userId)) {
+    room.users.push({ uid: userId, name: username });
+  }
+  return true;
 }

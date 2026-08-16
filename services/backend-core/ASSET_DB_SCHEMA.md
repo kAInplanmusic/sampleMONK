@@ -1,22 +1,30 @@
-# DB1: Asset DB Schema (Firestore)
+# DB1: Asset DB Schema (Lokal – Google-frei)
 
-## Collections
+> Frueher war dies eine Firestore-Schema-Beschreibung. sampleMONK laeuft jetzt
+> OHNE Google/Firestore komplett lokal. Assets werden auf dem Hetzner-Dateisystem
+> bzw. im Browser (localStorage/IndexedDB) gespeichert.
 
-### 1. `assets`
-- `id`: String (Firestore ID)
+## Lokale Speicherorte
+
+- `public/samples/` – lokale WAV-Sample-Dateien (werden vom Server direkt ausgeliefert)
+- `localStorage` (Browser) – Benutzer-Presets (`samplemonk_local_presets`)
+- `indexedDB` (Browser) – Scratchpad-/Projekt-Daten
+
+## Objektstruktur (unveraendert, nur Speicherort abweichend)
+
+### 1. Sample / Asset
+- `id`: String (lokal generiert)
 - `type`: String ("sample", "stem", "recording")
-- `path`: String (GCS URI)
+- `path`: String (relativer oder Dateisystem-Pfad)
 - `name`: String
-- `createdAt`: Timestamp
 - `metadata`: Map
   - `duration`: Number
   - `sampleRate`: Number
   - `bpm`: Number
   - `tags`: Array<String>
 
-### 2. `presets`
-- `id`: String (Firestore ID)
+### 2. Preset
+- `id`: String (lokal generiert)
 - `name`: String
-- `data`: Map (JSON representation of preset)
-- `createdAt`: Timestamp
-- `updatedAt`: Timestamp
+- `data`: Map (JSON-Repraesentation des Presets)
+- `createdAt`: String (ISO)

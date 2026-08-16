@@ -1,0 +1,38 @@
+version: '3.8'
+
+# =============================================================================
+# sampleMONK · Hetzner Cloud (docker compose)
+# -----------------------------------------------------------------------------
+# Ein Container hostet den GESAMTEN Stack (App static + REST API + WebRTC
+# Signaling) auf einem Port. Perfekt fuer stundenlich abgerechnete Hetzner VPS:
+#   docker compose -f docker-compose.hetzner.yml up -d --build
+#
+# Umgebungsvariablen aus einer lokalen .env-Datei (Kopie von .env.hetzner.example)
+# um die Verarbeitung von Secrets (Gemini, Firebase, ...) zu erlauben.
+# =============================================================================
+services:
+  sample-monk:
+    build:
+      context: .
+      dockerfile: Dockerfile.hetzner
+    image: samplemonk:hetzner
+    container_name: samplemonk
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      # Signaling laeuft im selben Prozess auf demselben Port.
+      SIGNALING_IDLE_TIMEOUT_MS: ${SIGNALING_IDLE_TIMEOUT_MS:-1200000}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    read_only: false
+    security_opt:
+      - no-new-privileges:true

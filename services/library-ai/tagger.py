@@ -1,78 +1,61 @@
-import os
-import firebase_admin
-from firebase_admin import credentials, firestore
-import librosa
-import time
+#!/usr/bin/env python3
+"""
+Library-AI Tagger – GOOGLE/FIRESTORE-ENTKOPPELT.
+
+Frueher wartete dieser Service auf Aufgaben in einer Firestore-`tasks`-Collection.
+Jetzt arbeitet er rein LOKAL als Kommandozeilen-Tool:
+    python tagger.py <audio_datei.wav> [--out ausgabe.json]
+
+Analysiert eine Audiodatei (BPM, Tags) und schreibt das Ergebnis als JSON-Datei
+lokal weg. Es besteht KEINERLEI Verbindung zu Firebase/Firestore/Google.
+"""
+import argparse
 import hashlib
+import json
+import os
+import time
 
-# Firebase init
-cred = credentials.ApplicationDefault()
-firebase_admin.initialize_app(cred, {'projectId': 'sample-monk'})
-db = firestore.client()
+import librosa
 
-def get_file_hash(file_path):
+def get_file_hash(file_path: str) -> str:
     return hashlib.md5(file_path.encode()).hexdigest()
 
-def tag_audio(file_path):
-    # Analyze audio
+def tag_audio(file_path: str) -> dict:
     y, sr = librosa.load(file_path)
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    
-    # Simple tagging logic
+
     tags = ["audio", "sample"]
-    if tempo > 120: tags.append("fast")
-    else: tags.append("slow")
-    
+    if tempo and tempo > 120:
+        tags.append("fast")
+    else:
+        tags.append("slow")
+
     return {
         "bpm": float(tempo),
         "tags": tags,
-        "indexed_at": firestore.SERVER_TIMESTAMP
+        "indexed_at": time.time(),
     }
 
-def process_task(doc_ref, task_data):
-    file_path = task_data.get("file_path")
-    if not file_path:
-        doc_ref.update({"status": "error", "error": "No file path provided"})
-        return
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Lokaler Audio-Tagger (Google-frei).")
+    parser.add_argument("file_path", help="Pfad zur Audiodatei (.wav/.mp3 etc.)")
+    parser.add_argument("--out", default="tagged.json", help="Ausgabedatei fuer das JSON (default: tagged.json)")
+    args = parser.parse_args()
 
-    file_hash = get_file_hash(file_path)
-    cache_ref = db.collection('cache').document(file_hash)
-    cache_doc = cache_ref.get()
+    if not os.path.exists(args.file_path):
+        print(f"Fehler: Datei nicht gefunden: {args.file_path}")
+        raise SystemExit(1)
 
-    # Check cache first
-    if cache_doc.exists:
-        print(f"Cache hit: {file_path}")
-        metadata = cache_doc.to_dict().get("metadata")
-    else:
-        print(f"Cache miss: {file_path}. Processing...")
-        try:
-            metadata = tag_audio(file_path)
-            # Save to cache
-            cache_ref.set({"metadata": metadata, "indexed_at": firestore.SERVER_TIMESTAMP})
-        except Exception as e:
-            print(f"Error processing {file_path}: {e}")
-            doc_ref.update({"status": "error", "error": str(e)})
-            return
-
-    # Update task with result
-    doc_ref.update({
-        "status": "completed",
-        "metadata": metadata
-    })
-    print(f"Completed: {file_path}")
-
-def listen_for_tasks():
-    print("Library AI Service listening for tasks...")
-    # Watch the 'tasks' collection for new pending jobs
-    tasks_ref = db.collection('tasks').where('status', '==', 'pending')
-    
-    while True:
-        docs = tasks_ref.stream()
-        for doc in docs:
-            process_task(doc.reference, doc.to_dict())
-        
-        # Sleep before checking again to avoid excessive CPU usage
-        time.sleep(5)
+    print(f"Analysiere {args.file_path} ...")
+    metadata = tag_audio(args.file_path)
+    result = {
+        "hash": get_file_hash(args.file_path),
+        "file_path": args.file_path,
+        "metadata": metadata,
+    }
+    with open(args.out, "w") as f:
+        json.dump(result, f, indent=2)
+    print(f"Fertig. Ergebnis in {args.out} geschrieben.")
 
 if __name__ == "__main__":
-    listen_for_tasks()
+    main()

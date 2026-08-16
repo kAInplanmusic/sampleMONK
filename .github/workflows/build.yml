@@ -1,0 +1,32 @@
+name: Build & Verify (Google-frei)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify no Google/Firebase imports remain
+        run: |
+          if grep -rniE "from ['\"]@google|from ['\"]firebase|firebase-admin|google-genai|@google-cloud" src server.ts --include='*.ts' --include='*.tsx' --include='*.js'; then
+            echo "❌ Google/Firebase import found in code!"; exit 1
+          else
+            echo "✅ Keine Google/Firebase-Imports in src/server.ts."
+          fi

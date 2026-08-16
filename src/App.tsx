@@ -14,6 +14,10 @@ import { PluginButton } from './components/PluginButton';
 import { FEATURE_FLAGS } from './config/featureFlags';
 import { VoiceGenTerminal } from './components/VoiceGenTerminal';
 import { useAudio } from './context/AudioContext';
+import { SettingsDialog } from './components/SettingsDialog';
+import { ROLE_PRESETS, moduleStateForRole, StudioRole } from './config/rolePresets';
+import { Settings } from 'lucide-react';
+
 
 export default function App() {
   return (
@@ -33,6 +37,14 @@ function AppComponent() {
   const [bpm, setBpm] = useState(128);
   const [patterns, setPatterns] = useState(TECHNO_PRESETS[0].patterns);
   const [isStarted, setIsStarted] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Task 22: Rollen-Start-Presets – wendet das Modul-Profil einer Rolle an.
+  const applyRole = (role: StudioRole) => {
+    const ids = PLUGIN_REGISTRY.map(p => p.id);
+    const states = moduleStateForRole(role, ids);
+    Object.entries(states).forEach(([id, s]) => setModuleState(id, s));
+  };
 
   useEffect(() => {
     audioEngine.onStepUpdate = setCurrentStep;
@@ -98,10 +110,28 @@ function AppComponent() {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-slate-950 text-white p-6">
       {/* 1. Header with Logo */}
-      <header className="flex justify-center mb-8">
+      <header className="flex justify-center items-center gap-4 mb-8">
         <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
             SAMPLE MONK
         </h1>
+        <select
+          defaultValue=""
+          onChange={e => e.target.value && applyRole(e.target.value as StudioRole)}
+          className="ml-4 px-2 py-2 rounded-lg bg-neutral-800/80 border border-neutral-700 text-neutral-300 text-xs hover:border-purple-500/60"
+          title="Rollen-Startprofil wählen"
+        >
+          <option value="" disabled>Rolle wählen</option>
+          {ROLE_PRESETS.map(r => (
+            <option key={r.role} value={r.role}>{r.role.replace('_', ' ')}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="ml-2 p-2.5 rounded-full bg-neutral-800/80 border border-neutral-700 text-neutral-400 hover:text-white hover:border-purple-500/60 transition-colors"
+          title="Audio / I-O Einstellungen"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
       </header>
 
       {/* 2. 4x4 Icon Grid */}
@@ -158,6 +188,9 @@ function AppComponent() {
 
         ))}
       </div>
+
+      {/* Settings / Audio-I/O */}
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

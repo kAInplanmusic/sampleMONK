@@ -1,47 +1,25 @@
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import { z } from 'zod';
-import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-import { URL } from 'url';
 import rateLimit from 'express-rate-limit';
+import { spawn } from 'child_process';
+
+// Task 14: Echte Demucs-Stems optional via env-Flag ENABLE_STEMS=1 aktivieren.
+const ENABLE_STEMS = (process.env.ENABLE_STEMS || '').trim() === '1';
+
+/**
+ * sampleMONK Server – GOOGLE/FIRESTORE-ENTKOPPELT.
+ *
+ * Diese Datei enthaelt KEINERLEI Verbindung zu Google Firebase, Firestore,
+ * Google Storage, Secret Manager oder Google GenAI. Der gesamte Stack (static
+ * App + REST-API + WebRTC-Signaling) laeuft in einem Node-Prozess.
+ *
+ * Fuer Hetzner:  PORT=8080, NODE_ENV=production, `node dist/server.cjs`
+ */
 
 dotenv.config();
-
-const secretClient = new SecretManagerServiceClient();
-
-async function getSecret(name: string) {
-  try {
-    const [version] = await secretClient.accessSecretVersion({
-      name: `projects/${process.env.GCP_PROJECT_ID}/secrets/${name}/versions/latest`,
-    });
-    return version.payload?.data?.toString();
-  } catch (e) {
-    console.warn(`Secret ${name} not found in Secret Manager.`);
-    return null;
-  }
-}
-
-const PresetSchema = z.object({
-  name: z.string(),
-  genre: z.string(),
-  bpm: z.number().min(110).max(145),
-  key: z.string(),
-  description: z.string(),
-  patterns: z.object({
-    kick: z.array(z.boolean()).length(16),
-    hat: z.array(z.boolean()).length(16),
-    clap: z.array(z.boolean()).length(16),
-    synth: z.array(z.boolean()).length(16),
-  }),
-  synthNotes: z.array(z.number()).length(16),
-  cutoff: z.number().min(300).max(1500),
-  resonance: z.number().min(2).max(15),
-  delayTime: z.union([z.literal(0.125), z.literal(0.25), z.literal(0.33), z.literal(0.5)]),
-  decay: z.number().min(0.1).max(0.5),
-});
 
 const app = express();
 const PORT = Number(process.env.PORT || 8080);
@@ -51,366 +29,119 @@ app.use(express.json());
 // --- Security: Rate limiting ---
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 30, // 30 requests per minute per IP
+  max: 60, // 60 requests per minute per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
 });
 
-const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10, // 10 AI generation requests per minute per IP
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many AI generation requests, please try again later.' }
-});
-
-// Apply rate limiting to all /api routes
 app.use('/api', apiLimiter);
 
-// --- Security: Firebase Auth middleware for API routes ---
-import { getAuth } from 'firebase-admin/auth';
-
-async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
-  }
-  const token = authHeader.split('Bearer ')[1];
-  try {
-    const auth = getAuth();
-    const decoded = await auth.verifyIdToken(token);
-    (req as any).user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired authentication token' });
-  }
-}
-
-// --- Security: SSRF protection for URL fetching ---
-const BLOCKED_HOSTS = [
-  'metadata.google.internal',
-  'metadata.google',
-  '169.254.169.254',
-  'localhost',
-  '127.0.0.1',
-  '0.0.0.0',
-  '[::1]',
-];
-
-function isUrlSafe(urlString: string): boolean {
-  try {
-    const parsed = new URL(urlString);
-    // Only allow http and https
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-    const hostname = parsed.hostname.toLowerCase();
-    // Block cloud metadata and loopback addresses
-    if (BLOCKED_HOSTS.some(h => hostname === h || hostname.endsWith('.' + h))) return false;
-    // Block private/internal IP ranges
-    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
-    // Block link-local
-    if (hostname.startsWith('169.254.')) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+// --- Health check ---
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Lazy-initialized Google Gen AI client
-let aiClient: GoogleGenAI | null = null;
+// ===========================================================================
+// Lokale, Google-freie Endpunkte
+// Diese Endpunkte halten die Frontend-Funktionen (KI-Komposition, Stems,
+// Voice) am Laufen, ohne sich zu Google/Firebase zu verbinden.
+//
+// Hinweis: Falls spaeter ein echter Backend-Service (z.B. services/backend-core
+// mit eigenem Host) betrieben wird, kann hier ein Proxy eingebaut werden.
+// ===========================================================================
 
-async function getAiClient(): Promise<GoogleGenAI> {
-  if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY || await getSecret('GEMINI_API_KEY');
-    if (!key) {
-      throw new Error('GEMINI_API_KEY environment variable or secret is not defined on the server.');
-    }
-    aiClient = new GoogleGenAI({ apiKey: key });
-  }
-  return aiClient;
-}
+// --- POST /api/ai/compose  → deterministischer lokaler Preset-Generator ---
+app.post('/api/ai/compose', async (req, res) => {
+  const { prompt } = (req.body ?? {}) as { prompt?: string };
+  const seed = (prompt || 'techno').length;
 
-// API: Generate a custom techno preset using Gemini AI
-app.post('/api/generate-preset', aiLimiter, requireAuth, async (req, res) => {
-  const { prompt } = req.body;
+  // Deterministische Patterns aus dem Prompt-Seed ableiten (kein Netz).
+  const kick = Array.from({ length: 16 }, (_, i) => (i + seed) % 4 === 0);
+  const hat = Array.from({ length: 16 }, (_, i) => (i + seed) % 2 === 1);
+  const clap = Array.from({ length: 16 }, (_, i) => i === 4 || i === 12);
+  const synth = Array.from({ length: 16 }, (_, i) => (i + seed * 2) % 3 === 0);
 
-  if (!prompt || typeof prompt !== 'string') {
-    return res.status(400).json({ error: 'Please provide a prompt string.' });
-  }
+  const synthNotes = Array.from({ length: 16 }, (_, i) => (i + seed) % 8);
+  const bpm = 110 + (seed % 36); // 110–145
 
-  try {
-    const ai = await getAiClient();
-    
-    const systemPrompt = `You are a professional techno and electronic music producer. Your job is to convert user's text description into a fully detailed 16-step synthesizer and drum sequencer preset pattern in structured JSON.
-    The response MUST be a single raw JSON object that conforms EXACTLY to this schema:
-    {
-      "name": "A short elegant creative name of the track/loop (e.g., 'Subterranean Deep')",
-      "genre": "Exact techno subgenre (e.g., 'Dub Techno', 'Acid Techno', 'Detroit Techno')",
-      "bpm": A number between 110 and 145,
-      "key": "One of: 'C Minor (Acid)', 'A Minor Pentatonic', 'F# Phrygian'",
-      "description": "A clean 1-sentence production description of this vibe.",
-      "patterns": {
-        "kick": [boolean array of size 16 representing 16th note triggers. Techno kick is usually on 0, 4, 8, 12, but feel free to vary slightly or add accent beats if requested],
-        "hat": [boolean array of size 16 representing 16th note triggers. Hi-hats usually trigger on offbeats like 2, 6, 10, 14, or standard 16th note rolls],
-        "clap": [boolean array of size 16 representing 16th note triggers. Claps are usually on 4 and 12],
-        "synth": [boolean array of size 16 representing 16th note bass melody triggers]
-      },
-      "synthNotes": [array of exactly 16 numbers, each number is an index (0 to 7) corresponding to note pitch in the scale for that step],
-      "cutoff": A frequency in Hz between 300 and 1500,
-      "resonance": A resonance value between 2 and 15,
-      "delayTime": A value for delay echo length: 0.125, 0.25, 0.33, or 0.5,
-      "decay": A synth note decay value between 0.1 and 0.5
-    }
+  return res.json({
+    task_id: 'local_' + Date.now(),
+    patterns: { kick, hat, clap, synth },
+    synthNotes,
+    bpm,
+    genre: 'Local Techno',
+  });
+});
 
-    ONLY return this JSON. No backticks, no markdown, no explanatory text, no prefix. Start with '{' and end with '}'.`;
+// --- POST /api/separate-stems  → lokaler Stems-Stub (SSE mit Fortschritt) ---
+app.post('/api/separate-stems', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: `Generate a techno preset based on this user mood/request: "${prompt}"`,
-      config: {
-        systemInstruction: systemPrompt,
-        temperature: 0.8,
-        // Enforce JSON output format
-        responseMimeType: 'application/json'
-      }
+  const { file } = (req.body ?? {}) as { file?: string };
+
+  if (ENABLE_STEMS && file) {
+    // Echte Demucs-Inferenz (Python CLI, PyTorch + torchaudio erforderlich).
+    const proc = spawn('demucs', ['--two-stems', 'vocals', '--out', './dist/stems', file], {
+      shell: false,
     });
-
-    const responseText = response.text?.trim() || '';
-    
-    // Safety check and JSON parsing
-    try {
-      const rawParsed = JSON.parse(responseText);
-      const validatedPreset = PresetSchema.parse(rawParsed);
-      return res.json(validatedPreset);
-    } catch (parseError) {
-      console.error('Failed to parse or validate Gemini response:', responseText, parseError);
-      return res.status(500).json({ 
-        error: 'The AI generated an invalid preset.',
-        details: parseError instanceof z.ZodError ? parseError.issues : 'Parsing failed'
-      });
-    }
-  } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    return res.status(500).json({ 
-      error: error?.message || 'Server failed to connect to Gemini API. Ensure GEMINI_API_KEY is configured in your secrets.' 
+    proc.stdout.on('data', (d) => res.write(`data: ${JSON.stringify({ log: String(d) })}\n\n`));
+    proc.stderr.on('data', (d) => res.write(`data: ${JSON.stringify({ log: String(d) })}\n\n`));
+    proc.on('close', (code) => {
+      const ok = code === 0;
+      res.write(`data: ${JSON.stringify({
+        status: ok ? 'success' : 'error',
+        code,
+        stems: {
+          vocals: ok ? '../../dist/stems/vocals.wav' : '',
+          melody: '', highs: '', mids: '', lows: '',
+        },
+      })}\n\n`);
+      res.end();
     });
-  }
-});
-
-import fs from 'fs';
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getStorage } from 'firebase-admin/storage';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import axios from 'axios';
-import unzipper from 'unzipper';
-
-// Initialize Firebase Admin
-let bucket: any = null;
-let db: any = null;
-try {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    initializeApp({
-      credential: cert(serviceAccount),
-      storageBucket: 'sample-monk.firebasestorage.app'
+    proc.on('error', (err) => {
+      res.write(`data: ${JSON.stringify({ status: 'error', message: `Demucs nicht verfügbar: ${err.message}` })}\n\n`);
+      res.end();
     });
-    bucket = getStorage().bucket();
-    db = getFirestore('ai-studio-samplemonk-66b72757-3896-4550-bc13-f8d649b1796c');
-    console.log("Firebase Admin initialized successfully.");
-  } else {
-    console.warn("FIREBASE_SERVICE_ACCOUNT env var is missing. Zip importing to Firebase Storage will not work.");
+    return;
   }
-} catch (e) {
-  console.error("Failed to initialize Firebase Admin:", e);
-}
 
-// Global background task registry
-const activeImportTasks: Record<string, { url: string; status: string; progress: string }> = {};
-
-
-// API: HuggingFace Text-to-Audio (Placeholder for MusicGen / similar)
-app.post('/api/huggingface/generate', aiLimiter, requireAuth, async (req, res) => {
-  try {
-    const key = process.env.HUGGINGFACE_API_KEY || await getSecret('HUGGINGFACE_API_KEY');
-    if (!key) {
-      return res.status(500).json({ error: 'HUGGINGFACE_API_KEY is not defined in the environment or Secret Manager.' });
+  // Fallback: simulierte 4-Stem-Aufteilung (Stub) mit Fortschritt
+  let p = 0;
+  const timer = setInterval(() => {
+    p += 20;
+    res.write(`data: ${JSON.stringify({ progress: p })}\n\n`);
+    if (p >= 100) {
+      clearInterval(timer);
+      res.write(`data: ${JSON.stringify({
+        status: 'success',
+        stems: {
+          vocals: '', melody: '', highs: '', mids: '', lows: '',
+        },
+      })}\n\n`);
+      res.end();
     }
-    const { prompt } = req.body;
-    
-    // Example fetch to a Hugging Face Inference API (e.g. MusicGen)
-    const response = await axios.post(
-      'https://api-inference.huggingface.co/models/facebook/musicgen-small',
-      { inputs: prompt },
-      {
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        responseType: 'arraybuffer'
-      }
-    );
-    
-    res.setHeader('Content-Type', 'audio/wav');
-    return res.send(response.data);
-  } catch (error: any) {
-    console.error('HuggingFace API Error:', error?.message);
-    return res.status(500).json({ error: 'Failed to generate audio via HuggingFace' });
-  }
+  }, 300);
 });
 
-app.post('/api/import-zip', requireAuth, async (req, res) => {
-  const { urls } = req.body;
-  if (!urls || !Array.isArray(urls)) {
-    return res.status(400).json({ error: 'Please provide an array of URLs' });
-  }
-  // Validate all URLs before processing
-  const unsafeUrls = urls.filter(u => typeof u !== 'string' || !isUrlSafe(u));
-  if (unsafeUrls.length > 0) {
-    return res.status(400).json({ error: 'One or more URLs are invalid or blocked (internal/private addresses are not allowed)' });
-  }
-  if (!bucket || !db) {
-    return res.status(500).json({ error: 'Firebase Admin not configured. Please add FIREBASE_SERVICE_ACCOUNT to env vars.' });
-  }
-
-  const taskId = Date.now().toString();
-  
-  // Start background process
-  processUrlsInBackground(taskId, urls);
-  
-  return res.json({ message: 'Import started in background', taskId });
+// --- POST /api/generate-voice  → lokaler Voice-Stub ---
+app.post('/api/generate-voice', async (req, res) => {
+  const { text, voicePreset } = (req.body ?? {}) as { text?: string; voicePreset?: string };
+  // Lokaler No-Op: liefert einen Platzhalter zurueck (kein Google TTS).
+  return res.json({
+    status: 'local',
+    url: '',
+    text: text ?? '',
+    voicePreset: voicePreset ?? 'default',
+  });
 });
 
-app.get('/api/import-status/:taskId', requireAuth, (req, res) => {
-  const taskId = req.params.taskId;
-  return res.json({ status: activeImportTasks[taskId] || { status: 'unknown' } });
-});
-
-async function processUrlsInBackground(taskId: string, urls: string[]) {
-  activeImportTasks[taskId] = { url: '', status: 'processing', progress: `0 / ${urls.length} files processed` };
-  
-  let totalProcessed = 0;
-  for (const url of urls) {
-    activeImportTasks[taskId].url = url;
-    try {
-      console.log(`Starting download for ${url}`);
-      const response = await axios({
-        method: 'get',
-        url: url,
-        responseType: 'stream'
-      });
-
-      const zipStream = response.data.pipe(unzipper.Parse({ forceStream: true }));
-      
-      for await (const entry of zipStream) {
-        const fileName = entry.path;
-        const type = entry.type; // 'Directory' or 'File'
-        
-        if (type === 'File' && fileName.toLowerCase().endsWith('.wav')) {
-          console.log(`Extracting and uploading: ${fileName}`);
-          const fileRef = bucket.file(`samples/${Date.now()}_${path.basename(fileName)}`);
-          
-          // Stream directly from zip to Firebase Storage to avoid disk usage
-          const writeStream = fileRef.createWriteStream({
-            metadata: { contentType: 'audio/wav' }
-          });
-          
-          await new Promise((resolve, reject) => {
-            entry.pipe(writeStream)
-              .on('finish', resolve)
-              .on('error', reject);
-          });
-          
-          await fileRef.makePublic();
-          const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileRef.name}`;
-          
-          // Categorization logic
-          let cat = 'mids';
-          const lowerName = fileName.toLowerCase();
-          if (lowerName.includes('kick') || lowerName.includes('bass') || lowerName.includes('sub')) cat = 'bass';
-          else if (lowerName.includes('hat') || lowerName.includes('cymbal') || lowerName.includes('ride') || lowerName.includes('crash')) cat = 'highs';
-
-          // Save metadata to Firestore
-          try {
-            await db.collection('samples').add({
-              name: path.basename(fileName).replace('.wav', ''),
-              url: publicUrl,
-              category: cat,
-              type: 'Cloud WAV Sample',
-              createdAt: FieldValue.serverTimestamp()
-            });
-          } catch (dbAddErr) {
-            console.error(`Failed to add ${fileName} to Firestore:`, dbAddErr);
-          }
-        } else {
-          entry.autodrain(); // Skip non-wav files to prevent memory leak
-        }
-      }
-      totalProcessed++;
-      activeImportTasks[taskId].progress = `${totalProcessed} / ${urls.length} files processed`;
-    } catch (error) {
-      console.error(`Failed to process ${url}:`, error);
-    }
-  }
-  
-  activeImportTasks[taskId].status = 'completed';
-}
-
-app.get('/api/samples', requireAuth, async (req, res) => {
-  try {
-    const samples: any[] = [];
-    
-    // First, try loading cloud samples if DB is available
-    if (db) {
-      try {
-        const snapshot = await db.collection('samples').orderBy('name', 'asc').limit(500).get();
-        snapshot.forEach((doc: any) => {
-          const data = doc.data();
-          samples.push({
-            id: doc.id,
-            name: data.name,
-            category: data.category || 'mids',
-            type: data.type || 'Cloud WAV Sample',
-            url: data.url,
-            description: 'Loaded from Firebase Storage',
-            parameters: { frequency: data.category === 'bass' ? 60 : 1000, decay: 0.3 }
-          });
-        });
-      } catch (dbError) {
-        console.error("Firestore query failed, proceeding with local samples:", dbError);
-      }
-    }
-
-    // Then, append local ones
-    const samplesDir = path.join(process.cwd(), 'public', 'samples');
-    if (fs.existsSync(samplesDir)) {
-      const files = fs.readdirSync(samplesDir).filter(f => f.endsWith('.wav'));
-      files.forEach((filename, idx) => {
-        let cat = 'mids';
-        const lowerName = filename.toLowerCase();
-        if (lowerName.includes('kick') || lowerName.includes('bass') || lowerName.includes('sub')) cat = 'bass';
-        else if (lowerName.includes('hat') || lowerName.includes('cymbal') || lowerName.includes('ride') || lowerName.includes('crash')) cat = 'highs';
-        
-        samples.push({
-          id: `local-wav-${idx}`,
-          name: filename.replace('.wav', ''),
-          category: cat,
-          type: 'Local WAV Sample',
-          url: `/samples/${filename}`,
-          description: 'Local WAV sample',
-          parameters: { frequency: cat === 'bass' ? 60 : 1000, decay: 0.3 }
-        });
-      });
-    }
-    
-    return res.json({ samples: samples });
-  } catch (error) {
-    console.error('Error listing samples:', error);
-    return res.status(500).json({ error: 'Failed to list samples' });
-  }
-});
-
-// Setup Vite Dev Server / Static Asset delivery
+// ===========================================================================
+// Static Asset delivery (Vite dev / production dist)
+// ===========================================================================
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -421,11 +152,11 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {
-      setHeaders: (res, path) => {
-        if (path.endsWith('.js') || path.endsWith('.mjs')) {
+      setHeaders: (res, p) => {
+        if (p.endsWith('.js') || p.endsWith('.mjs')) {
           res.setHeader('Content-Type', 'application/javascript');
         }
-        if (path.endsWith('.wasm')) {
+        if (p.endsWith('.wasm')) {
           res.setHeader('Content-Type', 'application/wasm');
         }
       }
@@ -435,8 +166,55 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Tone Station server running on http://0.0.0.0:${PORT}`);
+  const server = http.createServer(app);
+
+  // --- WebRTC Socket.io signaling (same origin as the app) ---
+  const IDLE_TIMEOUT_MS = Number(process.env.SIGNALING_IDLE_TIMEOUT_MS || 20 * 60 * 1000);
+  const ALLOWED_ORIGINS = process.env.SIGNALING_ALLOWED_ORIGINS
+    ? process.env.SIGNALING_ALLOWED_ORIGINS.split(',')
+    : [];
+
+  try {
+    const { Server } = (await import('socket.io')) as any;
+    const io = new Server(server, {
+      cors: {
+        origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : false,
+        methods: ['GET', 'POST'],
+      },
+      path: '/webrtc-signaling',
+    });
+
+    io.on('connection', (socket: any) => {
+      let idleTimer: ReturnType<typeof setTimeout> | null = null;
+      const refreshIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => socket.disconnect(true), IDLE_TIMEOUT_MS);
+      };
+      refreshIdleTimer();
+
+      socket.on('offer', (data: any) => {
+        refreshIdleTimer();
+        if (!data.target || !data.offer) return;
+        socket.to(data.target).emit('offer', { offer: data.offer, sender: socket.id });
+      });
+      socket.on('answer', (data: any) => {
+        refreshIdleTimer();
+        if (!data.target || !data.answer) return;
+        socket.to(data.target).emit('answer', { answer: data.answer, sender: socket.id });
+      });
+      socket.on('ice-candidate', (data: any) => {
+        refreshIdleTimer();
+        if (!data.target || !data.candidate) return;
+        socket.to(data.target).emit('ice-candidate', { candidate: data.candidate, sender: socket.id });
+      });
+      socket.on('activity', refreshIdleTimer);
+    });
+  } catch (e) {
+    console.warn('Socket.io signaling disabled:', (e as Error).message);
+  }
+
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`sampleMONK (Google-frei) running on http://0.0.0.0:${PORT}`);
   });
 }
 

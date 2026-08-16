@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Sliders } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { usePluginState } from '../hooks/usePluginState';
@@ -61,16 +61,27 @@ export const MischpultTerminal = React.memo(() => {
     setChannels(prev => prev.map(ch => {
       if (ch.channel !== channel) return ch;
       const updated = { ...ch, ...updates };
-      // Apply volume/pan changes to audio engine
+      // Apply volume/pan changes to audio engine – ZIMMER-FREI (glatte Rampen)
       if (updates.volume !== undefined) {
         const dbVolume = updated.volume > 0 ? 20 * Math.log10(updated.volume) : -Infinity;
+        audioEngine.setMixChannelParam('gain', dbVolume, 0.03);
         audioEngine.setWorkletParam(`ch${channel}_volume`, dbVolume);
       }
       if (updates.pan !== undefined) {
+        audioEngine.setMixChannelParam('pan', updated.pan, 0.03);
         audioEngine.setWorkletParam(`ch${channel}_pan`, updated.pan);
       }
       return updated;
     }));
+  }, []);
+
+  // Task 8: LUFS-Metering im Mischpult (True-Peak/Lautheit anzeigen)
+  const [lufs, setLufs] = useState<number>(0);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const tick = () => { setLufs(audioEngine.getLufsValue()); rafRef.current = requestAnimationFrame(tick); };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, []);
 
   return (
@@ -82,11 +93,17 @@ export const MischpultTerminal = React.memo(() => {
           <Sliders className="w-5 h-5 text-blue-400" />
           <h2 className="text-xl font-black tracking-widest uppercase">PRO-MIX 9000</h2>
         </div>
-        <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
+        <div className="flex items-center gap-3">
+          <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
             <option value="OFF">OFF</option>
             <option value="AUTO_AI">AI</option>
             <option value="PRO">ACTIVE</option>
-        </select>
+          </select>
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-lime-400" title="Integrierte Lautheit (LUFS)">
+            <span className="w-2 h-2 rounded-full bg-lime-500 animate-pulse" />
+            {lufs.toFixed(1)} LUFS
+          </div>
+        </div>
       </div>
 
       {/* Mixer Matrix */}

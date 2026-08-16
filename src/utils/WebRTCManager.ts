@@ -12,8 +12,15 @@ class WebRTCManager {
   public onDataChannelMessage: (message: any) => void = () => {};
 
   constructor() {
-    if (SOCKET_IO_SIGNALING_URL) {
-      this.socket = io(SOCKET_IO_SIGNALING_URL, {
+    // '' (empty string) means "same origin" — resolve to io() default so the
+    // browser connects to the current host (works on Hetzner, Cloud Run, ...).
+    if (SOCKET_IO_SIGNALING_URL !== null) {
+      this.socket = io(SOCKET_IO_SIGNALING_URL || undefined, {
+        // When connecting to the bundled (same-origin) signaling we mount it at
+        // /webrtc-signaling in the Express server. A standalone signaling server
+        // (e.g. services/signaling, reachable via an explicit URL) uses the
+        // default /socket.io path instead — keep this auto-detected.
+        path: SOCKET_IO_SIGNALING_URL ? '/socket.io' : '/webrtc-signaling',
         autoConnect: true,
         transports: ['websocket', 'polling'],
       });

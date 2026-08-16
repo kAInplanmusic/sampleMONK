@@ -43,6 +43,35 @@ const COMPONENT_MAP: Record<string, any> = {
   mastering: MasteringOverlay
 };
 
+// ============================================================================
+// Task 21: Modul-Zusammenführung – Aliase für Konsolidierung
+// ----------------------------------------------------------------------------
+// Gruppen, deren Module zu einem "Metamodul" zusammengefasst werden können:
+//  - Verarbeitungskette: dsp + eq + effect  → primärer Kern: 'effect'
+//  - Klangerzeugung:     synth + instrument → primärer Kern: 'instrument'
+//  - Signalquelle:       recorder + voice   → primärer Kern: 'recording'
+// resolveComponent(id) liefert die ERSTE primäre Komponente der Gruppe, sodass
+// beim Zusammenführen nur ein Terminal gerendert wird.
+// ============================================================================
+
+/** Gruppen mit ihren Mitgliedern und dem primären (verbleibenden) Modul. */
+export const METAMODULE_GROUPS: { group: string; members: string[]; primary: string }[] = [
+  { group: 'process', members: ['dsp', 'eq', 'effect'], primary: 'effect' },
+  { group: 'sound',   members: ['synth', 'instrument'],  primary: 'instrument' },
+  { group: 'source',  members: ['recording', 'voice'],   primary: 'recording' },
+];
+
+/** Mappt ein Modul auf seinen primären Gruppenvorsteher. */
+export function resolvePrimaryModule(id: string): string {
+  const g = METAMODULE_GROUPS.find(x => x.members.includes(id));
+  return g ? g.primary : id;
+}
+
+/** Führt für ein Modul die richtige Render-Komponente auf (Merge-bewusst). */
+export function resolveComponent(id: string): any {
+  return COMPONENT_MAP[resolvePrimaryModule(id)] ?? COMPONENT_MAP[id];
+}
+
 const DEFAULT_PLUGIN_METADATA: Record<string, { name: string; short: string; icon: string }> = {
   mixer: { name: 'mixerMONK', short: 'MIX', icon: 'Sliders' },
   controller: { name: 'controllerMONK', short: 'CTRL', icon: 'Keyboard' },

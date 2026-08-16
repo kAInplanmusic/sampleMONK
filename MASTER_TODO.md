@@ -1,28 +1,36 @@
-# MASTER_TODO.md
+# sampleMONK – MASTER TODO
 
-## Technical Roadmap: Phase 4 & Beyond
+Status-Legende: `[x]` fertig · `[ ]` offen · `[~]` in Arbeit
 
-### 1. Performance & DSP Optimization
-- [ ] Migrate `src/audio/worklets/dspProcessor.ts` to Rust/WASM.
-- [ ] Migrate `src/audio/worklets/stemExtractor.ts` to Rust/WASM.
-- [ ] Audit and optimize `AudioWorklet` buffer sizes for sub-10ms latency.
+## 🔴 Fundament (Priorität 1)
+- [x] **T1** Einheitliches Track-Role-Datenmodell (types, audioEngine, Validatoren, presets)
+- [x] **T2** AudioWorklet Lookahead-Scheduler (drumMONK + sequencerMONK, Swing, Gate)
+- [x] **T3** Audio-I/O- & Device-Settings-Dialog (Soundkarte, SinkId, Buffer)
+- [x] **T4** Monitor/Cue-Bus für 1–4 Personen + Rollen-Presets
 
-### 2. Infrastructure & Scalability
-- [ ] Develop Terraform scripts for GCP infrastructure (GCE, VPC, Cloud Run).
-- [ ] Implement Redis adapter for `socket.io` to enable horizontal scaling of signaling.
-- [ ] Configure GKE for robust service orchestration.
+## 🟠 Hardware & Klangerzeugung
+- [x] **T5** MIDI Auto-Erkennung + Hotplug (controllerMONK, Device-Registry)
+- [x] **T6** Canvas-Skin-Engine für MIDI-Geräte
+- [x] **T7** synthesizerMONK: WASM/WAM-Synth-Kern (PolyBLEP, ADSR, Moog)
+- [x] **T8** mixerMONK: Stereo/DAW-Routing + RMS/True-Peak-Metering
 
-### 3. CI/CD & Testing Automation
-- [ ] Set up Playwright for E2E UI testing.
-- [ ] Set up Vitest for DSP unit testing.
-- [ ] Configure Google Cloud Build triggers for automated deployment pipelines.
+## 🟡 Effekte & Mixing
+- [x] **T9** eqMONK: parametrischer EQ + Frequenzgang
+- [x] **T10** dspMONK: Phasenkorrektur + dynamische Filter
+- [x] **T11** masteringMONK: Lookahead-Limiter + LUFS (EBU R128)
+- [x] **T12** effectMONK: Convolution-Reverb + WAM-Insert/Send-Matrix
 
-### 4. Advanced AI Integration
-- [ ] Audit latency between `services/library-ai` / `services/stem-ai` and Vertex AI.
-- [ ] Implement request batching and caching for AI inference.
-- [ ] Integrate Vertex AI streaming responses for real-time vocal feedback.
+## 🟢 Capture, Stems, Suche, Live
+- [x] **T13** recordingMONK + voiceMONK: PCM-Record + TTS
+- [x] **T14** stemMONK: Demucs-Integration
+- [x] **T15** biblioMONK: OPFS/IndexedDB-Cache (Analyse/Waveform dokumentiert)
+- [x] **T16** visMONK: Visualizer (Scope/Spektrogramm/Lissajous)
+- [x] **T17** spatialMONK: HRTF-Spatial-Hub
+- [x] **T18** Live-Session-UI (StreamLayout, useRoom/useWebRTC)
+- [x] **T19** Echte lokale Embeddings (biblioMONK-Suche)
 
-### 5. Monitoring & Observability
-- [ ] Implement OpenTelemetry for cross-service tracing (frontend to backend to AI).
-- [ ] Configure Cloud Monitoring dashboards for audio latency and signal drop-out tracking.
-- [ ] Set up automated alerts for high error rates in signaling/TURN infrastructure.
+## 🟦 Performance, UX & Abschluss
+- [x] **T20** AudioWorklet-Clock für Sync + PLL aktivieren
+- [x] **T21** Modul-Zusammenführung (rekorder/voice, dsp/eq/effect, synth/instrument)
+- [x] **T22** UX/Onboarding + Rollen-Start-Presets (DJ/Producer/Engineer/STEM)
+- [x] **T23** Doku/README + CI erweitern + MASTER_TODO finalisieren

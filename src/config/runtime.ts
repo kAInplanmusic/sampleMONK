@@ -1,44 +1,76 @@
-const DEFAULT_PRODUCTION_API_ORIGIN = 'https://audio-backend-293043362808.europe-west1.run.app';
+/**
+ * Runtime environment configuration.
+ *
+ * PORTABLE design:
+ * - The app is served by the Express backend on the SAME origin. In production
+ *   we therefore default to RELATIVE paths (`/api`, `/socket.io`) so the app
+ *   works on any host (Hetzner, Cloud Run, Firebase Hosting via proxy, ...)
+ *   without hardcoding a specific backend origin.
+ * - For setups where the API lives on another host, set `VITE_API_BASE_URL`
+ *   (and the VITE_SIGNALING_* vars) explicitly at build/deploy time.
+ */
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 
 const browserHostname = typeof window !== 'undefined' ? window.location.hostname : '';
 const isLocalHost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(browserHostname);
 
-const resolveOrigin = (configuredValue: string | undefined, localDefault: string, productionDefault: string | null) => {
-  if (configuredValue) return trimTrailingSlash(configuredValue);
+/**
+ * Returns the origin to use for a given service.
+ * - Explicitly configured value wins (trimmed).
+ * - On localhost we fall back to the local dev backend.
+ * - In production we fall back to `null` → signal "same origin / relative".
+ */
+const resolveOrigin = (
+  configuredValue: string | undefined,
+  localDefault: string,
+): string | null => {
+  if (configuredValue && configuredValue.trim() !== '') {
+    return trimTrailingSlash(configuredValue);
+  }
   if (isLocalHost) return localDefault;
-  return productionDefault;
+  return null; // same origin
 };
 
 export const API_ORIGIN = resolveOrigin(
-  import.meta.env.VITE_API_BASE_URL,
-  'http://localhost:8000',
-  DEFAULT_PRODUCTION_API_ORIGIN,
+  typeof import.meta !== 'undefined' ? import.meta.env.VITE_API_BASE_URL : undefined,
+  'http://localhost:8080',
 );
 
+// Always prefer relative `/api` (same origin) when no explicit origin was given.
 export const API_BASE_URL = API_ORIGIN ? `${API_ORIGIN}/api` : '/api';
 
-export const SOCKET_IO_SIGNALING_URL = resolveOrigin(
-  import.meta.env.VITE_SOCKET_IO_SIGNALING_URL,
-  'http://localhost:3001',
-  null,
-);
+// Backend endpoints default to SAME-ORIGIN (relative paths). In dev, where the
+// app is served by Vite (port 5173) and the Express backend runs on 8080, we
+// use the absolute local backend so CORS/WS work out of the box.
+export const SOCKET_IO_SIGNALING_URL =
+  typeof window !== 'undefined' && !isLocalHost
+    ? ''
+    : (resolveOrigin(
+        typeof import.meta !== 'undefined' ? import.meta.env.VITE_SOCKET_IO_SIGNALING_URL : undefined,
+        'http://localhost:3001',
+      ) ?? '');
 
-export const SIGNALING_WS_URL = resolveOrigin(
-  import.meta.env.VITE_SIGNALING_WS_URL,
-  'ws://localhost:8080',
-  null,
-);
+export const SIGNALING_WS_URL =
+  typeof window !== 'undefined' && !isLocalHost
+    ? ''
+    : (resolveOrigin(
+        typeof import.meta !== 'undefined' ? import.meta.env.VITE_SIGNALING_WS_URL : undefined,
+        'ws://localhost:8080',
+      ) ?? '');
 
-export const SIGNALING_HTTP_URL = resolveOrigin(
-  import.meta.env.VITE_SIGNALING_HTTP_URL,
-  'http://localhost:8001',
-  null,
-);
+export const SIGNALING_HTTP_URL =
+  typeof window !== 'undefined' && !isLocalHost
+    ? ''
+    : (resolveOrigin(
+        typeof import.meta !== 'undefined' ? import.meta.env.VITE_SIGNALING_HTTP_URL : undefined,
+        'http://localhost:8080',
+      ) ?? '');
 
-export const SIGNALING_TRANSPORT_URL = resolveOrigin(
-  import.meta.env.VITE_SIGNALING_TRANSPORT_URL,
-  'https://localhost:8002/webrtc-signaling',
-  null,
-);
+export const SIGNALING_TRANSPORT_URL =
+  typeof window !== 'undefined' && !isLocalHost
+    ? ''
+    : (resolveOrigin(
+        typeof import.meta !== 'undefined' ? import.meta.env.VITE_SIGNALING_TRANSPORT_URL : undefined,
+        'http://localhost:8080/webrtc-signaling',
+      ) ?? '');

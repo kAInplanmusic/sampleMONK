@@ -37,29 +37,24 @@ Das System besteht aus 16 dedizierten Modulen, die über den `MischpultMONK` (I)
 
 ---
 
-## ☁️ Infrastruktur & Integration
-Sample Monk ist vollständig in das Google Cloud Ecosystem integriert:
+## ☁️ Infrastruktur & Integration (Google/Firebase-frei)
+Sample Monk läuft **ohne** Google Cloud / Firebase. Der gesamte Stack wird auf einer
+eigenen Hetzner-Cloud-Instanz betrieben (stundenabgerechnet):
 
-### 1. Firebase (Frontend & Daten)
-*   **Hosting:** Statische Assets und Single-Page Application.
-*   **Firestore:** Datenbank für Preset-Metadaten, User-Sessions und Routing-Konfigurationen.
-*   **Storage (GCS):** Speicherung von WAV-Samples und generierten Vocal-Takes.
-*   **Auth:** Firebase Authentication für User-Management und Workspace-Sicherheit.
-
-### 2. Google Cloud Platform (Backend & AI)
-*   **Cloud Run:** Bereitstellung des Node.js/Python-Backends (via Docker-Container).
-*   **Cloud Build:** Automatisierte CI/CD-Pipeline.
-*   **Secret Manager:** Sichere Verwaltung von API-Keys (Gemini AI, HuggingFace).
+*   **Ein Prozess / ein Port:** App (static) + REST-API + WebRTC-Signaling via `server.ts`.
+*   **Datenhaltung:** lokal (Dateisystem für Sample-Dateien, Browser localStorage/IndexedDB für Presets/Sessions) – kein Firestore, kein GCS.
+*   **KI (optional):** selbstgehostetes lokales Ollama-LLM statt Gemini/HuggingFace/DeepSeek.
+*   **Auto-Shutdown:** optionaler systemd-Timer (`scripts/hetzner/install-idle-shutdown.sh`) stoppt die Instanz nach Inaktivität, um Kosten zu sparen.
 
 ---
 
-## 🔌 API-Referenz
-Das Backend stellt eine REST-API bereit, die zur Erweiterung des Systems genutzt werden kann:
+## 🔌 API-Referenz (Google-frei)
+Das Backend stellt eine REST-API bereit (kein Google/Firebase):
 
-*   `POST /api/generate-preset`: Generiert Synthesizer-Presets via Gemini AI.
-*   `POST /api/import-zip`: Importiert Sample-Packs (Cloud-Background-Processing).
-*   `GET /api/samples`: Listet Assets aus Firestore und lokaler Bibliothek auf.
-*   `POST /api/huggingface/generate`: Generiert Audio mittels MusicGen/HuggingFace.
+*   `GET /api/health`: Health-Check.
+*   `POST /api/ai/compose`: Lokaler, deterministischer Preset-Generator (kein externes LLM nötig).
+*   `POST /api/separate-stems`: Stems-Stream (lokaler SSE-Stub, bei Bedarf an lokalen Demucs-Service anbindbar).
+*   `POST /api/generate-voice`: lokaler Voice-Stub.
 
 ---
 
@@ -74,16 +69,19 @@ cd services/backend-core && npm install
 npm run dev
 ```
 
-### Deployment
-Für Deployment-Updates in der Cloud:
+### Deployment (Hetzner)
 ```bash
-# 1. Firebase Deploy
-firebase deploy --only hosting,firestore,storage
+# Option A: Automatisiert via Skript
+./deploy.sh          # baut + kopiert Build + startet remote
 
-# 2. Backend Build & Deploy (Cloud Run)
-gcloud builds submit --tag gcr.io/sample-monk/audio-backend
-gcloud run deploy audio-backend --image gcr.io/sample-monk/audio-backend --platform managed --region europe-west1
+# Option B: Direkt auf der Instanz
+cp .env.hetzner.example .env   # füllen
+./scripts/hetzner/start-prod.sh
+# oder
+docker compose -f docker-compose.hetzner.yml up -d --build
 ```
+
+Vollständige Anleitung siehe `.env.hetzner.example` und `scripts/hetzner/`.
 
 ---
 
@@ -92,3 +90,36 @@ gcloud run deploy audio-backend --image gcr.io/sample-monk/audio-backend --platf
 *(inspiriert vom PRAIN Cluster; alle Rechte AnunnakiTools 2026 by Patrick Hilf)*
 
 ****
+
+---
+
+## ✨ Implementierungs-Highlights (Technical Refresh)
+
+Dieses Repo enthält mehrere substanzielle Audio-/Backend-Verbesserungen, die parallel zu den Modulen eingebaut wurden:
+
+- **AudioWorklet-DSP-Erweiterungen (T7–T12)**
+  - `synthProcessor.ts` – PolyBLEP-Oszillator (Saw/Square/Triangle/Sine), ADSR-Hüllkurve + Moog-Ladder-Tiefpass im AudioWorklet.
+  - `eqProcessor.ts` – 4-Band parametrischer EQ (HP/Lowshelf/Peaking/Highshelf, RBJ-Koeffizienten).
+  - `dspProcessor.ts` – Phase-Tilt (Allpass) + Envelope-Follower-getriebenes dynamisches Filter + Soft-Clipper.
+  - `masteringProcessor.ts` – Lookahead-Limiter (5 ms) + Soft-Knee-Kompression als AudioWorklet.
+  - `effectProcessor.ts` – diffuser FDN-Reverb, Chorus/Flanger und Bitcrusher als Effekt-Worklet.
+  - `clockProcessor.ts` – präziser AudioWorklet-Thread-Clock-Generator mit Swing/Gate (PLL-Drifts).
+
+- **Audio-Engine (T2, T4, T8, T17, T20)**
+  - Lookahead-Scheduler mit Swing/Gate und optionalem AudioWorklet-Clock-Quantizer.
+  - 4 Monitor-/Cue-Busse (`MON1..MON4`) mit pro-Person-Track-Mix-Matrix und Rollen-Voreinstellungen.
+  - Zipper-freie Fader via `setMixChannelParam` (`setTargetAtTime`).
+  - HRTF-Berechnung für Kopfhörer-/Stereo-Cue (`calculateHRTF` → ITD/ILD).
+
+- **Hetzner-Einzelcontainer-Deployment (environment)**
+  - `Dockerfile.hetzner`, `docker-compose.hetzner.yml`, `scripts/hetzner/*`,
+    `.env.hetzner.example` – gleiche Prozess liefert Frontend + REST + WebRTC-Signaling.
+  - `server.ts` umfasst Socket.io-Signaling (defensive `await import`) + optionale Demucs-Stems (`ENABLE_STEMS=1`).
+
+- **UX/Rollen & Daten**
+  - `config/rolePresets.ts` – DJ / Producer / Engineer / STEM_Host Startprofile (Modul-Snapshots pro Rolle).
+  - `utils/opfs.ts` + `SampleContext` – OPFS-Cache für aufgenommene Samples.
+  - `utils/LocalEmbeddingProvider.ts` – reale lokale MiniLM-Embeddings (transformers.js) mit deterministischem Hash-Fallback.
+  - `MIDI` Auto-Erkennung + Hotplug + generische Canvas-Skin-Engine.
+
+Weitere Details: `MASTER_TODO.md`, `ARCHITECTURE.md`, `ARCH_WEBRTC.md`.

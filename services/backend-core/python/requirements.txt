@@ -1,3 +1,4 @@
+# Backend-Core Python – Google/firebase-frei
 fastapi
 uvicorn
 celery[redis]
@@ -11,4 +12,3 @@ pillow
 librosa
 scikit-learn
 chromadb
-google-cloud-secret-manager

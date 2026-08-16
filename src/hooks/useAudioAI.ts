@@ -98,6 +98,31 @@ export const useAudioAI = () => {
   };
 
   const generateVoice = async (text: string, voicePreset: string) => {
+    // Task 13: Vorzug für lokale Web-Speech-Synthese (keine Server-Abhängigkeit).
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        const synth = window.speechSynthesis;
+        if (synth && synth.getVoices().length > 0) {
+          // Kurzwort zur Laufzeit auswählen (Einzelsatz), Anbieter darf blockiert sein.
+          const speak = new Promise<string>((resolve) => {
+            const utter = new SpeechSynthesisUtterance(text);
+            const voices = synth.getVoices();
+            // Wähle eine deutsche/en-US-Stimme bevorzugt
+            const match = voices.find(v => v.lang === voicePreset) || voices[0];
+            if (match) utter.voice = match;
+            utter.rate = 0.95;
+            utter.onend = () => resolve('ok-spoken');
+            utter.onerror = () => resolve('error-speech');
+            synth.speak(utter);
+          });
+          await Promise.race([speak, new Promise(r => setTimeout(r, 1200))]); // kurzer Timeout
+          return { status: 'spoken', url: null, text };
+        }
+      } catch (e) {
+        console.warn('Web-Speech nicht verfügbar, weiter mit Server.', e);
+      }
+    }
+
     try {
       return await fetchWithRetry(async () => {
           const response = await axios.post(`${API_BASE_URL}/generate-voice`, {
