@@ -16,11 +16,10 @@ class WebRTCManager {
     // browser connects to the current host (works on Hetzner, Cloud Run, ...).
     if (SOCKET_IO_SIGNALING_URL !== null) {
       this.socket = io(SOCKET_IO_SIGNALING_URL || undefined, {
-        // When connecting to the bundled (same-origin) signaling we mount it at
-        // /webrtc-signaling in the Express server. A standalone signaling server
-        // (e.g. services/signaling, reachable via an explicit URL) uses the
-        // default /socket.io path instead — keep this auto-detected.
-        path: SOCKET_IO_SIGNALING_URL ? '/socket.io' : '/webrtc-signaling',
+        // Der Express-Hauptserver (server.ts) mountet das WebRTC-Signaling
+        // IMMER auf /webrtc-signaling – egal ob Dev (localhost:8080) oder
+        // Prod (same-origin). Der Pfad ist daher fix, nur die URL variiert.
+        path: '/webrtc-signaling',
         autoConnect: true,
         transports: ['websocket', 'polling'],
       });
