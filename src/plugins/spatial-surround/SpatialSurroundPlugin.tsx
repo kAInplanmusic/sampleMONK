@@ -21,7 +21,7 @@ export class SpatialSurroundPlugin implements Plugin {
     this.audioCtx = ctx;
 
     // Allocate SAB for position data (x, y)
-    this._positionBuffer = new SharedArrayBuffer(2 * Float32Array.BYTES_PER_ELEMENT);
+    this._positionBuffer = typeof SharedArrayBuffer !== 'undefined' ? new SharedArrayBuffer(2 * Float32Array.BYTES_PER_ELEMENT) : new ArrayBuffer(2 * Float32Array.BYTES_PER_ELEMENT);
     this._positionBufferView = new Float32Array(this._positionBuffer);
     
     // Attempt to use AudioWorkletNode

@@ -7,6 +7,18 @@ import { LatencyMonitor } from './LatencyMonitor';
 import { validateRouting } from './routingValidator';
 import { validatePreset } from './presetValidator';
 
+// Firefox liefert ohne crossOriginIsolated (COOP/COEP) kein SharedArrayBuffer.
+// makeSafeArrayBuffer liefert dann ein reguläres ArrayBuffer, damit die App in
+// jedem Browser startet (Verlust: Atomico/CAS-Fallback, aber App nutzbar).
+function makeSafeArrayBuffer(byteLength: number): ArrayBuffer {
+  try {
+    if (typeof globalThis !== 'undefined' && typeof (globalThis as any).SharedArrayBuffer === 'function') {
+      return new (globalThis as any).SharedArrayBuffer(byteLength);
+    }
+  } catch { /* kein SAB verfuegbar */ }
+  return new ArrayBuffer(byteLength);
+}
+
 class AudioEngine {
   public initialized = false;
   private clockSync = new ClockSync();
@@ -35,7 +47,13 @@ class AudioEngine {
   public onLufsChange: (value: number) => void = () => {};
   public getLufsValue(): number {
       if (this.lufsBufferView) {
-          return Atomics.load(this.lufsBufferView, 0) / 100;
+          // Atomics funktioniert nur auf echten SharedArrayBuffers. Bei
+          // ArrayBuffer-Fallback (Firefox ohne COOP/COEP) lese ich direkt.
+          try {
+              return Atomics.load(this.lufsBufferView, 0) / 100;
+          } catch {
+              return this.lufsBufferView[0] / 100;
+          }
       }
       return 0; 
   }
@@ -160,25 +178,54 @@ class AudioEngine {
     } catch (ctxErr) {
       console.warn('Tone/Context konnte nicht sicher gestartet werden:', ctxErr);
     }
-    const rawCtx = Tone.context?.rawContext as AudioContext | null;
-    if (!rawCtx || typeof rawCtx.createGain !== 'function') {
+    // Gültigen AudioContext sicherstellen. `instanceof AudioContext` (bzw.
+    // `window.AudioContext`) fängt auch den Fall ab, dass rawContext nur im
+    // eigenen Kontext-Dummy-Fenster existiert, aber `new AudioWorkletNode`
+    // trotzdem 'Argument 1 does not implement BaseAudioContext' wirft.
+    const Win = typeof window !== 'undefined' ? window : globalThis;
+    const AudioContextCtor = (Win as any).AudioContext || (Win as any).webkitAudioContext;
+    const rawCtx = Tone.context?.rawContext;
+    const validCtx =
+      rawCtx != null &&
+      typeof rawCtx.createGain === 'function' &&
+      (typeof AudioContextCtor === 'undefined' || rawCtx instanceof AudioContextCtor)
+        ? (rawCtx as AudioContext)
+        : null;
+
+    if (!validCtx) {
       console.error('Kein gültiger AudioContext verfügbar – AudioEngine läuft abgesichert ohne Worklets.');
-      this.ctx = new AudioContext();
+      try {
+        this.ctx = new AudioContextCtor ? new AudioContextCtor() : new AudioContext();
+      } catch (e2) {
+        // Letzter Ausweg: gar kein echter AudioContext (Stumm/Silent-Betrieb).
+        this.ctx = null as unknown as AudioContext;
+        console.error('AudioContext konnte nicht erstellt werden – AudioEngine stumm.', e2);
+      }
     } else {
-      this.ctx = rawCtx;
+      this.ctx = validCtx;
     }
 
-    // Worklets robust erzeugen: Fehlt eine module-Registrierung, liefert der
-    // Helfer einen neutralen Gain-Knoten als Platzhalter, damit die Audio-Kette
-    // trotzdem durchgängig bleibt (kein hartes Reject von init()).
+    // Worklets robust erzeugen: Fehlt eine module-Registrierung (oder der
+    // Context ist nicht nutzbar), liefert der Helfer einen neutralen Gain-Knoten
+    // als Platzhalter, damit die Audio-Kette durchgängig bleibt (kein harter
+    // Reject von init()).
     const makeWorklet = (
       name: string, opts?: AudioWorkletNodeOptions,
     ): AudioWorkletNode => {
       try {
+        if (!this.ctx || typeof this.ctx.createGain !== 'function') {
+          throw new Error('kein AudioContext');
+        }
         return new AudioWorkletNode(this.ctx, name, opts);
       } catch (e) {
         console.warn(`AudioWorklet '${name}' nicht verfügbar – nutze neutralen Gain-Fallback.`, e);
-        return this.ctx.createGain() as unknown as AudioWorkletNode;
+        try {
+          if (this.ctx && typeof this.ctx.createGain === 'function') {
+            return this.ctx.createGain() as unknown as AudioWorkletNode;
+          }
+        } catch { /* kontextloses Silent */ }
+        // Minimaler, never-connectbarer Stand-in damit der Rest nicht crasht.
+        return null as unknown as AudioWorkletNode;
       }
     };
 
@@ -187,12 +234,16 @@ class AudioEngine {
     this.masteringNode = makeWorklet('mastering-processor');
     this.analyzerNode = makeWorklet('analyzer-processor');
 
-    const sab = new SharedArrayBuffer(128 * 4);
+    // SharedArrayBuffer ist ohne crossOriginIsolated (COOP/COEP-Header) in
+    // Firefox NICHT definiert – nutze einen sicheren Fallback (ArrayBuffer),
+    // damit init() nie an `ReferenceError: SharedArrayBuffer is not defined`
+    // scheitert. Der BeatVisualizer fängt einen leeren Buffer ab.
+    const sab = makeSafeArrayBuffer(128 * 4);
     this.sharedWaveformBuffer = new Float32Array(sab);
     try { this.analyzerNode.port.postMessage({ buffer: sab }); } catch { /* Gain-Fallback ohne Port */ }
 
     this.lufsNode = makeWorklet('lufs-processor');
-    const lufsSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    const lufsSab = makeSafeArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
     this.lufsBufferView = new Int32Array(lufsSab);
     try { this.lufsNode.port.postMessage({ buffer: lufsSab }); } catch { /* Gain-Fallback ohne Port */ }
 
