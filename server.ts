@@ -148,21 +148,27 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: 'spa',
     });
-    app.use(vite.middlewares);
 
-    // Dev-Fix: Die AudioWorklet-Dateien werden nach `dist/worklets` gebaut
-    // (build-worklets.mjs) und müssen auch im Dev-Modus unter `/worklets/…`
-    // serviert werden – sonst liefert der Vite-SPA-Fallback index.html.
-    // Vite Dev serviert `public/` als Root; wir registrieren zusätzlich die
-    // gebaute Worklet-Ablage, damit addModule(url) echtes JS erhält.
-    const workletsDist = path.join(process.cwd(), 'dist/worklets');
-    app.use('/worklets', express.static(workletsDist, {
-      setHeaders: (res, p) => {
-        if (p.endsWith('.js') || p.endsWith('.mjs')) {
-          res.setHeader('Content-Type', 'application/javascript');
-        }
-      }
-    }));
+    // Dev-Fix: Die AudioWorklet-Dateien werden von build-worklets.mjs nach
+    // `public/worklets` (für Vite Dev) UND `dist/worklets` (für Prod) gebaut.
+    // Wir servieren /worklets EXPLIZIT VOR vite.middlewares, damit /worklets/*.js
+    // echtes JS bekommt und NICHT vom Vite-SPA-Fallback als index.html geliefert
+    // wird (sonst: addModule -> 'SyntaxError: expected expression, got <').
+    const workletsDirs = [
+      path.join(process.cwd(), 'public/worklets'),
+      path.join(process.cwd(), 'dist/worklets'),
+    ];
+    for (const dir of workletsDirs) {
+      app.use('/worklets', express.static(dir, {
+        setHeaders: (res, p) => {
+          if (p.endsWith('.js') || p.endsWith('.mjs')) {
+            res.setHeader('Content-Type', 'application/javascript');
+          }
+        },
+      }));
+    }
+
+    app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {
