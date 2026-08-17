@@ -48,7 +48,9 @@ export const SOCKET_IO_SIGNALING_URL =
     ? ''
     : (resolveOrigin(
         typeof import.meta !== 'undefined' ? import.meta.env.VITE_SOCKET_IO_SIGNALING_URL : undefined,
-        'http://localhost:3001',
+        // Dev-Default = derselbe integrierte Server (Port 8080), der das
+        // WebRTC-Signaling auf dem Pfad /webrtc-signaling mitliefert.
+        'http://localhost:8080',
       ) ?? '');
 
 export const SIGNALING_WS_URL =

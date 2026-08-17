@@ -19,19 +19,29 @@ export const BeatVisualizer: React.FC<BeatVisualizerProps> = React.memo(({ isPla
     // Transfer control to worker
     const offscreen = canvas.transferControlToOffscreen();
     
-    // Get SAB from audioEngine if available
-    const sab = audioEngine.initialized && audioEngine.sharedWaveformBuffer 
-        ? audioEngine.sharedWaveformBuffer.buffer 
-        : null;
+    // Get SAB from audioEngine if available (heuristisch nur übergeben, wenn es
+    // wirklich nutzbar ist – ein defekter/abgebrochener Buffer würde sonst beim
+    // postMessage-Transfer eine DOMException auslösen).
+    let sab: ArrayBuffer | null = null;
+    try {
+      if (audioEngine.initialized && audioEngine.sharedWaveformBuffer &&
+          audioEngine.sharedWaveformBuffer.byteLength > 0) {
+        sab = audioEngine.sharedWaveformBuffer.buffer;
+      }
+    } catch { /* SAB nicht verfügbar */ }
 
-    workerRef.current.postMessage({ 
+    try {
+      workerRef.current.postMessage({ 
         type: 'init', 
         canvas: offscreen, 
         sab,
         width: 800, // Fixed resolution
         height: 200,
         playing: isPlaying
-    }, [offscreen]);
+      }, sab ? [offscreen, sab] : [offscreen]);
+    } catch (e) {
+      console.warn('BeatVisualizer: Worker-Init fehlgeschlagen (visualizer wird übersprungen).', e);
+    }
 
     return () => {
       workerRef.current?.terminate();

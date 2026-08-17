@@ -150,22 +150,51 @@ class AudioEngine {
   public async init() {
     if (this.initialized) return;
 
-    this.ctx = Tone.context.rawContext as AudioContext;
-    
-    // Worklets
-    this.dspNode = new AudioWorkletNode(this.ctx, 'dsp-processor');
-    this.eqNode = new AudioWorkletNode(this.ctx, 'eq-processor');
-    this.masteringNode = new AudioWorkletNode(this.ctx, 'mastering-processor');
-    this.analyzerNode = new AudioWorkletNode(this.ctx, 'analyzer-processor');
-    
+    // Stellt sicher, dass ein AudioContext existiert (Browser-Autoplay-Gate):
+    // Ohne Tone.start() ist Tone.context ggf. nicht lauffähig, wodurch
+    // `new AudioWorkletNode(this.ctx, …)` mit "Argument 1 does not implement
+    // BaseAudioContext" scheitert.
+    try {
+      await Tone.start();
+      await Tone.context.resume();
+    } catch (ctxErr) {
+      console.warn('Tone/Context konnte nicht sicher gestartet werden:', ctxErr);
+    }
+    const rawCtx = Tone.context?.rawContext as AudioContext | null;
+    if (!rawCtx || typeof rawCtx.createGain !== 'function') {
+      console.error('Kein gültiger AudioContext verfügbar – AudioEngine läuft abgesichert ohne Worklets.');
+      this.ctx = new AudioContext();
+    } else {
+      this.ctx = rawCtx;
+    }
+
+    // Worklets robust erzeugen: Fehlt eine module-Registrierung, liefert der
+    // Helfer einen neutralen Gain-Knoten als Platzhalter, damit die Audio-Kette
+    // trotzdem durchgängig bleibt (kein hartes Reject von init()).
+    const makeWorklet = (
+      name: string, opts?: AudioWorkletNodeOptions,
+    ): AudioWorkletNode => {
+      try {
+        return new AudioWorkletNode(this.ctx, name, opts);
+      } catch (e) {
+        console.warn(`AudioWorklet '${name}' nicht verfügbar – nutze neutralen Gain-Fallback.`, e);
+        return this.ctx.createGain() as unknown as AudioWorkletNode;
+      }
+    };
+
+    this.dspNode = makeWorklet('dsp-processor');
+    this.eqNode = makeWorklet('eq-processor');
+    this.masteringNode = makeWorklet('mastering-processor');
+    this.analyzerNode = makeWorklet('analyzer-processor');
+
     const sab = new SharedArrayBuffer(128 * 4);
     this.sharedWaveformBuffer = new Float32Array(sab);
-    this.analyzerNode.port.postMessage({ buffer: sab });
-    
-    this.lufsNode = new AudioWorkletNode(this.ctx, 'lufs-processor');
+    try { this.analyzerNode.port.postMessage({ buffer: sab }); } catch { /* Gain-Fallback ohne Port */ }
+
+    this.lufsNode = makeWorklet('lufs-processor');
     const lufsSab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
     this.lufsBufferView = new Int32Array(lufsSab);
-    this.lufsNode.port.postMessage({ buffer: lufsSab });
+    try { this.lufsNode.port.postMessage({ buffer: lufsSab }); } catch { /* Gain-Fallback ohne Port */ }
 
     // Mastering Chain
     this.masterMePreGain = new Tone.Volume(0);
@@ -263,7 +292,12 @@ class AudioEngine {
   /** Applies public/routing.json to the audio graph after nodes are created. */
   private async applyRoutingConfig() {
     try {
-      const response = await fetch('/routing.json');
+      // Timeout-Schutz: Wenn routing.json nicht schnell kommt (z.B. Server down
+      // im Dev), darf init()/play() NIEMALS hängenbleiben.
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch('/routing.json', { signal: controller.signal });
+      clearTimeout(t);
       if (!response.ok) {
         console.warn('routing.json not found, skipping routing config.');
         return;
@@ -303,8 +337,8 @@ class AudioEngine {
 
   public setWorkletParam(name: string, value: number) {
     this.ensureInitialized();
-    if (!this.dspNode) return;
-    this.dspNode.parameters.get(name)?.setValueAtTime(value, Tone.now());
+    if (!this.dspNode || typeof (this.dspNode as any).parameters?.get !== 'function') return;
+    this.dspNode.parameters!.get(name)?.setValueAtTime(value, Tone.now());
   }
 
   /** Effekt-Engine (effectProcessor) steuern – Insert/Send. */
@@ -322,19 +356,19 @@ class AudioEngine {
   /** Task 11: Mastering-Limiter/Kompression steuern (masteringProcessor). */
   public setMasteringParams(p: { threshold?: number; ratio?: number; knee?: number; attack?: number; release?: number; makeup?: number; ceiling?: number }) {
     this.ensureInitialized();
-    this.masteringNode?.port.postMessage({ ...p });
+    try { this.masteringNode?.port?.postMessage({ ...p }); } catch { /* Gain-Fallback */ }
   }
 
   /** Task 10: DSP-Engine steuern (Phasenkorrektur, dynamisches Filter, Drive). */
   public setDspParam(p: { phase?: number; filterCutoff?: number; resonance?: number; depth?: number; drive?: number }) {
     this.ensureInitialized();
-    this.dspNode?.port.postMessage({ ...p });
+    try { this.dspNode?.port?.postMessage({ ...p }); } catch { /* Gain-Fallback */ }
   }
 
   /** Task 9: EQ-Band parametrisch setzen (eqProcessor). */
   public setEqBand(band: 'low'|'mid'|'high'|'hp', gain: number, freq?: number, q?: number) {
     this.ensureInitialized();
-    this.eqNode?.port.postMessage({ band, gain, freq, q });
+    try { this.eqNode?.port?.postMessage({ band, gain, freq, q }); } catch { /* Gain-Fallback */ }
   }
 
   /** Task 8: Glatte Fader-/Panner-Übergänge (Zipper-frei via setTargetAtTime). */

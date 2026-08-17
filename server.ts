@@ -149,6 +149,20 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+
+    // Dev-Fix: Die AudioWorklet-Dateien werden nach `dist/worklets` gebaut
+    // (build-worklets.mjs) und müssen auch im Dev-Modus unter `/worklets/…`
+    // serviert werden – sonst liefert der Vite-SPA-Fallback index.html.
+    // Vite Dev serviert `public/` als Root; wir registrieren zusätzlich die
+    // gebaute Worklet-Ablage, damit addModule(url) echtes JS erhält.
+    const workletsDist = path.join(process.cwd(), 'dist/worklets');
+    app.use('/worklets', express.static(workletsDist, {
+      setHeaders: (res, p) => {
+        if (p.endsWith('.js') || p.endsWith('.mjs')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        }
+      }
+    }));
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {
