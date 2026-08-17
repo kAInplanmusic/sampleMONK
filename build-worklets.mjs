@@ -7,7 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const WORKLETS_DIR = path.resolve(__dirname, 'src/audio/worklets');
-const OUTPUT_DIR = path.resolve(__dirname, 'dist/public/worklets');
+// Pfad-Konsistenz: Vite kopiert `public/` in das Stage-Root und serviert
+// `dist/` als statisches Root (server.ts). Damit `/worklets/<name>.js` auf die
+// gebaute Datei zeigt, schreiben wir direkt nach `dist/worklets`.
+const OUTPUT_DIR = path.resolve(__dirname, 'dist/worklets');
 
 async function buildWorklets() {
   await mkdir(OUTPUT_DIR, { recursive: true });

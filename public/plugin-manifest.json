@@ -29,24 +29,119 @@
       "id": "mastering-processor",
       "url": "/worklets/masteringProcessor.js",
       "hash": "placeholder_hash_mastering"
+    },
+    {
+      "id": "clock-processor",
+      "url": "/worklets/clockProcessor.js",
+      "hash": "placeholder_hash_clock"
+    },
+    {
+      "id": "synth-processor",
+      "url": "/worklets/synthProcessor.js",
+      "hash": "placeholder_hash_synth"
+    },
+    {
+      "id": "effect-processor",
+      "url": "/worklets/effectProcessor.js",
+      "hash": "placeholder_hash_effect"
     }
   ],
   "ui_plugins": [
-    { "id": "mixer", "name": "mixerMONK", "short": "MIX", "icon": "Sliders" },
-    { "id": "controller", "name": "controllerMONK", "short": "CTRL", "icon": "Keyboard" },
-    { "id": "sequencer", "name": "sequencerMONK", "short": "SEQ", "icon": "Grid3X3" },
-    { "id": "spatial", "name": "spatialMONK", "short": "3D", "icon": "Box" },
-    { "id": "instrument", "name": "instrumentMONK", "short": "INS", "icon": "Music" },
-    { "id": "drum", "name": "drumMONK", "short": "DRM", "icon": "Speaker" },
-    { "id": "effect", "name": "effectMONK", "short": "FX", "icon": "Sparkles" },
-    { "id": "synth", "name": "synthesizerMONK", "short": "SYN", "icon": "Waves" },
-    { "id": "voice", "name": "voiceMONK", "short": "VOX", "icon": "Mic" },
-    { "id": "visualizer", "name": "visMONK", "short": "VIS", "icon": "Activity" },
-    { "id": "stem", "name": "stemMONK", "short": "RMX", "icon": "Radio" },
-    { "id": "recording", "name": "recordingMONK", "short": "REC", "icon": "Activity" },
-    { "id": "library", "name": "biblioMONK", "short": "LIB", "icon": "Database" },
-    { "id": "eq", "name": "eqMONK", "short": "EQ", "icon": "Activity" },
-    { "id": "dsp", "name": "dspMONK", "short": "DSP", "icon": "Zap" },
-    { "id": "mastering", "name": "masteringMONK", "short": "MST", "icon": "Square" }
+    {
+      "id": "mixer",
+      "name": "mixerMONK",
+      "short": "MIX",
+      "icon": "Sliders"
+    },
+    {
+      "id": "controller",
+      "name": "controllerMONK",
+      "short": "CTRL",
+      "icon": "Keyboard"
+    },
+    {
+      "id": "sequencer",
+      "name": "sequencerMONK",
+      "short": "SEQ",
+      "icon": "Grid3X3"
+    },
+    {
+      "id": "spatial",
+      "name": "spatialMONK",
+      "short": "3D",
+      "icon": "Box"
+    },
+    {
+      "id": "instrument",
+      "name": "instrumentMONK",
+      "short": "INS",
+      "icon": "Music"
+    },
+    {
+      "id": "drum",
+      "name": "drumMONK",
+      "short": "DRM",
+      "icon": "Speaker"
+    },
+    {
+      "id": "effect",
+      "name": "effectMONK",
+      "short": "FX",
+      "icon": "Sparkles"
+    },
+    {
+      "id": "synth",
+      "name": "synthesizerMONK",
+      "short": "SYN",
+      "icon": "Waves"
+    },
+    {
+      "id": "voice",
+      "name": "voiceMONK",
+      "short": "VOX",
+      "icon": "Mic"
+    },
+    {
+      "id": "visualizer",
+      "name": "visMONK",
+      "short": "VIS",
+      "icon": "Activity"
+    },
+    {
+      "id": "stem",
+      "name": "stemMONK",
+      "short": "RMX",
+      "icon": "Radio"
+    },
+    {
+      "id": "recording",
+      "name": "recordingMONK",
+      "short": "REC",
+      "icon": "Activity"
+    },
+    {
+      "id": "library",
+      "name": "biblioMONK",
+      "short": "LIB",
+      "icon": "Database"
+    },
+    {
+      "id": "eq",
+      "name": "eqMONK",
+      "short": "EQ",
+      "icon": "Activity"
+    },
+    {
+      "id": "dsp",
+      "name": "dspMONK",
+      "short": "DSP",
+      "icon": "Zap"
+    },
+    {
+      "id": "mastering",
+      "name": "masteringMONK",
+      "short": "MST",
+      "icon": "Square"
+    }
   ]
 }

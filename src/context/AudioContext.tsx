@@ -182,6 +182,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
 
             // Function to handle signaling over network
             const performSignaling = async () => {
+                try {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
                 
@@ -193,6 +194,16 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                     console.warn('WebRTC signaling is disabled: no production signaling endpoint configured.');
                     return;
                 }
+                // UX-Fix: Wenn das Backend nicht erreichbar ist, darf der Fetch
+                // das Promise NICHT ablehnen – der Fehler wird geloggt, aber der
+                // Audio-Start läuft weiter (Signal ist optional).
+                const safeFetch = async (url: string, init: RequestInit) => {
+                  try { return await fetch(url, init); }
+                  catch (e) {
+                    console.warn('Signaling-Endpunkt nicht erreichbar (Backend down?), mit Null-Antwort weiter:', e);
+                    return null;
+                  }
+                };
                 // Feature detect WebTransport and attempt to use it for sending offer
                 if (SIGNALING_TRANSPORT_URL && typeof (window as any).WebTransport !== 'undefined') {
                     // console.log("Attempting WebRTC signaling over WebTransport.");
@@ -210,40 +221,47 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                         await writer.close(); 
                         
                         // console.log("Offer sent via WebTransport. Fetching answer via HTTP fallback for now.");
-                        const response = await fetch(`${SIGNALING_HTTP_URL}/offer`, {
+                        const response = await safeFetch(`${SIGNALING_HTTP_URL}/offer`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ sdp: pc.localDescription?.sdp, type: pc.localDescription?.type })
                         });
-                        answer = await response.json();
+                        answer = response ? await response.json() : null;
                         wt.close(); 
 
                     } catch (wtError) {
                         console.warn("WebTransport signaling failed, falling back to HTTP fetch:", wtError);
-                        const response = await fetch(`${SIGNALING_HTTP_URL}/offer`, {
+                        const response = await safeFetch(`${SIGNALING_HTTP_URL}/offer`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ sdp: pc.localDescription?.sdp, type: pc.localDescription?.type })
                         });
-                        answer = await response.json();
+                        answer = response ? await response.json() : null;
                     }
                 } else {
                     // console.log("WebTransport not supported, using HTTP fetch.");
-                    const response = await fetch(`${SIGNALING_HTTP_URL}/offer`, {
+                    const response = await safeFetch(`${SIGNALING_HTTP_URL}/offer`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ sdp: pc.localDescription?.sdp, type: pc.localDescription?.type })
                     });
-                    answer = await response.json();
+                    answer = response ? await response.json() : null;
                 }
 
-                await pc.setRemoteDescription(new RTCSessionDescription(answer));
-                // Persist remote description
-                localStorage.setItem('webrtcRemoteDescription', JSON.stringify(answer));
+                if (answer) {
+                  await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                  // Persist remote description
+                  localStorage.setItem('webrtcRemoteDescription', JSON.stringify(answer));
+                } else {
+                  console.warn('Keine Signaling-Antwort (Peer) erhalten; WebRTC bleibt lokal/offline.');
+                }
 
                 // console.log("High-Res Master Audio Stream Connected");
+              } catch (signalingError) {
+                // UX-Fix: fehlerhaftes/fehlendes Backend blockiert den Audio-Start nicht.
+                console.warn("WebRTC-Signaling übersprungen (optional):", signalingError);
+              }
             };
-
             // Check for existing signaling state
             const storedLocalDescription = localStorage.getItem('webrtcLocalDescription');
             const storedRemoteDescription = localStorage.getItem('webrtcRemoteDescription');

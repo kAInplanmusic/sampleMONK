@@ -54,9 +54,26 @@ function AppComponent() {
   }, []);
 
   const startApp = async () => {
-      await startAudio();
-      await discoverPlugins();
-      await audioEngine.play();
+      // UX-Fix: Jeder Initialisierungsschritt wird einzeln abgefangen. Wenn das
+      // Backend (WebRTC-Signaling) oder einzelne Worklets nicht verfügbar sind,
+      // darf die App NICHT auf dem Start-Screen hängen bleiben – sie startet
+      // trotzdem und protokolliert den Fehler konsolen-seitig.
+      try {
+        await startAudio();
+      } catch (e) {
+        console.error('Audio-/Signaling-Init fehlgeschlagen (App startet trotzdem):', e);
+      }
+      try {
+        await discoverPlugins();
+      } catch (e) {
+        console.error('Plugin-Discovery fehlgeschlagen (Fallback-Registry aktiv):', e);
+      }
+      try {
+        await audioEngine.play();
+      } catch (e) {
+        console.error('AudioEngine.play fehlgeschlagen:', e);
+      }
+      // IMMER in den App-Screen wechseln – Backend/Worklet-Defizite brechen die App nicht.
       setIsStarted(true);
       setIsPlaying(true);
   };
