@@ -39,8 +39,16 @@ let transformersLib: any = null;
 async function loadTransformer(): Promise<any> {
   if (transformersLib) return transformersLib;
   try {
-    // @xenova/transformers (pip-äquivalent zu @huggingface/transformers-onnx)
-    const mod = await import('@xenova/transformers');
+    // @xenova/transformers (pip-äquivalent zu @huggingface/transformers-onnx).
+    // @vite-ignore: Vite/Rollup soll den Import NICHT zur Build-Zeit auflösen,
+    // da das Paket optional/fehlend sein kann. Erst zur Laufzeit, wenn es
+    // tatsächlich installiert wurde, wird geladen (wie beim server-seitigen Bundler).
+    const pkgName = '@xenova/transformers';
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, import/no-dynamic-require
+    // Variable-Spezifier + @vite-ignore: Rollup kann die Variable nicht zur
+    // Build-Zeit auflösen, wodurch Vite den (optional fehlenden) Paket-Pfad
+    // NICHT als Build-Fehler behandelt. Erst zur Laufzeit wird er importiert.
+    const mod = await import(/* @vite-ignore */ pkgName).catch(() => null);
     transformersLib = mod;
     return mod;
   } catch {

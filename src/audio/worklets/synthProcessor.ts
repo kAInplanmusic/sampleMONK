@@ -42,7 +42,11 @@ function waveform(type: string, phase: number, dt: number): number {
 
 // --- 4-Pol Moog-Ladder-Filter (vereinfacht, resonanzstabil) ---
 class MoogLadder {
-  private _y1 = 0, _y2 = 0, _y3 = 0, _y4 = 0, _old = 0;
+  private _y1 = 0;
+  private _y2 = 0;
+  private _y3 = 0;
+  private _y4 = 0;
+  private _old = 0;
   process(x: number, cutoff: number, resonance: number, sampleRate: number): number {
     const f = Math.min(0.95, cutoff * 2 / sampleRate);
     const r = Math.max(0, resonance);
