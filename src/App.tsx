@@ -133,8 +133,8 @@ function AppComponent() {
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
-      {/* 1. Header: Logo schwarz, Titel-4-Farben, Steuerung rechts */}
-      <header className="flex items-center justify-between gap-4 mb-8">
+      {/* 1. Header: STICKY, Logo schwarz, Titel-4-Farben, Steuerung rechts */}
+      <header className="flex items-center justify-between gap-4 mb-8 sticky top-0 z-30 -mx-6 px-6 py-4 bg-black/85 backdrop-blur-lg border-b border-neutral-900">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-black border border-fuchsia-500/80 flex items-center justify-center shadow-[0_0_22px_rgba(236,72,153,0.35)]">
             <Music className="w-5 h-5 text-cyan-300" />
@@ -168,8 +168,14 @@ function AppComponent() {
         </div>
       </header>
 
-      {/* 2. Icon Grid – 2 Zeilen x 8 Spalten */}
-      <div className="grid grid-cols-8 gap-3 max-w-5xl mx-auto mb-8">
+      {/* 2. Module Selection + Icon Grid (2 x 8) */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="h-px flex-1 bg-neutral-900" />
+          <h2 className="text-[11px] font-bold tracking-[0.35em] text-neutral-500 uppercase">Module Selection</h2>
+          <span className="h-px flex-1 bg-neutral-900" />
+        </div>
+        <div className="grid grid-cols-8 gap-3 max-w-5xl mx-auto">
         {PLUGIN_REGISTRY.map(plugin => {
           const state = moduleStates[plugin.id] || 'OFF';
           const isActive = state !== 'OFF';
@@ -187,9 +193,35 @@ function AppComponent() {
           );
         })}
       </div>
+      </div>
 
-      {/* 3. Persistent Waveform/Taktfenster */}
+      {/* 3. Master-Player + Waveform (BPM-Anzeige) */}
       <section className="bg-black border border-neutral-900 p-4 rounded-xl mb-8 shadow-[inset_0_0_25px_rgba(0,0,0,0.9)]">
+        <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <h3 className="text-[11px] font-bold tracking-[0.35em] text-neutral-500 uppercase">Master Player</h3>
+            <span className={`font-mono text-lg font-bold tracking-tight ${isPlaying ? 'text-cyan-300' : 'text-neutral-600'}`}>
+              {isPlaying ? <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse mr-1" /> : null}
+              {bpm} BPM
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsPlaying(true)}
+              disabled={isPlaying}
+              className="px-4 py-2 rounded-lg bg-cyan-500/15 border border-cyan-500/50 text-cyan-200 text-xs font-bold tracking-widest uppercase hover:bg-cyan-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ▶ Play
+            </button>
+            <button
+              onClick={() => setIsPlaying(false)}
+              disabled={!isPlaying}
+              className="px-4 py-2 rounded-lg bg-fuchsia-500/15 border border-fuchsia-500/50 text-fuchsia-200 text-xs font-bold tracking-widest uppercase hover:bg-fuchsia-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ⏹ Stop
+            </button>
+          </div>
+        </div>
         <BeatVisualizer isPlaying={isPlaying} />
       </section>
 
