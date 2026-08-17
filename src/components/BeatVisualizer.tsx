@@ -13,12 +13,28 @@ export const BeatVisualizer: React.FC<BeatVisualizerProps> = React.memo(({ isPla
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Initialize worker
-    workerRef.current = new Worker(new URL('../workers/visualizerWorker.ts', import.meta.url));
+    // WICHTIG: React StrictMode ruft diesen Effekt doppelt auf. Ein zweites
+    // `transferControlToOffscreen()` auf demselben Canvas wirft die DOMException
+    // "An attempt was made to use an object that is not, or is no longer,
+    // usable" und crasht damit den App-Mount (SafeModuleBoundary-Fallback).
+    // Daher übertragen wir das Canvas nur EINMAL und fangen Fehler ab.
+    let offscreen: OffscreenCanvas | null = null;
+    try {
+      // @ts-expect-error transferControlToOffscreen existiert auf HTMLCanvasElement
+      offscreen = canvas.transferControlToOffscreen();
+    } catch (e) {
+      console.warn('BeatVisualizer: Canvas nicht übertragbar (bereits detached) – Fallback auf leeren Worker.', e);
+      offscreen = null;
+    }
 
-    // Transfer control to worker
-    const offscreen = canvas.transferControlToOffscreen();
-    
+    try {
+      workerRef.current = new Worker(new URL('../workers/visualizerWorker.ts', import.meta.url));
+    } catch (e) {
+      console.warn('BeatVisualizer: Worker nicht erstellbar – Visualizer deaktiviert.', e);
+      workerRef.current = null;
+    }
+    if (!workerRef.current) return;
+
     // Get SAB from audioEngine if available (heuristisch nur übergeben, wenn es
     // wirklich nutzbar ist – ein defekter/abgebrochener Buffer würde sonst beim
     // postMessage-Transfer eine DOMException auslösen).
