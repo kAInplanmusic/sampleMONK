@@ -92,11 +92,11 @@ function AppComponent() {
                 onClick={startApp}
                 className="group flex flex-col items-center gap-4 transition-transform hover:scale-105 active:scale-95"
               >
-                  {/* Branded Logo Shape */}
-                  <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-[0_0_40px_rgba(168,85,247,0.4)]">
-                    <Music className="w-12 h-12 text-white" />
+                  {/* Branded Logo Shape – schwarz mit 4 Akzentfarben */}
+                  <div className="w-24 h-24 rounded-3xl bg-black border-2 border-fuchsia-500 flex items-center justify-center shadow-[0_0_45px_rgba(236,72,153,0.5)] ring-1 ring-cyan-400/50">
+                    <Music className="w-12 h-12 text-cyan-300" />
                   </div>
-                  <span className="text-xl font-black tracking-widest text-neutral-400 group-hover:text-white transition-colors">
+                  <span className="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-orange-500 group-hover:from-cyan-300 group-hover:to-orange-400 transition-all">
                       START MONK
                   </span>
               </button>
@@ -132,34 +132,44 @@ function AppComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-slate-950 text-white p-6">
-      {/* 1. Header with Logo */}
-      <header className="flex justify-center items-center gap-4 mb-8">
-        <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-            SAMPLE MONK
-        </h1>
-        <select
-          defaultValue=""
-          onChange={e => e.target.value && applyRole(e.target.value as StudioRole)}
-          className="ml-4 px-2 py-2 rounded-lg bg-neutral-800/80 border border-neutral-700 text-neutral-300 text-xs hover:border-purple-500/60"
-          title="Rollen-Startprofil wählen"
-        >
-          <option value="" disabled>Rolle wählen</option>
-          {ROLE_PRESETS.map(r => (
-            <option key={r.role} value={r.role}>{r.role.replace('_', ' ')}</option>
-          ))}
-        </select>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="ml-2 p-2.5 rounded-full bg-neutral-800/80 border border-neutral-700 text-neutral-400 hover:text-white hover:border-purple-500/60 transition-colors"
-          title="Audio / I-O Einstellungen"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
+    <div className="min-h-screen bg-black text-white p-6">
+      {/* 1. Header: Logo schwarz, Titel-4-Farben, Steuerung rechts */}
+      <header className="flex items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-black border border-fuchsia-500/80 flex items-center justify-center shadow-[0_0_22px_rgba(236,72,153,0.35)]">
+            <Music className="w-5 h-5 text-cyan-300" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-orange-500 leading-none">
+                SAMPLE MONK
+            </h1>
+            <p className="text-[10px] text-neutral-500 font-mono tracking-widest uppercase mt-1">4-Person Studio</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            defaultValue=""
+            onChange={e => e.target.value && applyRole(e.target.value as StudioRole)}
+            className="px-2 py-2 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300 text-xs hover:border-fuchsia-500/60 focus:outline-none focus:border-fuchsia-500"
+            title="Rollen-Startprofil wählen"
+          >
+            <option value="" disabled>Rolle wählen</option>
+            {ROLE_PRESETS.map(r => (
+              <option key={r.role} value={r.role}>{r.role.replace('_', ' ')}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2.5 rounded-full bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-cyan-300 hover:border-cyan-400/60 transition-colors"
+            title="Audio / I-O Einstellungen"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
-      {/* 2. 4x4 Icon Grid */}
-      <div className="grid grid-cols-4 gap-4 max-w-2xl mx-auto mb-8">
+      {/* 2. Icon Grid – 2 Zeilen x 8 Spalten */}
+      <div className="grid grid-cols-8 gap-3 max-w-5xl mx-auto mb-8">
         {PLUGIN_REGISTRY.map(plugin => {
           const state = moduleStates[plugin.id] || 'OFF';
           const isActive = state !== 'OFF';
@@ -179,7 +189,7 @@ function AppComponent() {
       </div>
 
       {/* 3. Persistent Waveform/Taktfenster */}
-      <section className="bg-black/40 border border-neutral-800 p-4 rounded-xl mb-8">
+      <section className="bg-black border border-neutral-900 p-4 rounded-xl mb-8 shadow-[inset_0_0_25px_rgba(0,0,0,0.9)]">
         <BeatVisualizer isPlaying={isPlaying} />
       </section>
 
