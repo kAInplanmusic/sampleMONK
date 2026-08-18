@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { assertCan, roleForUser, Role, logAuditEvent } from '../utils/rbac';
 
 /**
  * Room-Hook – GOOGLE/FIRESTORE-ENTKOPPELT.
@@ -26,9 +27,14 @@ export function useRoom(roomId: string | null, userId: string | null) {
     setRoom(localRooms[roomId] ?? null);
   }, [roomId]);
 
+  // RBAC-gestützter Kick: nur admin (Host) darf entfernen; Audit-Event.
   const kickUser = async (targetUserId: string) => {
-    if (!room || !roomId) return;
-    if (room.hostId !== userId) return; // Only host can kick
+    if (!room || !roomId || !userId) return;
+    const allowed = await assertCan(userId, 'kick', room.hostId, {
+      reason: 'kickUser versucht, User zu entfernen',
+    });
+    if (!allowed) return;
+    await logAuditEvent(userId, 'ROOM_KICK', { target: targetUserId, room: roomId });
     const next = {
       ...room,
       users: room.users.filter(u => u.uid !== targetUserId),
@@ -37,7 +43,10 @@ export function useRoom(roomId: string | null, userId: string | null) {
     setRoom(next);
   };
 
-  return { room, kickUser };
+  // Gibt die RBAC-Rolle des aktuellen Users zurück (Host -> admin).
+  const myRole: Role = roleForUser(userId ?? '', room?.hostId ?? null);
+
+  return { room, kickUser, myRole };
 }
 
 // Lokale Hilfsfunktionen (von B2BModal genutzt)

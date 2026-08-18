@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { PluginState } from '../plugins/types';
 import { webRTCManager } from '../utils/WebRTCManager';
 import { usePluginManager } from '../context/PluginManagerContext';
+import { logAuditEvent } from '../utils/AuditLogger';
 
 export const usePluginState = (pluginId: string, initialState: PluginState = 'OFF') => {
   const [state, setState] = useState<PluginState>(initialState);
@@ -12,6 +13,7 @@ export const usePluginState = (pluginId: string, initialState: PluginState = 'OF
   const updateState = (newState: PluginState) => {
     if (!lockStatus.active) {
       setState(newState);
+      logAuditEvent('localUser', 'PLUGIN_STATE', { pluginId, state: newState });
       // Sync via WebRTC DataChannel
       webRTCManager.sendToAllPeers({
         type: 'PLUGIN_STATE_UPDATE',
