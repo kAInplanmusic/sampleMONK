@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Music } from 'lucide-react';
 import { PLUGIN_REGISTRY, discoverPlugins } from './plugins/registry';
 import { audioEngine } from './utils/audioEngine';
 import { usePluginManager } from './context/PluginManagerContext';
@@ -17,6 +16,7 @@ import { useAudio } from './context/AudioContext';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ROLE_PRESETS, moduleStateForRole, StudioRole } from './config/rolePresets';
 import { Settings } from 'lucide-react';
+import { Logo } from './components/Logo';
 
 
 export default function App() {
@@ -87,17 +87,35 @@ function AppComponent() {
 
   if (!isStarted) {
       return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-              <button 
+          <div className="min-h-screen relative flex flex-col items-center justify-center bg-black text-white overflow-hidden">
+              {/* Ambient-Aura passend zur Logofarbe (Teal/Cyan) */}
+              <div className="absolute inset-0 pointer-events-none opacity-40"
+                   style={{ background: 'radial-gradient(520px 380px at 50% 42%, rgba(16,120,130,0.35) 0%, rgba(8,20,24,0.2) 45%, transparent 75%)' }} />
+              <div className="absolute w-[540px] h-[540px] rounded-full blur-3xl opacity-25"
+                   style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.5), transparent 70%)' }} />
+
+              <button
                 onClick={startApp}
-                className="group flex flex-col items-center gap-4 transition-transform hover:scale-105 active:scale-95"
+                aria-label="sampleMONK starten"
+                className="group relative flex flex-col items-center gap-6 outline-none"
               >
-                  {/* Branded Logo Shape – schwarz mit 4 Akzentfarben */}
-                  <div className="w-24 h-24 rounded-3xl bg-black border-2 border-fuchsia-500 flex items-center justify-center shadow-[0_0_45px_rgba(236,72,153,0.5)] ring-1 ring-cyan-400/50">
-                    <Music className="w-12 h-12 text-cyan-300" />
+                  {/* Logo mit sanftem Glow + Hover-Orbit */}
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-2xl blur-2xl bg-cyan-400/20 group-hover:bg-cyan-300/30 transition-colors duration-700 scale-110 group-hover:scale-125" />
+                    <div className="relative ring-1 ring-cyan-400/20 rounded-2xl overflow-hidden">
+                      <Logo size={96} glow rounded={false} className="group-hover:scale-[1.03] transition-transform duration-500" />
+                    </div>
+                    <span className="absolute -inset-3 rounded-2xl border border-cyan-400/0 group-hover:border-cyan-400/30 transition-all duration-500" />
                   </div>
-                  <span className="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-orange-500 group-hover:from-cyan-300 group-hover:to-orange-400 transition-all">
-                      START MONK
+
+                  <span className="text-[9px] font-mono tracking-[0.5em] text-neutral-500 uppercase">Audio Workstation</span>
+                  <span className="text-4xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-fuchsia-400">
+                    SAMPLE MONK
+                  </span>
+                  <span className="px-5 py-2.5 rounded-full border border-cyan-400/40 text-cyan-200 text-xs font-bold tracking-[0.3em] uppercase
+                                 bg-cyan-500/8 hover:bg-cyan-500/18 hover:border-cyan-300/70 hover:shadow-[0_0_30px_-6px_var(--monk-glow-teal)]
+                                 transition-all duration-300 active:scale-95">
+                    ▶ Studio betreten
                   </span>
               </button>
           </div>
@@ -134,33 +152,38 @@ function AppComponent() {
   return (
     <div className="min-h-screen bg-black text-white p-6">
       {/* 1. Header: STICKY, Logo schwarz, Titel-4-Farben, Steuerung rechts */}
-      <header className="flex items-center justify-between gap-4 mb-8 sticky top-0 z-30 -mx-6 px-6 py-4 bg-black/85 backdrop-blur-lg border-b border-neutral-900">
+      <header className="flex items-center justify-between gap-4 mb-8 sticky top-0 z-30 -mx-6 px-6 py-4 bg-black/70 backdrop-blur-xl [box-shadow:0_1px_0_rgba(34,211,238,0.06),0_20px_40px_-24px_rgba(0,0,0,0.9)]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-black border border-fuchsia-500/80 flex items-center justify-center shadow-[0_0_22px_rgba(236,72,153,0.35)]">
-            <Music className="w-5 h-5 text-cyan-300" />
+          <div className="relative shrink-0">
+            <div className="absolute -inset-1 rounded-xl bg-cyan-400/15 blur-lg" />
+            <div className="relative overflow-hidden rounded-lg ring-1 ring-cyan-400/15">
+              <Logo size={38} rounded={false} />
+            </div>
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-orange-500 leading-none">
+            <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-fuchsia-400 leading-none">
                 SAMPLE MONK
             </h1>
-            <p className="text-[10px] text-neutral-500 font-mono tracking-widest uppercase mt-1">4-Person Studio</p>
+            <p className="text-[9px] text-neutral-500 font-mono tracking-[0.3em] uppercase mt-1">4-Person Studio</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            defaultValue=""
-            onChange={e => e.target.value && applyRole(e.target.value as StudioRole)}
-            className="px-2 py-2 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300 text-xs hover:border-fuchsia-500/60 focus:outline-none focus:border-fuchsia-500"
-            title="Rollen-Startprofil wählen"
-          >
-            <option value="" disabled>Rolle wählen</option>
-            {ROLE_PRESETS.map(r => (
-              <option key={r.role} value={r.role}>{r.role.replace('_', ' ')}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              defaultValue=""
+              onChange={e => e.target.value && applyRole(e.target.value as StudioRole)}
+              className="appearance-none pl-3 pr-8 py-2 rounded-full bg-neutral-900/80 border border-neutral-800 text-neutral-300 text-xs hover:border-fuchsia-500/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 transition-colors cursor-pointer"
+              title="Rollen-Startprofil wählen"
+            >
+              <option value="" disabled>Rolle</option>
+              {ROLE_PRESETS.map(r => (
+                <option key={r.role} value={r.role}>{r.role.replace('_', ' ')}</option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2.5 rounded-full bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-cyan-300 hover:border-cyan-400/60 transition-colors"
+            className="p-2.5 rounded-full bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-cyan-300 hover:border-cyan-400/50 hover:bg-cyan-400/5 transition-all duration-200 active:scale-95 cursor-pointer"
             title="Audio / I-O Einstellungen"
           >
             <Settings className="w-5 h-5" />
@@ -170,10 +193,10 @@ function AppComponent() {
 
       {/* 2. Module Selection + Icon Grid (2 x 8) */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="h-px flex-1 bg-neutral-900" />
-          <h2 className="text-[11px] font-bold tracking-[0.35em] text-neutral-500 uppercase">Module Selection</h2>
-          <span className="h-px flex-1 bg-neutral-900" />
+        <div className="flex items-center gap-4 mb-4">
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-neutral-800" />
+          <h2 className="text-[11px] font-bold tracking-[0.4em] text-neutral-400 uppercase">Module Selection</h2>
+          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-neutral-800" />
         </div>
         <div className="grid grid-cols-8 gap-3 max-w-5xl mx-auto">
         {PLUGIN_REGISTRY.map(plugin => {
@@ -196,7 +219,7 @@ function AppComponent() {
       </div>
 
       {/* 3. Master-Player + Waveform (BPM-Anzeige) */}
-      <section className="bg-black border border-neutral-900 p-4 rounded-xl mb-8 shadow-[inset_0_0_25px_rgba(0,0,0,0.9)]">
+      <section className="monk-panel edge-inset p-5 mb-8">
         <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
           <div className="flex items-center gap-3">
             <h3 className="text-[11px] font-bold tracking-[0.35em] text-neutral-500 uppercase">Master Player</h3>
@@ -209,14 +232,14 @@ function AppComponent() {
             <button
               onClick={() => setIsPlaying(true)}
               disabled={isPlaying}
-              className="px-4 py-2 rounded-lg bg-cyan-500/15 border border-cyan-500/50 text-cyan-200 text-xs font-bold tracking-widest uppercase hover:bg-cyan-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-5 py-2 rounded-full bg-cyan-500/12 border border-cyan-500/50 text-cyan-200 text-xs font-bold tracking-widest uppercase hover:bg-cyan-500/25 hover:shadow-[0_0_20px_-6px_var(--monk-glow-teal)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
             >
               ▶ Play
             </button>
             <button
               onClick={() => setIsPlaying(false)}
               disabled={!isPlaying}
-              className="px-4 py-2 rounded-lg bg-fuchsia-500/15 border border-fuchsia-500/50 text-fuchsia-200 text-xs font-bold tracking-widest uppercase hover:bg-fuchsia-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-5 py-2 rounded-full bg-fuchsia-500/12 border border-fuchsia-500/50 text-fuchsia-200 text-xs font-bold tracking-widest uppercase hover:bg-fuchsia-500/25 hover:shadow-[0_0_20px_-6px_rgba(217,70,239,0.5)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
             >
               ⏹ Stop
             </button>

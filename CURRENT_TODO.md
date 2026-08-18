@@ -1,27 +1,27 @@
 # sampleMONK – Aktueller Arbeitsstatus (CURRENT_TODO)
 
-## Fortschritt (aus TODOLAST.md / Professionalization)
+## Stand
+✅ Stufe-1 Punkte 1-5 · ✅ P7 · P8 · P9 · P10 · P11 · P13 · P14 abgeschlossen & committet
+✅ Logo-Einbindung + High-End UI/UX-Optimierung (aktueller Commit)
 
-✅ #1-#5 Stufe-1 · ✅ #7 OPFS · ✅ #8 CRDT · ✅ #9 EQ · ✅ #10 Spatial · ✅ #11 stem-ai
-✅ #13 RBAC/Audit · ✅ #14 Instrumenten-Bibliothek
-
-### ✅ #14 Native Instrumenten-Bibliothek (50 akustische Instrumente) — FERTIG
-- Neu `src/data/instrumentSynths.ts`: 50 Patches (Piano, Violine, Sitar, Trompete,
-  Flöte, Theremin, Timpani …) mit physikalischen Obertonspektren, Hüllkurven,
-  Filter, Vibrato, Anblas-Noise, Detune je Familie.
-- `audioEngine.ts`: `loadInstrument(id)` baut echten additiven Synthesizer
-  (Partial-Oszillatoren + Formantfilter + Vibrato-Detune-LFO + Anblas-Noise),
-  plus `instrumentNote`/`instrumentRelease`.
-- `InstrumentsTerminal.tsx`: Vorschau-Keyboard (C4..C5) spielt Instrumente live.
-- `InstrumentePlugin.tsx`: Pro-UI rendert echte `InstrumentsTerminal`.
+### ✅ Logo + UI/UX – FERTIG
+- Logo `/home/patrick/Downloads/image0.png` (1312×1199, dunkel-Teal/Cyan) optimiert:
+  public/assets/logo.webp (39KB), logo@2x.webp, logo-sm.webp + public/favicon.png.
+- index.html: neuer Titel, Favicon, Meta-Description, viewport-fit=cover, theme-color.
+- src/components/Logo.tsx: wiederverwendbare Logo-Component (Glow, Größen).
+- src/App.tsx: Start-Screen = Hero mit Ambient-Aura, Logo-Orbit, premium CTA;
+  Header = echtes Logo + kohärente Gradient-Identität (Teal/Fuchsia);
+  pill-Select + Settings-Micro-Interactions; Master-Player = monk-panel/edge-inset.
+- PluginButton.tsx: cursor-pointer, Tooltip, aria-pressed, hover-lift, focus-ring, Glow.
+- src/index.css: Design-System-Tokens (--monk-*), Body-Gradient, stille Scrollbars,
+  @utility monk-panel / teal-glow / edge-inset.
 
 ## GECOMMITTET (Branch main)
 1af327a Stufe-1 · f9624ea P9 · a3e82cc P8 · 84ecee3 P7 · 5560990 P11 · f21f534 P10
-db049ae P13 · nächster Commit P14 (uncommitted)
+db049ae P13 · a548708 P14 · (aktuell: Logo+UI/UX uncommitted)
 
 ## Offen (aus TODOLAST.md)
-#6 WASM-DSP (braucht wasm-pack/Rust-Build, hier nicht verfügbar)
-#12 Mediasoup (große Infrastruktur – WebRTC-Routing-Umbau)
+#6 WASM-DSP (braucht wasm-pack/Rust-Build) · #12 Mediasoup (große Infrastruktur)
 
 ## Tooling-Hinweis
-Robuste Dateiänderung: Terminal-heredoc bzw. python-Inserter.
+node-Binary fehlt (nur npm-Symlink) -> kein Build/tsc möglich; balanciere manuell.
