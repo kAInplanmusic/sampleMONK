@@ -155,13 +155,36 @@ export function InstrumentsTerminal() {
             <DropTarget 
                 label="Drop Sample to Slot"
                 onDrop={handleSampleDrop}
-                className="w-full h-64 flex flex-col items-center justify-center"
+                className="w-full h-40 flex flex-col items-center justify-center"
             >
                 {isLoading ? <Loader2 className="w-12 h-12 animate-spin text-purple-500" /> : 
                 <div className="text-center font-black">
                     {droppedSample ? `${droppedSample.name} LOADED` : 'DROP SAMPLE HERE'}
                 </div>}
             </DropTarget>
+
+            {/* Physikalisches Instrument-Vorschau-Keyboard (additive Synthese) */}
+            <div className="w-full bg-black/40 rounded-lg border border-neutral-800 p-3">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-mono text-purple-400 uppercase tracking-widest">Vorschau-Keyboard</span>
+                    <span className="text-[10px] text-neutral-500 truncate max-w-[60%]">
+                        {activeInstrument ? activeInstrument.name : 'kein Instrument'}
+                    </span>
+                </div>
+                <div className="flex gap-1 overflow-x-auto pb-1">
+                    {['C4','D4','E4','F4','G4','A4','B4','C5'].map(note => (
+                        <button
+                            key={note}
+                            onMouseDown={(e) => { e.preventDefault(); audioEngine.instrumentNote(note); }}
+                            onMouseUp={() => audioEngine.instrumentRelease()}
+                            onMouseLeave={() => audioEngine.instrumentRelease()}
+                            className="flex-1 min-w-[28px] h-16 rounded shadow-inner bg-gradient-to-b from-neutral-300 to-neutral-400 text-neutral-900 text-xs font-bold hover:from-neutral-200 active:from-purple-300"
+                        >
+                            {note}
+                        </button>
+                    ))}
+                </div>
+            </div>
         </div>
       </div>
     </div>

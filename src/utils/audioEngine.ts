@@ -2,6 +2,7 @@ import * as Tone from 'tone';
 
 import { TrackType, TRACK_ROLE_MAP, MUSIC_SCALES } from '../types';
 import { calculateChannelPan, calculateHRTF, SPATIAL_SETUPS, SpatialSetup } from './spatialMath';
+import { getPatch, INSTRUMENT_PATCHES, InstrumentPatch } from '../data/instrumentSynths';
 import { ClockSync } from './ClockSync';
 import { PhaseLockedLoop } from './PhaseLockedLoop';
 import { LatencyMonitor } from './LatencyMonitor';
@@ -766,11 +767,138 @@ class AudioEngine {
     this.initialized = false;
   }
   
+  // #14: Physikalischer Instrument-Synthesizer (additive Synthese).
+  private instrumentOscs: Tone.Oscillator[] = [];
+  private instrumentGains: Tone.Gain[] = [];
+  private instrumentPartialRatios: number[] = [];
+  private instrumentNoise: Tone.Noise | null = null;
+  private instrumentNoiseEnv: Tone.AmplitudeEnvelope | null = null;
+  private instrumentVibrato: Tone.Oscillator | null = null;
+  private instrumentFilter: Tone.Filter | null = null;
+  private instrumentEnvOut: Tone.Gain | null = null;
+
+  /** Lädt ein Instrument (Patch) und baut den additiven Synthesizer neu auf. */
   public async loadInstrument(instrumentId: number) {
     this.ensureInitialized();
-    // console.log(`AudioEngine: Loading Instrument ${instrumentId}`);
-    // Simulate instrument loading/routing
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const patch = getPatch(instrumentId);
+    this.disposeInstrumentSynth();
+    if (!patch) return;
+    await this.buildInstrumentSynth(patch);
+  }
+
+  public getInstrumentPatches() {
+    return INSTRUMENT_PATCHES;
+  }
+
+  /** Spielt eine Note am aktuellen Instrument-Synth (MIDI o. Name wie 'A4'). */
+  public instrumentNote(note: string | number) {
+    if (this.instrumentOscs.length === 0) return;
+    const freq = typeof note === 'number'
+      ? Tone.Frequency(note, 'midi').toFrequency()
+      : Tone.Frequency(note).toFrequency();
+    const t = this.ctx?.currentTime ?? 0;
+    // Additive Synthese: jede Partial-Oszillator-Frequenz = Grundfrequenz * ratio.
+    this.instrumentOscs.forEach((osc, i) => {
+      const ratio = this.instrumentPartialRatios[i] ?? 1;
+      try { osc.frequency.setValueAtTime(freq * ratio, t); } catch { /* ignore */ }
+    });
+    // Envelope/Gain anheben (trigger).
+    this.instrumentEnvOut?.gain.cancelScheduledValues(t);
+    try { this.instrumentEnvOut?.gain.setValueAtTime(0.0001, t); } catch { /* ignore */ }
+    try { this.instrumentEnvOut?.gain.exponentialRampToValueAtTime(1, t + 0.01); } catch { /* ignore */ }
+  }
+
+  public instrumentRelease(time?: number) {
+    const t = time ?? this.ctx?.currentTime ?? 0;
+    this.instrumentEnvOut?.gain.cancelScheduledValues(t);
+    this.instrumentEnvOut?.gain.setTargetAtTime(0.0001, t, 0.15);
+  }
+
+  private async buildInstrumentSynth(patch: InstrumentPatch) {
+    try {
+      const vol = new Tone.Gain(0);
+      // Finaler Ausgangs-Gain -> Haupt-Master (Vor der FX) nutzen.
+      vol.connect(this.masterBuses['GLOBAL_MASTER']);
+
+      const [a, d, s, r] = patch.env;
+      const baseEnv = new Tone.AmplitudeEnvelope(a, d, s, r).connect(vol);
+
+      // Additive Obertöne (Sinus je Partial) mit Anblas-/Anschlag-Kurve.
+      const partialNodes: Tone.Oscillator[] = [];
+      const partialGains: Tone.Gain[] = [];
+      const ratios: number[] = [];
+      patch.partials.forEach((p, i) => {
+        // Bei eingebauten Oszillator-Wellen ist die Teilwelle genug;
+        // multi-sample-Pattials werden als Detune-Spread additiv gemischt.
+        const osc = new Tone.Oscillator(patch.osc);
+        osc.frequency.value = 220; // Platzhalter; wird in instrumentNote präzise gesetzt.
+        const g = new Tone.Gain(p.amp / Math.max(1, patch.partials.length));
+        osc.connect(g);
+        g.connect(baseEnv);
+        osc.start();
+        partialNodes.push(osc);
+        partialGains.push(g);
+        ratios.push(p.ratio);
+      });
+
+      // Filter (Resonanz nach Bauart)
+      const filt = new Tone.Filter(patch.filterFreq, patch.filterType, patch.filterQ);
+      baseEnv.disconnect(vol);
+      baseEnv.connect(filt);
+      filt.connect(vol);
+
+      // Vibrato: LFO moduliert die Detune aller akustischen Oszillatoren
+      // (physiologisch korrekt – Frequenz-Vibrato statt purer Lautheits-Tremolo).
+      if (patch.vibratoAmt > 0.01) {
+        const lfoOsc = new Tone.Oscillator(patch.vibratoHz, 'sine');
+        const lfoGain = new Tone.Gain(patch.vibratoAmt * 80); // Detune in Cents
+        lfoOsc.connect(lfoGain);
+        partialNodes.forEach((o) => lfoGain.connect((o as any).detune));
+        lfoOsc.start();
+        this.instrumentVibrato = lfoOsc;
+      }
+
+      // Anblas-NOISE für Bläser/Reibung (hochpassgefiltert)
+      if (patch.noise > 0.03) {
+        const noise = new Tone.Noise('white');
+        const noiseEnv = new Tone.AmplitudeEnvelope(a * 0.5, d, s * 0.4, r);
+        const hp = new Tone.Filter(patch.filterFreq * 0.6, 'highpass');
+        noise.chain(hp, noiseEnv, vol);
+        noise.start();
+        this.instrumentNoise = noise;
+        this.instrumentNoiseEnv = noiseEnv;
+      }
+
+      this.instrumentOscs = partialNodes;
+      this.instrumentGains = partialGains;
+      this.instrumentPartialRatios = ratios;
+      this.instrumentFilter = filt;
+      this.instrumentEnvOut = vol;
+
+      // Basis-Envelope wird beim Note-On getriggert; hier als stabile baseline.
+      vol.gain.value = 0.0001;
+    } catch (e) {
+      console.warn('Instrument-Synth nicht aufgebaut:', e);
+      this.disposeInstrumentSynth();
+    }
+  }
+
+  private disposeInstrumentSynth() {
+    this.instrumentOscs.forEach((o) => { try { o.stop(); o.disconnect(); } catch { /* ignore */ } });
+    this.instrumentNoise?.stop();
+    this.instrumentNoise?.disconnect();
+    this.instrumentVibrato?.stop?.();
+    this.instrumentVibrato?.disconnect?.();
+    this.instrumentFilter?.disconnect();
+    this.instrumentEnvOut?.disconnect();
+    this.instrumentOscs = [];
+    this.instrumentGains = [];
+    this.instrumentPartialRatios = [];
+    this.instrumentNoise = null;
+    this.instrumentNoiseEnv = null;
+    this.instrumentVibrato = null;
+    this.instrumentFilter = null;
+    this.instrumentEnvOut = null;
   }
 
   public previewSample(track: TrackType, time?: number, url?: string) {

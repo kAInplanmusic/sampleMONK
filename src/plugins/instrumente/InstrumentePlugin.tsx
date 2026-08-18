@@ -2,6 +2,7 @@ import React from 'react';
 import { PluginBase } from '../PluginBase';
 import { PluginState, LockStatus, Plugin } from '../types';
 import { hubConnector } from '../../hubConnector';
+import { InstrumentsTerminal } from '../../components/InstrumentsTerminal';
 
 export class InstrumentePlugin implements Plugin {
   config = { id: 'instrumente', name: 'Instrumente', colorScheme: 'brown' };
@@ -34,7 +35,11 @@ export const InstrumenteUI = React.memo(({ plugin, currentUserId }: {plugin: Ins
       lockStatus={plugin.lockStatus}
       currentUserId={currentUserId}
       onStateChange={(s) => plugin.updateState(s)}
-      renderProUI={() => <div>Instrumente Terminal UI</div>}
+      renderProUI={() => (
+        <div className="w-full h-full min-h-[420px] bg-[#161616]">
+          <InstrumentsTerminal />
+        </div>
+      )}
     />
   );
 });
