@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+
+
 import { Search, Filter } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
@@ -35,7 +37,7 @@ export const SemanticSampleSearch: React.FC<SemanticSampleSearchProps> = ({ onSe
         }
         setIsLoading(true);
 
-        if (isLocalEmbeddingAvailable()) {
+        if (await isLocalEmbeddingAvailable()) {
             await generateLocalEmbedding(debouncedQuery);
             // console.log("Local embedding generated for search");
         }
@@ -46,7 +48,7 @@ export const SemanticSampleSearch: React.FC<SemanticSampleSearchProps> = ({ onSe
         const q = debouncedQuery.toLowerCase();
         const results = samples.filter(s => 
           (s.name.toLowerCase().includes(q) || 
-           s.tags.some(t => t.toLowerCase().includes(q)) ||
+           (s.tags ?? []).some(t => t.toLowerCase().includes(q)) ||
            s.type.toLowerCase().includes(q) ||
            s.id.toLowerCase().includes(q)) &&
           (!filterType || s.type === filterType)
@@ -71,7 +73,7 @@ export const SemanticSampleSearch: React.FC<SemanticSampleSearchProps> = ({ onSe
 
   return (
     <div className="relative z-50">
-      <div className="flex items-center gap-2 bg-[#1a1a1a] border border-neutral-800 rounded-lg p-2 focus-within:border-fuchsia-500 transition-colors">
+      <div className="flex items-center gap-2 bg-[#1a1a1a] border not-focus-within:border-neutral-800 rounded-lg p-2 focus-within:border-fuchsia-500 transition-colors">
         <Search className="w-4 h-4 text-neutral-500" />
         <input 
             type="text" 

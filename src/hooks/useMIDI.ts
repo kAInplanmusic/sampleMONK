@@ -28,11 +28,11 @@ export const useMIDI = () => {
     // Auto-Erkennung: jedes Input-Gerät zum Profil auflösen.
     const merged: DetectedMidiDevice[] = [];
     ins.forEach(i => {
-      const profile = resolveMidiProfile(i.name, i.manufacturer);
+      const profile = resolveMidiProfile(i.name ?? '', i.manufacturer ?? undefined);
       merged.push({
         id: i.id,
-        name: i.name,
-        manufacturer: i.manufacturer,
+        name: i.name ?? 'Unbekanntes MIDI-Gerät',
+        manufacturer: i.manufacturer ?? undefined,
         profile: profile?.profile ?? 'UNKNOWN',
         type: profile?.type ?? 'PAD',
       });

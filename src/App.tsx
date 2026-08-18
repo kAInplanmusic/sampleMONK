@@ -91,7 +91,7 @@ function AppComponent() {
               {/* Ambient-Aura passend zur Logofarbe (Teal/Cyan) */}
               <div className="absolute inset-0 pointer-events-none opacity-40"
                    style={{ background: 'radial-gradient(520px 380px at 50% 42%, rgba(16,120,130,0.35) 0%, rgba(8,20,24,0.2) 45%, transparent 75%)' }} />
-              <div className="absolute w-[540px] h-[540px] rounded-full blur-3xl opacity-25"
+              <div className="absolute w-135 h-135 rounded-full blur-3xl opacity-25"
                    style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.5), transparent 70%)' }} />
 
               <button
@@ -109,7 +109,7 @@ function AppComponent() {
                   </div>
 
                   <span className="text-[9px] font-mono tracking-[0.5em] text-neutral-500 uppercase">Audio Workstation</span>
-                  <span className="text-4xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-fuchsia-400">
+                  <span className="text-4xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-linear-to-r from-cyan-300 via-teal-200 to-fuchsia-400">
                     SAMPLE MONK
                   </span>
                   <span className="px-5 py-2.5 rounded-full border border-cyan-400/40 text-cyan-200 text-xs font-bold tracking-[0.3em] uppercase
@@ -161,7 +161,7 @@ function AppComponent() {
             </div>
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-fuchsia-400 leading-none">
+            <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-linear-to-r from-cyan-300 via-teal-200 to-fuchsia-400 leading-none">
                 SAMPLE MONK
             </h1>
             <p className="text-[9px] text-neutral-500 font-mono tracking-[0.3em] uppercase mt-1">4-Person Studio</p>
@@ -194,9 +194,9 @@ function AppComponent() {
       {/* 2. Module Selection + Icon Grid (2 x 8) */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-neutral-800" />
+          <span className="h-px flex-1 bg-linear-to-r from-transparent to-neutral-800" />
           <h2 className="text-[11px] font-bold tracking-[0.4em] text-neutral-400 uppercase">Module Selection</h2>
-          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-neutral-800" />
+          <span className="h-px flex-1 bg-linear-to-l from-transparent to-neutral-800" />
         </div>
         <div className="grid grid-cols-8 gap-3 max-w-5xl mx-auto">
         {PLUGIN_REGISTRY.map(plugin => {
@@ -232,14 +232,14 @@ function AppComponent() {
             <button
               onClick={() => setIsPlaying(true)}
               disabled={isPlaying}
-              className="px-5 py-2 rounded-full bg-cyan-500/12 border border-cyan-500/50 text-cyan-200 text-xs font-bold tracking-widest uppercase hover:bg-cyan-500/25 hover:shadow-[0_0_20px_-6px_var(--monk-glow-teal)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
+              className="px-5 py-2 rounded-full bg-cyan-500/12 border border-cyan-500/50 text-cyan-200 text-xs font-bold tracking-widest uppercase hover:bg-cyan-500/25 hover:shadow-[0_0_20px_-6px_var(--monk-glow-teal)] transition-all duration-200 disabled:opacity-40 enabled:cursor-pointer disabled:cursor-not-allowed active:scale-95"
             >
               ▶ Play
             </button>
             <button
               onClick={() => setIsPlaying(false)}
               disabled={!isPlaying}
-              className="px-5 py-2 rounded-full bg-fuchsia-500/12 border border-fuchsia-500/50 text-fuchsia-200 text-xs font-bold tracking-widest uppercase hover:bg-fuchsia-500/25 hover:shadow-[0_0_20px_-6px_rgba(217,70,239,0.5)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
+              className="px-5 py-2 rounded-full bg-fuchsia-500/12 border border-fuchsia-500/50 text-fuchsia-200 text-xs font-bold tracking-widest uppercase hover:bg-fuchsia-500/25 hover:shadow-[0_0_20px_-6px_rgba(217,70,239,0.5)] transition-all duration-200 disabled:opacity-40 enabled:cursor-pointer disabled:cursor-not-allowed active:scale-95"
             >
               ⏹ Stop
             </button>

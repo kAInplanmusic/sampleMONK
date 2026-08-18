@@ -41,7 +41,7 @@ export function LibraryTerminal() {
 
   return (
     <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl">
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-fuchsia-900/20 to-[#111] border-b border-fuchsia-900/30 gap-4">
+      <div className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-fuchsia-900/20 to-[#111] border-b border-fuchsia-900/30 gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-fuchsia-500/20 flex items-center justify-center border border-fuchsia-500/50 shadow-[0_0_15px_rgba(192,38,211,0.3)]">
             <Database className="w-5 h-5 text-fuchsia-400" />

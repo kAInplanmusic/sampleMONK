@@ -75,7 +75,7 @@ export function SpatialPluginTerminal() {
   return (
     <div className={`w-full h-full flex flex-col bg-[#0a0a0a] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-lime-900/20 to-[#0a0a0a] border-b border-lime-900/30">
+      <div className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-lime-900/20 to-[#0a0a0a] border-b border-lime-900/30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-lime-500/20 flex items-center justify-center border border-lime-500/50 shadow-[0_0_15px_rgba(132,204,22,0.3)]">
             <Box className="w-5 h-5 text-lime-400" />
@@ -147,7 +147,7 @@ export function SpatialPluginTerminal() {
                 onDrop={handleSampleDrop}
                 className="w-full h-full p-4 flex flex-col items-center justify-center"
             >
-                <div className="w-full h-full max-w-[500px] max-h-[500px] bg-black rounded-full border border-neutral-800 overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                <div className="w-full h-full max-w-125 max-h-125 bg-black rounded-full border border-neutral-800 overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                     <SpatialCanvas />
                 </div>
             </DropTarget>

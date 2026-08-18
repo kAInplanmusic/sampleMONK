@@ -68,7 +68,7 @@ export function DSPTerminal() {
 
   return (
     <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-violet-900/20 to-[#111] border-b border-violet-900/30">
+      <div className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-violet-900/20 to-[#111] border-b border-violet-900/30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.3)]">
             <Activity className="w-5 h-5 text-violet-400" />

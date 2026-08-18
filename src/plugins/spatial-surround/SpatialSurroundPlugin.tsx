@@ -183,7 +183,7 @@ export const SpatialSurroundUI = React.memo(({ plugin, currentUserId }: {plugin:
 
           {/* 2D-Pan-Fläche */}
           <div className="flex-1 bg-neutral-900 rounded border border-neutral-700 relative cursor-crosshair overflow-hidden" onMouseMove={handleMove}>
-             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 to-transparent"></div>
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-blue-900/20 to-transparent"></div>
              <div className="absolute inset-0 flex items-center justify-center text-[9px] font-mono text-neutral-600 pointer-events-none">
                {setupId} KANÄLE
              </div>

@@ -116,7 +116,7 @@ export function InstrumentsTerminal() {
 
   return (
     <div className={`w-full h-full flex flex-col bg-[#161616] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-sans shadow-2xl ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-purple-900/20 to-[#161616] border-b border-purple-900/30">
+      <div className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-purple-900/20 to-[#161616] border-b border-purple-900/30">
         <h2 className="text-xl font-black uppercase flex items-center gap-2">
           <Music className="w-5 h-5 text-purple-400" />
           Instruments <span className="text-[10px] font-mono text-purple-400 border border-purple-500/30 px-2 rounded">WAM 2.0</span>
@@ -178,7 +178,7 @@ export function InstrumentsTerminal() {
                             onMouseDown={(e) => { e.preventDefault(); audioEngine.instrumentNote(note); }}
                             onMouseUp={() => audioEngine.instrumentRelease()}
                             onMouseLeave={() => audioEngine.instrumentRelease()}
-                            className="flex-1 min-w-[28px] h-16 rounded shadow-inner bg-gradient-to-b from-neutral-300 to-neutral-400 text-neutral-900 text-xs font-bold hover:from-neutral-200 active:from-purple-300"
+                            className="flex-1 min-w-[28px] h-16 rounded shadow-inner bg-linear-to-b from-neutral-300 to-neutral-400 text-neutral-900 text-xs font-bold hover:from-neutral-200 active:from-purple-300"
                         >
                             {note}
                         </button>

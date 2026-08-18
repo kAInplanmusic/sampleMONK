@@ -249,7 +249,7 @@ app.post('/api/generate-voice', async (req, res) => {
         const stamp = Date.now();
         const outFile = `dist/voices/voice_${stamp}.wav`;
         const args = ['--input', query, '--output', outFile, '--preset', preset];
-        execFile(voiceCli, args, { timeout: 45000 }, (err) => {
+        execFile(voiceCli, args, { timeout: 45000 }, (err: Error | null) => {
           if (err) return reject(err);
           resolve(`/voices/voice_${stamp}.wav`);
         });

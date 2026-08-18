@@ -102,7 +102,7 @@ export function MasteringOverlay({
       <div className="relative w-full max-w-6xl h-full max-h-[800px] bg-[#050508] border border-sky-500/30 rounded-2xl shadow-[0_0_50px_rgba(14,165,233,0.15)] flex flex-col overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-sky-900/20 to-indigo-900/20 border-b border-sky-500/20">
+        <div className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-sky-900/20 to-indigo-900/20 border-b border-sky-500/20">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.3)]">
               <Cpu className="w-5 h-5 text-sky-400" />
@@ -188,7 +188,7 @@ export function MasteringOverlay({
           </div>
 
           {/* Editor Area */}
-          <div className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-[#050508] to-[#020204]">
+          <div className="flex-1 p-6 overflow-y-auto bg-linear-to-b from-[#050508] to-[#020204]">
             {activeTab === 'master_me' ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">

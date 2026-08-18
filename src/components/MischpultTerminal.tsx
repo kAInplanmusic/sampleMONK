@@ -87,7 +87,7 @@ export const MischpultTerminal = React.memo(() => {
     <div className={`w-full h-full flex flex-col bg-[#1a1a1a] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] border-b border-neutral-800">
+      <div className="flex items-center justify-between px-6 py-4 bg-linear-to-b from-[#2a2a2a] to-[#1a1a1a] border-b border-neutral-800">
         <div className="flex items-center gap-3">
           <Sliders className="w-5 h-5 text-blue-400" />
           <h2 className="text-xl font-black tracking-widest uppercase">PRO-MIX 9000</h2>
