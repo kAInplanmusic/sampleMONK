@@ -7,3 +7,26 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+    environment:
+      - PORT=8080
+      - NODE_ENV=production
+
+  # P11: Separater Demucs-Stem-Service (FastAPI).
+  # Setzt ENABLE_STEMS=1 im Hauptcontainer, damit server.ts das echte
+  # /api/separate-stems an diesen Service weiterreicht (statt dem Stub).
+  stem-ai:
+    build: ./services/stem-ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/stem-ai:/app
+    environment:
+      - AI_DEVICE=cpu        # auf GPU-Hosts: auf "cuda" setzen
+      - AI_DEMUCS_MODEL=htdemucs
+      - PORT=8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s

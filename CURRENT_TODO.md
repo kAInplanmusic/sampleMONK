@@ -4,20 +4,23 @@
 
 ✅ #1 Semantische Suche · ✅ #2 TURN/STUN · ✅ #3 Celery-Lazy-Load · ✅ #4 Ollama
 ✅ #5 Voice-Synthese · ✅ #9 EQ-Realsteuerung · ✅ #8 CRDT-Sync · ✅ #7 OPFS-Load
+✅ #11 stem-ai Service
 
-### ✅ #7 OPFS-Sample-DB in SampleContext laden — FERTIG
-- `src/context/SampleContext.tsx`: neuer Mount-Effekt ruft `listSamples()` (aus
-  `opfs.ts`) auf und integriert vorhandene OPFS-Dateien als AudioSample-Einträge
-  (Kategorie 'OPFS', keine Duplikate zu PRESET_DATABASE).
+### ✅ #11 stem-ai Service (separater Demucs-Container) — FERTIG
+- Neu `services/stem-ai/{main.py, requirements.txt}`: FastAPI-Demucs-Service mit
+  GPU-Detect, Lazy-Loading (htdemucs), liefert 5 Stems (vocals/lows/mids/highs/melody).
+- `docker-compose.yml`: Service `stem-ai` mit healthcheck + AI_DEVICE env.
+- `server.ts`: `/api/separate-stems` proxied multipart-Upload an STEM_AI_URL,
+  wenn ENABLE_STEMS=1 + STEM_AI_URL gesetzt; sonst bestehender CLI-Fallback.
 
-## GECOMMITTET
-- 1af327a: Stufe-1 (P1–P5)    f9624ea: P9 EQ-Realsteuerung
-- a3e82cc: P8 CRDT-Sync       nächster Commit: P7 OPFS-Load
+## GECOMMITTET (Branch main)
+1af327a Stufe-1(P1-5) · f9624ea P9-EQ · a3e82cc P8-CRDT · 84ecee3 P7-OPFS
+Nächste Commits: P11 stem-ai (uncommitted)
 
 ## Offen (aus TODOLAST.md)
-#6 WASM-DSP (braucht wasm-pack/rust-Build)  #10 Spatial-10ch  #11 stem-ai Service
-#12 Mediasoup  #13 RBAC/Audit  #14 Instrumenten-Bibliothek
+#6 WASM-DSP (braucht wasm-pack/Rust) · #10 Spatial-10ch · #12 Mediasoup
+#13 RBAC/Audit · #14 Instrumenten-Bibliothek
 
 ## Tooling-Hinweis
-`edit_existing_file`/`single_find_and_replace` bei langen Inhalten unzuverlässig.
-Robust: Terminal-heredoc bzw. python-Inserter.
+Robuste Dateiänderung: Terminal-heredoc bzw. python-Inserter (edit-Tools
+unter langen Inhalten unzuverlässig).

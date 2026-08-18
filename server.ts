@@ -161,15 +161,60 @@ app.post('/api/ai/describe', async (req, res) => {
 });
 
 // --- POST /api/separate-stems  → lokaler Stems-Stub (SSE mit Fortschritt) ---
-app.post('/api/separate-stems', (req, res) => {
+// P11: Proxy zum separaten stem-ai (FastAPI/Demucs) Container, falls aktiviert.
+const STEM_AI_URL = (process.env.STEM_AI_URL || '').trim() || 'http://stem-ai:8000';
+
+app.post('/api/separate-stems', async (req, res) => {
+  const stemAiActive = ENABLE_STEMS && !!(process.env.STEM_AI_URL);
+
+  // FormData-Upload (Vite-Frontend/streamStems sendet multipart) -> stem-ai.
+  if (stemAiActive && req.is('multipart/form-data')) {
+    try {
+      const chunks: Buffer[] = [];
+      await new Promise<void>((resolve) => {
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => resolve());
+      });
+      const raw = Buffer.concat(chunks);
+      const ct = (req.headers['content-type'] || '') as string;
+      const boundary = ct.match(/boundary=(.+)$/)?.[1] as string | undefined;
+      if (!boundary) throw new Error('multipart boundary fehlt');
+
+      const fd = new FormData();
+      const parts = raw.toString('latin1').split('--' + boundary);
+      for (const p of parts) {
+        if (!p.trim()) continue;
+        const sep = p.indexOf('\r\n\r\n');
+        if (sep < 0) continue;
+        const header = p.slice(0, sep);
+        const body = p.slice(sep + 4).replace(/\r\n$/, '');
+        const nameMatch = header.match(/name="([^"]+)"/);
+        if (!nameMatch) continue;
+        const filenameMatch = header.match(/filename="([^"]+)"/);
+        if (filenameMatch) {
+          const buf = Buffer.from(body, 'latin1');
+          fd.append(nameMatch[1], new Blob([buf]), filenameMatch[1]);
+        } else {
+          fd.append(nameMatch[1], body);
+        }
+      }
+
+      const resp = await fetch(STEM_AI_URL + '/separate-stems', { method: 'POST', body: fd });
+      const data = await resp.json() as any;
+      res.status(resp.status).json(data);
+      return;
+    } catch (e) {
+      res.status(502).json({ status: 'error', message: 'stem-ai Proxy fehlgeschlagen: ' + ((e as Error).message ?? '') });
+      return;
+    }
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const { file } = (req.body ?? {}) as { file?: string };
-
-  if (ENABLE_STEMS && file) {
+if (ENABLE_STEMS && file) {
     // Echte Demucs-Inferenz (Python CLI, PyTorch + torchaudio erforderlich).
     const proc = spawn('demucs', ['--two-stems', 'vocals', '--out', './dist/stems', file], {
       shell: false,
