@@ -3,7 +3,6 @@ import { Box, Play, Pause, RefreshCw, Layers, Map, Move, Crosshair } from 'lucid
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
-import { calculate10ChannelPan } from '../utils/spatialMath';
 import { StartupWizard } from './spatial/StartupWizard';
 import { SpatialSetup } from './spatial/types';
 import { SpatialCanvas } from './spatial/SpatialCanvas';
@@ -31,9 +30,12 @@ export function SpatialPluginTerminal() {
     'btn5': 'CHAOS'
   });
 
+  // P10: Positionen tatsächlich an die AudioEngine weitergeben (kein No-Op).
   useEffect(() => {
     nodes.forEach(node => {
-        const { channels } = calculate10ChannelPan(node.x, node.y);
+      if (node.active) {
+        audioEngine.setSpatialPosition(node.id.toLowerCase() as TrackType, node.x, node.y);
+      }
     });
   }, [nodes]);
 

@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
+
 import { TrackType, TRACK_ROLE_MAP, MUSIC_SCALES } from '../types';
-import { calculate10ChannelPan, calculateHRTF } from './spatialMath';
+import { calculateChannelPan, calculateHRTF, SPATIAL_SETUPS, SpatialSetup } from './spatialMath';
 import { ClockSync } from './ClockSync';
 import { PhaseLockedLoop } from './PhaseLockedLoop';
 import { LatencyMonitor } from './LatencyMonitor';
@@ -60,6 +61,12 @@ class AudioEngine {
 
   public analyser!: Tone.Analyser;
   private ctx!: AudioContext;
+
+  // P10: Mehrkanal-Spatial-Bus (2/4.0/6/8/10/12/14/16/18.x) via WebAudio.
+  private spatialSetupId: string = '10.0';
+  private spatialGains: (GainNode | null)[] = [];
+  private spatialMerger: ChannelMergerNode | null = null;
+  private spatialEnabled = false;
 
   // Synthesizers & FX Nodes
   private kickSynth!: Tone.MembraneSynth;
@@ -315,6 +322,8 @@ class AudioEngine {
 
     // --- Task 2: optionaler präziser AudioWorklet-Clock-Generator ---
     this.initClockWorklet();
+
+    this.buildSpatialBus();
 
     this.initialized = true;
   }
@@ -797,19 +806,125 @@ class AudioEngine {
     }
   }
   
+  /**
+   * P10: Setzt die räumliche Position einer Spur und bindet die gewählte
+   * Mehrkanal-Konfiguration (2/4.0/6/8/10/12/14/16/18.x) ein.
+   * - Stereo/HRTF-Cue bleibt für Kopfhörer erhalten.
+   * - Zusätzlich werden die N Kanal-Gewichte via calculateChannelPan berechnet
+   *   und auf die Kanal-GainNodes des N-Kanal-Spatial-Busses geschrieben.
+   */
   public setSpatialPosition(track: TrackType, x: number, y: number) {
-    // Task 17: HRTF-gestütztes Binaural-Panning für den Kopfhörer-/Stereo-Cue.
+    this.ensureInitialized();
     const hrtf = calculateHRTF(x, y, this.ctx?.sampleRate || 48000);
 
-    // Stereo/Pan ersetzen: wir steuern auf einer neutralen Pan-Position linearer Abbildung.
-    // (Einfache Stereo-Abbildung aus dem HRTF-Stereo-Modell)
-    const stereoPan = Math.max(-1, Math.min(1, hrtf.azimuth / 90));
+    // HRTF-basiertes Stereo-Cue (Kopfhörer/Engineer).
+    const stereoPan = Math.max(-1, Math.min(1, (hrtf.azimuth || 0) / 90));
     const channelStr = track.replace('channel', '');
-    this.setWorkletParam(`ch${channelStr}_volume`, -hrtf.ildDb); // ILD als implizite Lautheit
+    this.setWorkletParam(`ch${channelStr}_volume`, -hrtf.ildDb);
     this.setMixChannelParam('pan', stereoPan, 0.03);
-    // Weitere 10-Channel-Position für Spatial-Setups
-    const { channels } = calculate10ChannelPan(x, y);
-    this.lastSpatialChannels_ = channels;
+
+    // Mehrkanal-Konfigurationspanning (VBAP-artig auf 360°-Ring).
+    const pan = calculateChannelPan(x, y, this.spatialSetupId);
+    this.lastSpatialChannels_ = pan.channels;
+
+    if (this.spatialEnabled && this.spatialGains.length >= pan.channels.length) {
+      const t = this.ctx?.currentTime ?? 0;
+      pan.channels.forEach((g, i) => {
+        const node = this.spatialGains[i];
+        if (node) node.gain.setTargetAtTime(g, t, 0.02);
+      });
+      // LFE-Kanäle (nach den Hauptkanälen) anwenden.
+      pan.lfe.forEach((lg, k) => {
+        const idx = pan.channels.length + k;
+        const node = this.spatialGains[idx];
+        if (node) node.gain.setTargetAtTime(lg, t, 0.02);
+      });
+    }
+  }
+
+  /** Liefert die zuletzt berechneten Kanal-Gewichte (für UI/Visualisierung). */
+  public getLastSpatialChannels(): number[] {
+    return this.lastSpatialChannels_;
+  }
+
+  /** Legt die Mehrkanal-Konfiguration um (z.B. '10.0', '18.2'). */
+  public setSpatialSetup(setupId: string) {
+    this.spatialSetupId = SPATIAL_SETUPS.some((s) => s.id === setupId) ? setupId : '10.0';
+    this.buildSpatialBus();
+  }
+
+  public getSpatialSetupId(): string {
+    return this.spatialSetupId;
+  }
+
+  public getSpatialSetups(): SpatialSetup[] {
+    return SPATIAL_SETUPS;
+  }
+
+  /**
+   * Erstellt den N-Kanal-WebAudio-Spatial-Bus (fail-safe):
+   * - Stereo-Master (L/R) wird über einen ChannelSplitter(2) gewonnen.
+   * - Jede Hauptachse L,R wird über N GainNode pro Himmelsrichtung gewichtet
+   *   und in einen ChannelMerger(N) gespeist -> echter Surround-Ausgang.
+   * - Für 2.0 wird ein simpler Stereo-Passthrough genutzt.
+   */
+  private buildSpatialBus() {
+    if (!this.ctx || typeof this.ctx.createGain !== 'function') return;
+    try {
+      const setup = SPATIAL_SETUPS.find((s) => s.id === this.spatialSetupId) ?? SPATIAL_SETUPS[4];
+      const total = setup.numChannels + setup.lfe;
+
+      // Alte Nodes entsorgen.
+      this.spatialGains.forEach((n) => { try { n?.disconnect(); } catch { /* ignore */ } });
+      this.spatialMerger?.disconnect();
+
+      if (setup.numChannels <= 2) {
+        // 2.0 Stereo-Passthrough (kein Mehrkanal-Needs).
+        this.spatialGains = [];
+        this.spatialMerger = null;
+        this.spatialEnabled = false;
+        return;
+      }
+
+      const splitter = this.ctx.createChannelSplitter(2); // L, R
+      const gains: (GainNode | null)[] = [];
+      const merger = this.ctx.createChannelMerger(total);
+
+      // Mono-Anteile des Stereo-Eingangs als Quellen für die Ring-Gewichte.
+      // Jede GainNode bekommt als Input einen gewichteten Mix aus L und R mit
+      // fester Baseline; die eigentliche Richtung steuern wir über die Gains.
+      const sourceL = this.ctx.createGain();
+      const sourceR = this.ctx.createGain();
+      // Summe, damit jedes Kanal-Element einen kohärenten Mono-SA hat.
+      const monoSource = this.ctx.createGain();
+      // Mono = (L+R) für den Ring (vereinfachtes Downmix UHJ→Ring).
+      for (let i = 0; i < total; i++) {
+        const g = this.ctx.createGain();
+        g.gain.value = 0;
+        monoSource.connect(g);
+        g.connect(merger, 0, i);
+        gains.push(g);
+      }
+      splitter.connect(sourceL, 0);
+      splitter.connect(sourceR, 1);
+      sourceL.connect(monoSource);
+      sourceR.connect(monoSource);
+
+      this.spatialGains = gains;
+      this.spatialMerger = merger;
+      this.spatialEnabled = true;
+
+      // Verbindung: Master-Signal in den Splitter einspeisen.
+      const masterOut: any = this.masterMeLimiter || this.masterVolume || this.analyzerNode;
+      try { masterOut.connect(splitter); } catch { /* ignore */ }
+
+      // Merger-Ausgang an Destination (für echte Surround-Geräte/Devices).
+      try { merger.connect(this.ctx.destination); } catch { /* ignore */ }
+    } catch (e) {
+      console.warn('Spatial-Bus nicht erstellt (fallback Stereo).', e);
+      this.spatialEnabled = false;
+      this.spatialGains = [];
+    }
   }
 
   private lastSpatialChannels_: number[] = [];

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { PluginBase } from '../PluginBase';
 import { PluginState, LockStatus, Plugin } from '../types';
 import { hubConnector } from '../../hubConnector';
+import { audioEngine } from '../../utils/audioEngine';
+import { SPATIAL_SETUPS } from '../../utils/spatialMath';
 
 export class SpatialSurroundPlugin implements Plugin {
   config = { id: 'spatial-surround', name: 'SpatialSurround', colorScheme: 'blue' };
@@ -117,6 +119,7 @@ export class SpatialSurroundPlugin implements Plugin {
 export const SpatialSurroundUI = React.memo(({ plugin, currentUserId }: {plugin: SpatialSurroundPlugin, currentUserId: string}) => {
   const [uiPosX, setUiPosX] = useState(0); // Normalized X (-1 to 1)
   const [uiPosY, setUiPosY] = useState(0); // Normalized Y (-1 to 1)
+  const [setupId, setSetupId] = useState<string>(audioEngine.getSpatialSetupId?.() ?? '10.0');
 
   useEffect(() => {
     // Initialize UI position from plugin's current position
@@ -158,13 +161,38 @@ export const SpatialSurroundUI = React.memo(({ plugin, currentUserId }: {plugin:
       currentUserId={currentUserId}
       onStateChange={(s) => plugin.updateState(s)}
       renderProUI={() => (
-        <div className="w-full h-48 bg-neutral-900 rounded border border-neutral-700 relative cursor-crosshair" onMouseMove={handleMove}>
-           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 to-transparent"></div>
-           {/* Blue dot reflecting position */}
-           <div 
-             className="absolute w-4 h-4 bg-blue-500 rounded-full -translate-x-1/2 -translate-y-1/2" 
-             style={dotStyle} // Apply dynamic style
-           ></div>
+        <div className="w-full h-full flex flex-col gap-2 p-2">
+          {/* Dropdown: Mehrkanal-Konfiguration 2/4.0/6/8/10/12/14/16/18.x */}
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-mono text-blue-400 uppercase tracking-widest whitespace-nowrap">Setup</label>
+            <select
+              value={setupId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setSetupId(id);
+                audioEngine.setSpatialSetup(id);
+              }}
+              className="flex-1 bg-[#111] text-blue-300 border border-blue-700/40 rounded px-2 py-1 text-[10px] font-mono focus:outline-none"
+            >
+              {SPATIAL_SETUPS.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+            <span className="text-[9px] text-neutral-500 font-mono">{setupId}</span>
+          </div>
+
+          {/* 2D-Pan-Fläche */}
+          <div className="flex-1 bg-neutral-900 rounded border border-neutral-700 relative cursor-crosshair overflow-hidden" onMouseMove={handleMove}>
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 to-transparent"></div>
+             <div className="absolute inset-0 flex items-center justify-center text-[9px] font-mono text-neutral-600 pointer-events-none">
+               {setupId} KANÄLE
+             </div>
+             {/* Blue dot reflecting position */}
+             <div 
+               className="absolute w-4 h-4 bg-blue-500 rounded-full -translate-x-1/2 -translate-y-1/2 shadow-[0_0_10px_rgba(59,130,246,0.8)]" 
+               style={dotStyle}
+             ></div>
+          </div>
         </div>
       )}
     />
