@@ -1,58 +1,61 @@
-// === AudioWorkletGlobalScope-Konstanten (im Worker-Kontext global verfügbar) ===
-declare const sampleRate: number;
-declare const currentFrame: number;
-declare const currentTime: number;
-declare const AudioWorkletGlobalScope: typeof globalThis & {
-  sampleRate: number;
-  currentFrame: number;
-  currentTime: number;
-  registerProcessor: typeof registerProcessor;
-  readonly port: MessagePort;
-};
+// Globale Web-API-Deklarationen für das sampleMONK-Projekt (AudioWorklet, HID, GPU).
+// Alles unter `declare global` → für alle Module implizit sichtbar.
 
-declare abstract class AudioWorkletProcessor {
-  readonly port: MessagePort;
-  abstract process(
-    inputs: Float32Array[][],
-    outputs: Float32Array[][],
-    parameters: Record<string, Float32Array>
-  ): boolean;
+declare global {
+  /** Audio-Puffergröße in Frames, im AudioWorkletGlobalScope gültig. */
+  const sampleRate: number;
+  /** Aktuelle Frame-Position innerhalb des Audio-Puffers. */
+  const currentFrame: number;
+  /** Aktuelle Zeit in Sekunden seit Start des AudioContext. */
+  const currentTime: number;
+
+  abstract class AudioWorkletProcessor {
+    readonly port: MessagePort;
+    abstract process(
+      inputs: Float32Array[][],
+      outputs: Float32Array[][],
+      parameters: Record<string, Float32Array>
+    ): boolean;
+  }
+
+  function registerProcessor(
+    name: string,
+    processorCtor: new (...args: any[]) => AudioWorkletProcessor
+  ): void;
+
+  interface HIDDevice {
+    readonly vendorId?: number;
+    readonly productId?: number;
+    readonly productName?: string;
+  }
+
+  interface HIDDeviceFilter {
+    vendorId?: number;
+    productId?: number;
+    usagePage?: number;
+    usage?: number;
+  }
+
+  interface HID {
+    getDevices(): Promise<HIDDevice[]>;
+    requestDevice(options: { filters: HIDDeviceFilter[] }): Promise<HIDDevice[]>;
+  }
+
+  interface GPUDevice {}
+
+  interface GPUAdapter {
+    requestDevice(): Promise<GPUDevice>;
+  }
+
+  interface GPU {
+    requestAdapter(): Promise<GPUAdapter | null>;
+  }
+
+  interface Navigator {
+    hid?: HID;
+    gpu?: GPU;
+  }
 }
 
-declare function registerProcessor(
-  name: string,
-  processorCtor: new (...args: any[]) => AudioWorkletProcessor
-): void;
-
-interface HIDDevice {
-  readonly vendorId?: number;
-  readonly productId?: number;
-  readonly productName?: string;
-}
-
-interface HIDDeviceFilter {
-  vendorId?: number;
-  productId?: number;
-  usagePage?: number;
-  usage?: number;
-}
-
-interface HID {
-  getDevices(): Promise<HIDDevice[]>;
-  requestDevice(options: { filters: HIDDeviceFilter[] }): Promise<HIDDevice[]>;
-}
-
-interface GPUDevice {}
-
-interface GPUAdapter {
-  requestDevice(): Promise<GPUDevice>;
-}
-
-interface GPU {
-  requestAdapter(): Promise<GPUAdapter | null>;
-}
-
-interface Navigator {
-  hid?: HID;
-  gpu?: GPU;
-}
+// Markiert die Datei als ES-Modul, damit `declare global` wirksam wird.
+export {};

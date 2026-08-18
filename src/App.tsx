@@ -79,6 +79,15 @@ function AppComponent() {
       } finally {
         console.log('[startApp] audioEngine.play done');
       }
+      // Sequenzer-Pattern synchron in die AudioEngine laden, damit der geladene
+      // Tech-Preset beim ersten Play sofort hörbar ist.
+      try {
+        const initialPreset = TECHNO_PRESETS[0];
+        audioEngine.loadPatterns(initialPreset.patterns as unknown as Record<string, boolean[]>, initialPreset.synthNotes, initialPreset.bpm);
+        setBpm(initialPreset.bpm);
+      } catch (e) {
+        console.warn('[startApp] Preset-Sync fehlgeschlagen:', (e as Error).message);
+      }
       // IMMER in den App-Screen wechseln – Backend/Worklet-Defizite brechen die App nicht.
       console.log('[startApp] isStarted=true setzen');
       setIsStarted(true);
@@ -145,7 +154,10 @@ function AppComponent() {
     setPatterns(prev => {
       const nextArr = [...prev[track]];
       nextArr[stepIndex] = !nextArr[stepIndex];
-      return { ...prev, [track]: nextArr };
+      const next = { ...prev, [track]: nextArr };
+      // AudioEngine unmittelbar nachschieben, damit die Klinge hörbar synchron ist.
+      audioEngine.loadPatterns(next as unknown as Record<string, boolean[]>);
+      return next;
     });
   };
 
@@ -230,7 +242,6 @@ function AppComponent() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsPlaying(true)}
               disabled={isPlaying}
               className="px-5 py-2 rounded-full bg-cyan-500/12 border border-cyan-500/50 text-cyan-200 text-xs font-bold tracking-widest uppercase hover:bg-cyan-500/25 hover:shadow-[0_0_20px_-6px_var(--monk-glow-teal)] transition-all duration-200 disabled:opacity-40 enabled:cursor-pointer disabled:cursor-not-allowed active:scale-95"
             >
@@ -238,7 +249,6 @@ function AppComponent() {
             </button>
             <button
               onClick={() => setIsPlaying(false)}
-              disabled={!isPlaying}
               className="px-5 py-2 rounded-full bg-fuchsia-500/12 border border-fuchsia-500/50 text-fuchsia-200 text-xs font-bold tracking-widest uppercase hover:bg-fuchsia-500/25 hover:shadow-[0_0_20px_-6px_rgba(217,70,239,0.5)] transition-all duration-200 disabled:opacity-40 enabled:cursor-pointer disabled:cursor-not-allowed active:scale-95"
             >
               ⏹ Stop
@@ -251,7 +261,7 @@ function AppComponent() {
       {/* 4. Active Modules */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {PLUGIN_REGISTRY
-          .filter(p => p.id !== 'mixer' && moduleStates[p.id] && moduleStates[p.id] !== 'OFF')
+          .filter(p => (p.id === 'mixer' ? true : (moduleStates[p.id] && moduleStates[p.id] !== 'OFF')))
           .map(plugin => (
             <ModuleContainer key={plugin.id} id={plugin.id} name={plugin.name} state={moduleStates[plugin.id]}>
 
@@ -263,8 +273,8 @@ function AppComponent() {
                                       tracks={patterns}
                                       bpm={bpm}
                                       setBpm={setBpm}
-                                      onPlay={() => setIsPlaying(true)}
-                                      onStop={() => setIsPlaying(false)}
+                                      onPlay={() => { audioEngine.play(); setIsPlaying(true); }}
+                                      onStop={() => { audioEngine.stop(); setIsPlaying(false); }}
                                       onToggleStep={handleToggleStep}
                                   />
                                   ) : plugin.id === 'voice' ? (

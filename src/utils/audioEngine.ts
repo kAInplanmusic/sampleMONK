@@ -1,6 +1,8 @@
 import * as Tone from 'tone';
 
 import { TrackType, TRACK_ROLE_MAP, MUSIC_SCALES } from '../types';
+
+
 import { calculateChannelPan, calculateHRTF, SPATIAL_SETUPS, SpatialSetup } from './spatialMath';
 import { getPatch, INSTRUMENT_PATCHES, InstrumentPatch } from '../data/instrumentSynths';
 import { ClockSync } from './ClockSync';
@@ -75,6 +77,14 @@ class AudioEngine {
   private bassSynth!: Tone.MonoSynth;
   private bassFilter!: Tone.Filter;
   private bassDelay!: Tone.FeedbackDelay;
+
+  /**
+   * Echte per-Kanal-Mischung: Jeder Track (channel1..8) hat eine eigene
+   * Gain- und Pan-Stufe. Damit steuern die Mischpult-Fader tatsächlich die
+   * Audiokette (statt nur nachbildende UI-Werte).
+   */
+  private channelGains: Partial<Record<TrackType, Tone.Volume>> = {};
+  private channelPans: Partial<Record<TrackType, Tone.Panner>> = {};
   
   private samplePlayers: Record<string, Tone.Player> = {};
   private trackSampleUrl: Record<TrackType, string | null> = {
@@ -303,12 +313,21 @@ class AudioEngine {
     this.analyser = new Tone.Analyser('waveform', 256);
     this.masterBuses['GLOBAL_MASTER'].connect(this.analyser);
 
-    // Synth
-    this.kickSynth = new Tone.MembraneSynth({ octaves: 8, envelope: { attack: 0.005, decay: 0.1, sustain: 0.02, release: 0.3 } }).connect(this.masterBuses['GLOBAL_MASTER']);
-    this.hatSynth = new Tone.MetalSynth({ envelope: { attack: 0.001, decay: 0.1, sustain: 0.05, release: 0.05 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).connect(this.masterBuses['GLOBAL_MASTER']);
-    this.clapFilter = new Tone.Filter(1800, 'bandpass', -12).connect(this.masterBuses['GLOBAL_MASTER']);
+    // Synth (jede Stimme über eigene Kanal-Gain/Pan für echtes Mischpult-Routing)
+    this.ensureChannelNode('channel1'); // kick
+    this.ensureChannelNode('channel2'); // hat
+    this.ensureChannelNode('channel3'); // clap
+    this.ensureChannelNode('channel7'); // bass
+    this.channelGains.channel1!.volume.value = 0.8;
+    this.channelGains.channel2!.volume.value = 0.6;
+    this.channelGains.channel3!.volume.value = 0.7;
+    this.channelGains.channel7!.volume.value = 0.8;
+
+    this.kickSynth = new Tone.MembraneSynth({ octaves: 8, envelope: { attack: 0.005, decay: 0.1, sustain: 0.02, release: 0.3 } }).connect(this.channelGains.channel1!);
+    this.hatSynth = new Tone.MetalSynth({ envelope: { attack: 0.001, decay: 0.1, sustain: 0.05, release: 0.05 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).connect(this.channelGains.channel2!);
+    this.clapFilter = new Tone.Filter(1800, 'bandpass', -12).connect(this.channelGains.channel3!);
     this.clapSynth = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.0, release: 0.05 }, volume: -10 }).connect(this.clapFilter);
-    this.bassFilter = new Tone.Filter({ type: 'lowpass', frequency: 600, Q: 1.0 }).connect(this.masterBuses['GLOBAL_MASTER']);
+    this.bassFilter = new Tone.Filter({ type: 'lowpass', frequency: 600, Q: 1.0 }).connect(this.channelGains.channel7!);
     this.bassDelay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.25, wet: 0.3 }).connect(this.bassFilter);
     this.bassSynth = new Tone.MonoSynth().connect(this.bassDelay);
 
@@ -323,6 +342,71 @@ class AudioEngine {
     this.buildSpatialBus();
 
     this.initialized = true;
+
+    // Sicherstellen, dass beim ersten Start ein hörbarer Drum-Loop aktiv ist
+    // (falls keine Patterns gesetzt wurden). So liefert "Play" sofort Musik,
+    // ohne dass externe Sample-Dateien vorhanden sein müssen.
+    this.ensureDemoPattern();
+  }
+
+  /**
+   * Stellt sicher, dass ein hörbares Standard-Drum-Pattern vorliegt.
+   * Sampler-Kanäle (channel4/5/6/8) spielen nur, wenn ein Sample zugewiesen
+   * ist; die synthetischen Stimmen (kick/hat/clap/bass) laufen immer.
+   */
+  public ensureDemoPattern(): void {
+    // Nur befüllen, wenn noch nichts programmiert wurde.
+    const hasContent = (['channel1','channel2','channel3','channel7','channel8'] as TrackType[])
+      .some(t => this.patterns[t].some(Boolean));
+    if (hasContent) return;
+
+    // klassischer Industrieller 4-on-the-Floor-Beat (16tel)
+    this.patterns.channel1 = [true,false,false,false,true,false,false,false,true,false,false,false,true,false,false,false];          // kick
+    this.patterns.channel2 = [false,false,true,false,false,false,true,false,false,false,true,false,false,false,true,false];          // hat (offbeat)
+    this.patterns.channel3 = [false,false,false,false,true,false,false,false,false,false,false,false,true,false,false,false];       // clap (backbeat)
+    this.patterns.channel7 = [true,false,true,false,false,true,false,true,true,false,false,true,false,true,false,true];          // bass-Groove
+    this.patterns.channel8 = [true,false,false,false,false,false,true,false,true,false,false,false,false,false,true,false];          // lead (nur falls Sample)
+    this.synthNotes = [0,4,0,7, 3,7,0,5, 0,3,0,7, 4,0,3,7];
+    this.onStepUpdate(this.currentStep);
+  }
+
+  /** Setzt einen einzelnen Drum-Step (16tel). */
+  public setStep(track: TrackType, step: number, on: boolean): void {
+    if (step < 0 || step > 15) return;
+    this.patterns[track][step] = on;
+  }
+
+  /** Grad das Muster eines Kanals (16tel). */
+  public setPattern(track: TrackType, steps: boolean[]): void {
+    if (!steps || steps.length !== 16) return;
+    this.patterns[track] = steps as unknown as boolean[];
+  }
+
+  /**
+   * Übernimmt komplett Patterns + synthNotes aus der Sequenzer-/Preset-Logik,
+   * damit die AudioEngine exakt das spielt, was die UI anzeigt.
+   */
+  public loadPatterns(
+    patterns: Record<string, boolean[]>,
+    synthNotes?: number[],
+    bpm?: number
+  ): void {
+    const keys: TrackType[] = [
+      'channel1','channel2','channel3','channel4',
+      'channel5','channel6','channel7','channel8',
+    ];
+    for (const k of keys) {
+      const arr = patterns?.[k];
+      if (arr && Array.isArray(arr) && arr.length === 16) {
+        this.patterns[k] = arr as unknown as boolean[];
+      }
+    }
+    if (synthNotes && Array.isArray(synthNotes) && synthNotes.length === 16) {
+      this.synthNotes = synthNotes;
+    }
+    if (bpm && Number.isFinite(bpm) && bpm > 20 && bpm < 300) {
+      Tone.Transport.bpm.value = bpm;
+    }
   }
 
   /** Erstellt den Clock-Worklet (falls geladen) als präzise Step-Quelle. */
@@ -437,6 +521,51 @@ class AudioEngine {
     }
     // Für Channel-/Monitor-Wege geben wir den Wert zurück (UI-synergistisch).
     return value;
+  }
+
+  /**
+   * Stellt den per-Kanal-Gain/Pan für einen Track bereit (zwischenspeichert
+   * die Tone-Nodes und verdrahtet sie auf den GLOBAL_MASTER-Bus).
+   */
+  private ensureChannelNode(track: TrackType): void {
+    if (!this.channelGains[track]) {
+      const g = new Tone.Volume(0);
+      const p = new Tone.Panner(0);
+      g.connect(p);
+      p.connect(this.masterBuses['GLOBAL_MASTER']);
+      this.channelGains[track] = g;
+      this.channelPans[track] = p;
+    }
+  }
+
+  /** Echtes Kanal-Gain (Fader): volume 0..1 → dB. */
+  public setChannelGain(track: TrackType, gain01: number): void {
+    this.ensureInitialized();
+    this.ensureChannelNode(track);
+    const v = Math.max(0, Math.min(1.5, gain01));
+    const db = v <= 0.001 ? -Infinity : 20 * Math.log10(v);
+    this.channelGains[track]!.volume.rampTo(db, 0.03);
+  }
+
+  /** Echtes Kanal-Pan: -1..1. */
+  public setChannelPan(track: TrackType, pan: number): void {
+    this.ensureInitialized();
+    this.ensureChannelNode(track);
+    this.channelPans[track]!.pan.rampTo(Math.max(-1, Math.min(1, pan)), 0.03);
+  }
+
+  /** Setzt die Drum-Kanal-Namen, die das Mischpult anzeigen soll. */
+  public getChannelStripInfo(): { stop: TrackType; name: string; color: string }[] {
+    return [
+      { stop: 'channel1', name: 'KICK',   color: 'bg-rose-500' },
+      { stop: 'channel2', name: 'HAT',    color: 'bg-amber-400' },
+      { stop: 'channel3', name: 'CLAP',   color: 'bg-sky-500' },
+      { stop: 'channel4', name: 'SAMPLE', color: 'bg-purple-500' },
+      { stop: 'channel5', name: 'SAMPLE', color: 'bg-emerald-500' },
+      { stop: 'channel6', name: 'SAMPLE', color: 'bg-orange-500' },
+      { stop: 'channel7', name: 'BASS',   color: 'bg-cyan-500' },
+      { stop: 'channel8', name: 'LEAD',   color: 'bg-fuchsia-500' },
+    ];
   }
 
   public setGranularParams(_params: { grainSize: number; density: number; position: number }) {
