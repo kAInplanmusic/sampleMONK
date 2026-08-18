@@ -98,45 +98,65 @@ export const useAudioAI = () => {
   };
 
   const generateVoice = async (text: string, voicePreset: string) => {
-    // Task 13: Vorzug für lokale Web-Speech-Synthese (keine Server-Abhängigkeit).
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        const synth = window.speechSynthesis;
-        if (synth && synth.getVoices().length > 0) {
-          // Kurzwort zur Laufzeit auswählen (Einzelsatz), Anbieter darf blockiert sein.
-          const speak = new Promise<string>((resolve) => {
-            const utter = new SpeechSynthesisUtterance(text);
-            const voices = synth.getVoices();
-            // Wähle eine deutsche/en-US-Stimme bevorzugt
-            const match = voices.find(v => v.lang === voicePreset) || voices[0];
-            if (match) utter.voice = match;
-            utter.rate = 0.95;
-            utter.onend = () => resolve('ok-spoken');
-            utter.onerror = () => resolve('error-speech');
-            synth.speak(utter);
-          });
-          await Promise.race([speak, new Promise(r => setTimeout(r, 1200))]); // kurzer Timeout
-          return { status: 'spoken', url: null, text };
-        }
-      } catch (e) {
-        console.warn('Web-Speech nicht verfügbar, weiter mit Server.', e);
-      }
-    }
-
+    // P5: Zuerst den (verbesserten) lokalen Server-Endpunkt /api/generate-voice
+    // anfragen. Der Server liefert 'ok' (RVC/VITS-Engine via env) oder
+    // 'local' (dann Web-Speech). Bei Netzwerk-/Serverfehler fällt auf
+    // Browser-Web-Speech zurück (kein Cloud-Google-TTS nötig).
     try {
-      return await fetchWithRetry(async () => {
+      const data = await fetchWithRetry(async () => {
           const response = await axios.post(`${API_BASE_URL}/generate-voice`, {
             text,
             voicePreset
           });
           return response.data;
       });
+
+      const status: string = data?.status ?? 'local';
+      if (status === 'ok') {
+        return { status: 'ok', url: data.url, text, voicePreset };
+      }
+      if (status === 'local' || status === 'error') {
+        // Kein echter Engine verfügbar -> Web-Speech-Fallback.
+        throw new Error('voice-engine_unavailable');
+      }
+      return data;
     } catch (error) {
-      console.warn("Voice generation service unreachable, using mock fallback.", error);
+      const isEngineUnavailable = (error as Error).message === 'voice-engine_unavailable';
+      console.warn(
+        isEngineUnavailable
+          ? 'Voice-Engine nicht aktiviert; nutze Web-Speech.'
+          : 'Voice-Service nicht erreichbar; nutze Web-Speech.',
+        error,
+      );
+
+      // Browser-Web-Speech-Fallback (deterministisch, offline, keine Cloud).
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          const synth = window.speechSynthesis;
+          const speak = new Promise<string>((resolve) => {
+            const utter = new SpeechSynthesisUtterance(text);
+            const voices = synth.getVoices();
+            const match = voices.find(v => v.lang === voicePreset) || voices[0];
+            if (match) utter.voice = match;
+            utter.rate = 0.95;
+            utter.volume = 1;
+            utter.onend = () => resolve('ok-spoken');
+            utter.onerror = () => resolve('error-speech');
+            synth.speak(utter);
+          });
+          await Promise.race([speak, new Promise(r => setTimeout(r, 1500))]);
+          return { status: 'spoken', url: null, text, voicePreset };
+        } catch (e) {
+          console.warn('Web-Speech nicht verfügbar, verwende Mock.', e);
+        }
+      }
+
+      // End-Fallback: deterministischer lokaler Mock (kein Netz).
       return {
-          status: 'mocked',
-          url: `mock_voice_url_${voicePreset}`,
-          text
+        status: 'mocked',
+        url: `mock_voice_url_${voicePreset}`,
+        text,
+        voicePreset,
       };
     }
   };

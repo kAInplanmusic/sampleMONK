@@ -74,6 +74,92 @@ app.post('/api/ai/compose', async (req, res) => {
   });
 });
 
+
+// ---------------------------------------------------------------------------
+// POST /api/ai/generate + /api/ai/describe  → Ollama (lokal, self-hosted)
+// ---------------------------------------------------------------------------
+// Verdrahtet HyperSonicMOA-artige Anfragen an ein lokales Ollama-Modell.
+// Nutzt node>=18 global fetch; bei Fehler fällt es auf den deterministischen
+// lokalen Generator zurück (kein Cloud-Aufruf). Konfiguration via env:
+//   OLLAMA_URL    (Default http://127.0.0.1:11434)
+//   OLLAMA_MODEL  (Default qwen2.5:7b)
+// ---------------------------------------------------------------------------
+
+async function ollamaGenerate(promptText: string): Promise<string | null> {
+  const url = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
+  const model = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+  try {
+    const resp = await fetch(`${url}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, prompt: promptText, stream: false, options: { temperature: 0.7 } }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json() as { response?: string };
+    return data.response ?? null;
+  } catch (e) {
+    console.warn('[ollama] nicht erreichbar:', (e as Error).message);
+    return null;
+  }
+}
+
+function sanitizeJsonBlock(raw: string): string {
+  let s = raw.trim();
+  if (s.startsWith('```json')) s = s.slice(7);
+  if (s.endsWith('```')) s = s.slice(0, -3);
+  return s.trim();
+}
+
+// --- POST /api/ai/compose  → Ollama-gestützte KI-Komposition (mit lokalem Fallback) ---
+app.post('/api/ai/generate', async (req, res) => {
+  const { prompt } = (req.body ?? {}) as { prompt?: string };
+  const query = (prompt || 'Dark warehouse techno drums').trim();
+
+  const llmPrompt =
+    'Generiere ein valides JSON (nur JSON, keine Erklärung) mit Feldern ' +
+    '{ bpm: number, genre: string, patterns: { kick:boolean[16], hat:boolean[16], clap:boolean[16], synth:boolean[16] }, synthNotes:number[16] } ' +
+    'für einen Techno-Track basierend auf dem Prompt: "' + query + '".';
+
+  const raw = await ollamaGenerate(llmPrompt);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(sanitizeJsonBlock(raw));
+      return res.json({ task_id: 'ollama_' + Date.now(), source: 'ollama', ...parsed });
+    } catch (e) {
+      console.warn('[ollama] ungültiges JSON, Fallback.', e);
+    }
+  }
+
+  // Deterministischer lokaler Fallback (kein Netz).
+  const seed = query.length;
+  const kick = Array.from({ length: 16 }, (_, i) => (i + seed) % 4 === 0);
+  const hat = Array.from({ length: 16 }, (_, i) => (i + seed) % 2 === 1);
+  const clap = Array.from({ length: 16 }, (_, i) => i === 4 || i === 12);
+  const synth = Array.from({ length: 16 }, (_, i) => (i + seed * 2) % 3 === 0);
+  const synthNotes = Array.from({ length: 16 }, (_, i) => (i + seed) % 8);
+  return res.json({
+    task_id: 'local_' + Date.now(), source: 'local',
+    patterns: { kick, hat, clap, synth }, synthNotes,
+    bpm: 110 + (seed % 36), genre: 'Local Techno',
+  });
+});
+
+// --- POST /api/ai/describe  → Ollama-gestützte Beschreibung (Style/Mix-Empfehlung) ---
+app.post('/api/ai/describe', async (req, res) => {
+  const { prompt } = (req.body ?? {}) as { prompt?: string };
+  const query = (prompt || 'Was ist ein guter Mix-Vorschlag ?').trim();
+
+  const llmPrompt =
+    'Beantworte kurz (max 2 Sätze), auf Deutsch, fachlich für einen Musik-Produzenten: ' + query;
+
+  const raw = await ollamaGenerate(llmPrompt);
+  if (raw) {
+    return res.json({ ai: raw.trim() });
+  }
+  return res.json({ ai: 'Ollama nicht erreichbar. (Lokaler Fallback: keine KI-Antwort verfügbar)' });
+});
+
 // --- POST /api/separate-stems  → lokaler Stems-Stub (SSE mit Fortschritt) ---
 app.post('/api/separate-stems', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -130,12 +216,40 @@ app.post('/api/separate-stems', (req, res) => {
 // --- POST /api/generate-voice  → lokaler Voice-Stub ---
 app.post('/api/generate-voice', async (req, res) => {
   const { text, voicePreset } = (req.body ?? {}) as { text?: string; voicePreset?: string };
-  // Lokaler No-Op: liefert einen Platzhalter zurueck (kein Google TTS).
+  const query = (text ?? '').trim();
+  const preset = (voicePreset ?? 'FEMALE_ROBOTIC').trim();
+
+  // Falls ein lokaler RVC/VITS-Synthesizer per env aktiviert ist und das CLI
+  // existiert, wird dieser bevorzugt. Konfiguration:
+  //   VOICE_ENGINE=rvc|vits   VOICE_CLI=/pfad/zu/predict (optional)
+  const engine = (process.env.VOICE_ENGINE || '').trim().toLowerCase();
+  const voiceCli = (process.env.VOICE_CLI || '').trim();
+  if (engine && voiceCli && query) {
+    try {
+      const { execFile } = require('child_process');
+      const audioUrl = await new Promise<string>((resolve, reject) => {
+        const stamp = Date.now();
+        const outFile = `dist/voices/voice_${stamp}.wav`;
+        const args = ['--input', query, '--output', outFile, '--preset', preset];
+        execFile(voiceCli, args, { timeout: 45000 }, (err) => {
+          if (err) return reject(err);
+          resolve(`/voices/voice_${stamp}.wav`);
+        });
+      });
+      return res.json({ status: 'ok', url: audioUrl, text: query, voicePreset: preset });
+    } catch (e) {
+      console.warn('[voice] lokaler Engine-Fehler, Fallback auf Web-Speech.', (e as Error).message);
+    }
+  }
+
+  // Kein lokaler Engine-CLI: hinterlasse status 'local', das Frontend nutzt dann
+  // Web-Speech-Synthese (kein Google-Cloud-TTS, keine Server-Cloudabhängigkeit).
   return res.json({
     status: 'local',
     url: '',
-    text: text ?? '',
-    voicePreset: voicePreset ?? 'default',
+    text: query,
+    voicePreset: preset,
+    hint: 'Web-Speech (browser) verwenden',
   });
 });
 
