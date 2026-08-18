@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Activity, Power, Sliders, AudioLines, Radio, Flame, Cpu } from 'lucide-react';
+import {  useState, useEffect, useRef  } from 'react';
+import { Sparkles, Activity, Power, Sliders, Radio, Cpu } from 'lucide-react';
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';

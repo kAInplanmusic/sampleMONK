@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { audioEngine } from '../utils/audioEngine';
 import { MASTERING_PRESETS } from '../data/masteringPresets';
-import { Cpu, Radio, Sparkles, SlidersHorizontal, Activity, Layers, Power } from 'lucide-react';
+import { Cpu, Sparkles, SlidersHorizontal, Activity, Layers, Power } from 'lucide-react';
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 

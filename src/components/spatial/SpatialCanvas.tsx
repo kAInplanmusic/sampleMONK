@@ -47,11 +47,10 @@ export const SpatialCanvas: React.FC = () => {
 
   useEffect(() => {
     // Sync with audioEngine clock
-    audioEngine.setOnBeatCallback((step) => {
+    audioEngine.setOnBeatCallback((_step) => {
       // Logic: Update the 'playback' position on the paths based on the beat
       // If a path is drawn for 4 beats, progress the 'playhead' based on current step
-      const progress = (step % (quantization * 4)) / (quantization * 4);
-      // updateSpatialAudioPosition(progress);
+      // (updateSpatialAudioPosition((step % (quantization * 4)) / (quantization * 4)));
     });
   }, [quantization]);
 

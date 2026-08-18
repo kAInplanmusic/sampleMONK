@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Layers, Upload, Download, Play, Square, Scissors, Database, Loader2, Music, Mic, AudioWaveform, Zap, Radio } from 'lucide-react';
+import { Radio } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
@@ -14,7 +14,6 @@ export function StemExtractorTerminal() {
   const [progress, setProgress] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [extracted, setExtracted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -35,7 +34,6 @@ export function StemExtractorTerminal() {
         return;
       }
       setFile(selected);
-      setExtracted(false);
       setError(null);
     }
   };
@@ -69,7 +67,6 @@ export function StemExtractorTerminal() {
       if (!finalData) throw new Error("No data returned from extraction engine");
       
       setIsExtracting(false);
-      setExtracted(true);
       
       ['vocals', 'melody', 'highs', 'mids', 'lows'].forEach((stem, i) => {
           routeStemToMixer(stem, `stem_url_${i}`);

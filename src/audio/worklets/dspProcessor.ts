@@ -16,7 +16,6 @@ class DspProcessor extends AudioWorkletProcessor {
   // Allpass (1. Ordnung)
   private apCoef = 0.2;
   private ap1Z = 0;
-  private ap2Z = 0;
   // Envelope Follower Zustand
   private env = 0;
   private envAttack = 0.02;
@@ -33,7 +32,7 @@ class DspProcessor extends AudioWorkletProcessor {
     super();
     this.port.onmessage = (e) => {
       const m = e.data; if (!m) return;
-      if (m.reset) { this.ap1Z=0; this.ap2Z=0; this.filterZ=[0,0]; this.env=0; }
+      if (m.reset) { this.ap1Z=0; this.filterZ=[0,0]; this.env=0; }
       if (typeof m.phase === 'number') this.apCoef = (m.phase - 0.5); // -0.5..0.5
       if (typeof m.filterCutoff === 'number') this.baseCutoff = m.filterCutoff;
       if (typeof m.resonance === 'number') this.resonance = Math.max(0.1, Math.min(1, m.resonance));

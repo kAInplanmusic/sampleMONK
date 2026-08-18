@@ -1,3 +1,5 @@
+import { ModuleState } from '../context/ModuleStateContext';
+
 // ============================================================================
 // Task 22: UX/Onboarding + Rollen-Start-Presets
 // ----------------------------------------------------------------------------
@@ -58,9 +60,9 @@ export function getRolePreset(role: StudioRole): RolePreset {
 }
 
 /** Wendet ein Rollen-Preset auf den Modul-Zustand an (alle außer genannten OFF). */
-export function moduleStateForRole(role: StudioRole, allModules: string[]): Record<string, string> {
+export function moduleStateForRole(role: StudioRole, allModules: string[]): Record<string, ModuleState> {
   const preset = getRolePreset(role);
-  const out: Record<string, string> = {};
+  const out: Record<string, ModuleState> = {};
   allModules.forEach(m => { out[m] = preset.activeModules.includes(m) ? 'PRO' : 'OFF'; });
   return out;
 }

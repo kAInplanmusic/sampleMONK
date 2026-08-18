@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Puzzle, Lock, Settings, Code, Terminal, Play, Save, RefreshCw, Upload, Network } from 'lucide-react';
+import {  useState  } from 'react';
+import { Puzzle, Lock, Code, Terminal, Play, RefreshCw, Upload, Network } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { usePluginState } from '../hooks/usePluginState';
 
 export function CustomSlotTerminal() {
-  const { samples, addSample } = useSamples();
+  useSamples();
   const { state, lockStatus, updateState } = usePluginState('custom_slot', 'PRO');
   const [activeTab, setActiveTab] = useState('RUNTIME');
   const [isCompiling, setIsCompiling] = useState(false);

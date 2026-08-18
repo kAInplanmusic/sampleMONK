@@ -1,4 +1,4 @@
-import { TRACK_ROLE_MAP, TrackType, ALL_TRACKS, roleOf } from '../types';
+import { TrackType, ALL_TRACKS, roleOf } from '../types';
 
 export interface RoutingConfig {
   tracks: any[];

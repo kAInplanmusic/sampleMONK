@@ -11,7 +11,7 @@ class AnalyzerProcessor extends AudioWorkletProcessor {
     };
   }
 
-  process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>) {
+  process(inputs: Float32Array[][], _outputs: Float32Array[][], _parameters: Record<string, Float32Array>) {
     const input = inputs[0];
     
     // Write raw audio data to the shared buffer for visualization

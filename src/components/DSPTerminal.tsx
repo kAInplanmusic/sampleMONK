@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Power, Settings, Cpu, Zap, Sliders } from 'lucide-react';
+import {  useState, useEffect, useRef  } from 'react';
+import { Activity, Power, Cpu, Zap } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 
@@ -152,7 +152,7 @@ export function DSPTerminal() {
                 { name: 'LOOKAHEAD', id: 'lookahead', min: 0, max: 10, val: 1.5 },
                 { name: 'TRANSIENT DETECT', id: 'transient', min: 0, max: 1, val: 0.8 },
                 { name: 'STEREO LINK', id: 'stereoLink', min: 0, max: 1, val: 1 }
-            ].map((param, i) => (
+            ].map((param, _i) => (
               <div key={param.name} className="flex flex-col items-center justify-center gap-4">
                 <input 
                     type="range" 

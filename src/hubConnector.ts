@@ -73,4 +73,5 @@ export const hubConnector = {
 };
 
 // Exports für konsistenten Zugriff (Role etc.)
-export { Role, can };
+export type { Role };
+export { can };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Square, Circle, LayoutGrid, Zap, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { TrackType, TrackPreset } from '../types';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';

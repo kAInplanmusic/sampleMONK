@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+
 import { audioEngine } from '../utils/audioEngine';
 
 interface BeatVisualizerProps {
@@ -20,8 +21,8 @@ export const BeatVisualizer: React.FC<BeatVisualizerProps> = React.memo(({ isPla
     // Daher übertragen wir das Canvas nur EINMAL und fangen Fehler ab.
     let offscreen: OffscreenCanvas | null = null;
     try {
-      // @ts-expect-error transferControlToOffscreen existiert auf HTMLCanvasElement
-      offscreen = canvas.transferControlToOffscreen();
+      // transferControlToOffscreen ist DOM-typisiert; Fehler werden via try/catch abgefangen.
+      offscreen = canvas.transferControlToOffscreen() as unknown as OffscreenCanvas | null;
     } catch (e) {
       console.warn('BeatVisualizer: Canvas nicht übertragbar (bereits detached) – Fallback auf leeren Worker.', e);
       offscreen = null;

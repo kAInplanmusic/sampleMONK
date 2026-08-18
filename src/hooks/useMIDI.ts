@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MIDI_DEVICE_REGISTRY, resolveMidiProfile, MidiDeviceType } from '../config/midiDevices';
+import { resolveMidiProfile, MidiDeviceType } from '../config/midiDevices';
 
 export interface DetectedMidiDevice {
   id: string;
@@ -60,7 +60,7 @@ export const useMIDI = () => {
         // Kleinere Verzögerung zum stabilen Enumeration-Update
         setTimeout(() => refreshDevices(access), 60);
         // Nachricht ggf. kurz loggen (nur bei Verbindung sichtbar)
-        if (dev && event.state === 'connected') {
+        if (dev && dev.state === 'connected') {
           console.info(`MIDI-Hotplug verbunden: ${dev.name}`);
         }
       };

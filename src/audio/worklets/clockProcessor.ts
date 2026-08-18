@@ -18,7 +18,6 @@ class ClockProcessor extends AudioWorkletProcessor {
   private swing = 0.0; // 0..1
   private gate = 0.9;  // 0..1
   private previousTickTime = 0;
-  private pendingSwingStep = -1;
 
   static get parameterDescriptors() {
     return [
@@ -40,7 +39,7 @@ class ClockProcessor extends AudioWorkletProcessor {
     };
   }
 
-  process(_inputs: Float32Array[][], _outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
+  process(_inputs: Float32Array[][], _outputs: Float32Array[][], _parameters: Record<string, Float32Array>): boolean {
     const currentTime = currentFrame / sampleRate;
     const secondsPerStep = (60.0 / this.bpm) / 4.0; // 16tel
 

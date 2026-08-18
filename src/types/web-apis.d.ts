@@ -1,3 +1,15 @@
+// === AudioWorkletGlobalScope-Konstanten (im Worker-Kontext global verfügbar) ===
+declare const sampleRate: number;
+declare const currentFrame: number;
+declare const currentTime: number;
+declare const AudioWorkletGlobalScope: typeof globalThis & {
+  sampleRate: number;
+  currentFrame: number;
+  currentTime: number;
+  registerProcessor: typeof registerProcessor;
+  readonly port: MessagePort;
+};
+
 declare abstract class AudioWorkletProcessor {
   readonly port: MessagePort;
   abstract process(

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Waves, Zap, Settings } from 'lucide-react';
+import { Waves } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 import { WasmPluginHost } from '../audio/wasm/WasmPluginHost';
-import { audioEngine } from '../utils/audioEngine';
 
 const DEFAULT_SYNTH_PARAMS = {
   cutoff: 1000,
@@ -11,7 +10,7 @@ const DEFAULT_SYNTH_PARAMS = {
 };
 
 export const SynthesizerTerminal: React.FC = React.memo(() => {
-  const { state, lockStatus, updateState } = usePluginState('synth', 'PRO');
+  const { lockStatus } = usePluginState('synth', 'PRO');
   const hostRef = React.useRef(new WasmPluginHost());
   const [isLoaded, setIsLoaded] = useState(false);
   const [cutoff, setCutoff] = useState(DEFAULT_SYNTH_PARAMS.cutoff);

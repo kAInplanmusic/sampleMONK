@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Keyboard, Activity, Link2, RefreshCw, Cpu, Layers } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+
+import { Keyboard, Activity, Link2, RefreshCw, Cpu } from 'lucide-react';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
 import { useMIDI } from '../hooks/useMIDI';
@@ -14,7 +15,7 @@ export function MIDIControllerTerminal() {
   const { devices } = useHID();
   const [activeProfile, setActiveProfile] = useState('APC40');
   const isConnected = !!midiAccess || devices.length > 0;
-  const [padMappings, setPadMappings] = useState<Record<number, AudioSample>>({});
+  const [padMappings] = useState<Record<number, AudioSample>>({});
 
   // AUTO-ERKENNUNG: Sobald ein MIDI-Gerät erkannt wird, dessen Profil bekannt ist,
   // aktiviere automatisch das passende Profil (Plug-and-Play).
@@ -84,11 +85,7 @@ export function MIDIControllerTerminal() {
     return acc;
   }, {}), []);
 
-  const handleSampleDrop = (sample: AudioSample, padIndex: number) => {
-    if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
-    setPadMappings(prev => ({ ...prev, [padIndex]: sample }));
-    // console.log(`Sample ${sample.name} mapped to pad ${padIndex + 1}`);
-  };
+  
 
   return (
     <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
@@ -179,8 +176,8 @@ export function MIDIControllerTerminal() {
                    state={{
                      pads: padMap,
                      padColors: padCol,
-                     encoders: Array.from({ length: 8 }, (_, i) => Math.random()),
-                     faders: Array.from({ length: 8 }, (_, i) => Math.random()),
+                     encoders: Array.from({ length: 8 }, (_, _i) => Math.random()),
+                     faders: Array.from({ length: 8 }, (_, _i) => Math.random()),
                      label: activeProfile,
                    }}
                  />

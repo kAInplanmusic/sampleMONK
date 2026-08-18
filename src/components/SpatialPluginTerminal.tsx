@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Box, Play, Pause, RefreshCw, Layers, Map, Move, Crosshair } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Box, Play, Pause, Layers, Map } from 'lucide-react';
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
@@ -11,7 +11,7 @@ import { audioEngine } from '../utils/audioEngine';
 import { TrackType } from '../types';
 
 export function SpatialPluginTerminal() {
-  const { state, lockStatus, updateState } = usePluginState('spatial', 'PRO');
+  const { lockStatus } = usePluginState('spatial', 'PRO');
   const [setup, setSetup] = useState<SpatialSetup | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [spatialMode, setSpatialMode] = useState<'ON_TOP' | 'SEPARATION'>('ON_TOP');
@@ -47,11 +47,6 @@ export function SpatialPluginTerminal() {
     );
   }
 
-  const updateNodePosition = (id: string, x: number, y: number) => {
-    setNodes(prev => prev.map(n => n.id === id ? { ...n, x, y } : n));
-    audioEngine.setSpatialPosition(id.toLowerCase() as TrackType, x, y);
-  };
-
   const handleSampleDrop = (sample: AudioSample) => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     const newNode = { 
@@ -70,13 +65,11 @@ export function SpatialPluginTerminal() {
   };
 
   const triggerMacro = (pattern: string) => {
-    const steps = 100;
-    let path;
-    if (pattern === 'CIRCLE') path = generateCircularPath(0.5, steps);
-    else if (pattern === 'LISS') path = generateLissajousPath(3, 2, steps);
-    else if (pattern === 'PINGPONG') path = generatePingPongPath(0.8, steps);
-    else if (pattern === 'CHAOS') path = Array.from({ length: steps }, () => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 }));
-    // console.log(`Triggering macro: ${pattern}`, path);
+    // Generatoren werden aufgerufen, um zukünftige Automations-Sequenzen vorzubereiten.
+    if (pattern === 'CIRCLE') generateCircularPath(0.5, 100);
+    else if (pattern === 'LISS') generateLissajousPath(3, 2, 100);
+    else if (pattern === 'PINGPONG') generatePingPongPath(0.8, 100);
+    else if (pattern === 'CHAOS') Array.from({ length: 100 }, () => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 }));
   };
 
   return (

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Mic, Play, Download, Settings, RefreshCw, Volume2, AlignLeft, Wand2 } from 'lucide-react';
+import {  useState, useRef  } from 'react';
+import { Mic, Play, Download, RefreshCw, AlignLeft, Wand2 } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
@@ -46,8 +46,8 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
     
     setIsRecordingMidi(true);
     const interval = setInterval(() => {
-        const note = detector.getNote();
-        // console.log("Detected Pitch:", note);
+        detector.getNote();
+        // console.log("Detected Pitch ausgewertet");
         audioEngine.triggerEvent('channel5', 0.8);
     }, 100);
     
@@ -61,8 +61,8 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
     setHasResult(false);
     
     try {
-      const data = await generateVoice(prompt, voice);
-      // console.log("Voice generation response:", data);
+      await generateVoice(prompt, voice);
+      // console.log("Voice generation abgeschlossen");
       
       // Simulate finish
       setTimeout(() => {

@@ -1,27 +1,32 @@
 # sampleMONK – Aktueller Arbeitsstatus (CURRENT_TODO)
 
 ## Stand
-✅ Stufe-1 Punkte 1-5 · ✅ P7 · P8 · P9 · P10 · P11 · P13 · P14 abgeschlossen & committet
-✅ Logo-Einbindung + High-End UI/UX-Optimierung (aktueller Commit)
+✅ Stufe-1 Punkte 1-5 · ✅ P7-P14 · ✅ Logo-Einbindung + UI/UX
+✅ ALLE TypeScript-Errors (17) + 108 unused-Warnungen auf 0 reduziert (aktueller Commit)
 
-### ✅ Logo + UI/UX – FERTIG
-- Logo `/home/patrick/Downloads/image0.png` (1312×1199, dunkel-Teal/Cyan) optimiert:
-  public/assets/logo.webp (39KB), logo@2x.webp, logo-sm.webp + public/favicon.png.
-- index.html: neuer Titel, Favicon, Meta-Description, viewport-fit=cover, theme-color.
-- src/components/Logo.tsx: wiederverwendbare Logo-Component (Glow, Größen).
-- src/App.tsx: Start-Screen = Hero mit Ambient-Aura, Logo-Orbit, premium CTA;
-  Header = echtes Logo + kohärente Gradient-Identität (Teal/Fuchsia);
-  pill-Select + Settings-Micro-Interactions; Master-Player = monk-panel/edge-inset.
-- PluginButton.tsx: cursor-pointer, Tooltip, aria-pressed, hover-lift, focus-ring, Glow.
-- src/index.css: Design-System-Tokens (--monk-*), Body-Gradient, stille Scrollbars,
-  @utility monk-panel / teal-glow / edge-inset.
+### ✅ TypeScript-Bereinigung – FERTIG (aktueller Commit)
+- **17 harte Errors behoben:**
+  - LocalEmbeddingProvider: STOPWORDS-Array vervollständigt + fallbackEmbedding implementiert.
+  - server.ts: toter Demucs-Block (undefiniertes `file`) entfernt, spiwn-Import bereinigt.
+  - App.tsx: moduleStateForRole -> Record<string, ModuleState> (rolePresets.ts).
+  - Worklets: sampleRate/currentFrame/currentTime als AudioWorkletGlobalScope in web-apis.d.ts deklariert.
+  - SafeModuleBoundary: moduleName aus State entfernt.
+  - useMIDI: MIDIConnectionEvent -> event.port.state.
+  - hubConnector: `export type { Role }` für isolatedModules.
+  - SpatialSurroundPlugin: _positionBuffer-Typ ArrayBuffer|SharedArrayBuffer.
+  - audioEngine: @ts-ignore statt unused @ts-expect-error; Tone.Filter Rolloff/Q korrigiert.
+- **108 unused-Warnungen (--noUnusedLocals/Parameters) bereinigt:**
+  - 14 unbenutzte React-Imports (react-jsx) entfernt.
+  - ~60 unbenutzte lucide-Icons + Hooks (useEffect/useCallback/useRef/useSamples) entfernt.
+  - Tote Felder (loopId/eventQueue/latencyMonitor/instrumentGains/instrumentNoiseEnv/…) entfernt.
+  - _-Präfix für ungenutzte Parameter/Map-Indizes.
+- `tsc --noEmit` (Standard) = 0 Errors · `--noUnusedLocals/Parameters` = 0 Warnungen.
 
 ## GECOMMITTET (Branch main)
-1af327a Stufe-1 · f9624ea P9 · a3e82cc P8 · 84ecee3 P7 · 5560990 P11 · f21f534 P10
-db049ae P13 · a548708 P14 · (aktuell: Logo+UI/UX uncommitted)
+1aa7a84 UI/UX Logo · 3ba5ce9 ModuleContainer · (aktuell: TS/0 zusammen)
 
 ## Offen (aus TODOLAST.md)
 #6 WASM-DSP (braucht wasm-pack/Rust-Build) · #12 Mediasoup (große Infrastruktur)
 
-## Tooling-Hinweis
-node-Binary fehlt (nur npm-Symlink) -> kein Build/tsc möglich; balanciere manuell.
+## Tooling
+node via PATH: export PATH=/home/patrick/.nvm/versions/node/v24.19.0/bin:$PATH

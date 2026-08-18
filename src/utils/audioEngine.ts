@@ -5,7 +5,6 @@ import { calculateChannelPan, calculateHRTF, SPATIAL_SETUPS, SpatialSetup } from
 import { getPatch, INSTRUMENT_PATCHES, InstrumentPatch } from '../data/instrumentSynths';
 import { ClockSync } from './ClockSync';
 import { PhaseLockedLoop } from './PhaseLockedLoop';
-import { LatencyMonitor } from './LatencyMonitor';
 import { validateRouting } from './routingValidator';
 import { validatePreset } from './presetValidator';
 
@@ -32,7 +31,6 @@ class AudioEngine {
   }
 
   private pll = new PhaseLockedLoop();
-  private latencyMonitor = new LatencyMonitor();
   
   // Audio Nodes
   private masterBuses: Record<string, Tone.Volume> = {};
@@ -131,8 +129,6 @@ class AudioEngine {
     this.timerID = setTimeout(() => this.scheduler(), this.lookahead);
   }
 
-  private loopId: number | null = null;
-  private eventQueue: Array<{ time: number; type: string; track: TrackType; velocity: number }> = [];
 
   // --- Task 2: Swing & Gate Parameter (einheitliches Sequencermodell) ---
   public swing = 0.0; // 0..1 – Shuffle-Anteil auf ungeraden 16teln
@@ -443,11 +439,11 @@ class AudioEngine {
     return value;
   }
 
-  public setGranularParams(params: { grainSize: number; density: number; position: number }) {
-    // console.log("AudioEngine: Applying Granular Params", params);
+  public setGranularParams(_params: { grainSize: number; density: number; position: number }) {
+    // console.log("AudioEngine: Applying Granular Params", _params);
   }
 
-  public setDrumKit(kit: string) {
+  public setDrumKit(_kit: string) {
     this.ensureInitialized();
     // ... kit logic
   }
@@ -682,9 +678,9 @@ class AudioEngine {
       });
       // Verbinde den Worklet-Synth auf einen Lead-Bus (hier direkt auf Master mit eigener Lautstaerke)
       const leadGain = new Tone.Volume(-8);
-      // @ts-expect-error Tone-Node-Kompatibilitaet fuer Web-Audio-Worklet
+      // @ts-ignore Tone-Node-Kompatibilitaet fuer Web-Audio-Worklet
       this.synthWorklet.connect(leadGain.input ? leadGain.input : this.ctx.destination);
-      // @ts-expect-error Tone-Node-Kompatibilitaet
+      // @ts-ignore Tone-Node-Kompatibilitaet
       leadGain.connect(this.masterBuses['GLOBAL_MASTER']);
       console.info('synth-processor (PolyBLEP) aktiviert.');
     } catch (e) {
@@ -769,10 +765,8 @@ class AudioEngine {
   
   // #14: Physikalischer Instrument-Synthesizer (additive Synthese).
   private instrumentOscs: Tone.Oscillator[] = [];
-  private instrumentGains: Tone.Gain[] = [];
   private instrumentPartialRatios: number[] = [];
   private instrumentNoise: Tone.Noise | null = null;
-  private instrumentNoiseEnv: Tone.AmplitudeEnvelope | null = null;
   private instrumentVibrato: Tone.Oscillator | null = null;
   private instrumentFilter: Tone.Filter | null = null;
   private instrumentEnvOut: Tone.Gain | null = null;
@@ -825,9 +819,8 @@ class AudioEngine {
 
       // Additive Obertöne (Sinus je Partial) mit Anblas-/Anschlag-Kurve.
       const partialNodes: Tone.Oscillator[] = [];
-      const partialGains: Tone.Gain[] = [];
       const ratios: number[] = [];
-      patch.partials.forEach((p, i) => {
+      patch.partials.forEach((p, _i) => {
         // Bei eingebauten Oszillator-Wellen ist die Teilwelle genug;
         // multi-sample-Pattials werden als Detune-Spread additiv gemischt.
         const osc = new Tone.Oscillator(patch.osc);
@@ -837,12 +830,13 @@ class AudioEngine {
         g.connect(baseEnv);
         osc.start();
         partialNodes.push(osc);
-        partialGains.push(g);
         ratios.push(p.ratio);
       });
 
-      // Filter (Resonanz nach Bauart)
-      const filt = new Tone.Filter(patch.filterFreq, patch.filterType, patch.filterQ);
+      // Filter (Resonanz nach Bauart) – Q wird separat am Filter gesetzt
+      // (Tone.Filter: drittes Argument ist der Rolloff, nicht die Resonanz-Q).
+      const filt = new Tone.Filter(patch.filterFreq, patch.filterType, -12);
+      try { (filt as any).Q.value = patch.filterQ; } catch { /* Q ggf. nicht verfügbar */ }
       baseEnv.disconnect(vol);
       baseEnv.connect(filt);
       filt.connect(vol);
@@ -866,11 +860,9 @@ class AudioEngine {
         noise.chain(hp, noiseEnv, vol);
         noise.start();
         this.instrumentNoise = noise;
-        this.instrumentNoiseEnv = noiseEnv;
       }
 
       this.instrumentOscs = partialNodes;
-      this.instrumentGains = partialGains;
       this.instrumentPartialRatios = ratios;
       this.instrumentFilter = filt;
       this.instrumentEnvOut = vol;
@@ -892,10 +884,8 @@ class AudioEngine {
     this.instrumentFilter?.disconnect();
     this.instrumentEnvOut?.disconnect();
     this.instrumentOscs = [];
-    this.instrumentGains = [];
     this.instrumentPartialRatios = [];
     this.instrumentNoise = null;
-    this.instrumentNoiseEnv = null;
     this.instrumentVibrato = null;
     this.instrumentFilter = null;
     this.instrumentEnvOut = null;

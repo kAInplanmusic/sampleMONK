@@ -11,7 +11,7 @@ class LufsProcessor extends AudioWorkletProcessor {
     };
   }
 
-  process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>) {
+  process(inputs: Float32Array[][], _outputs: Float32Array[][], _parameters: Record<string, Float32Array>) {
     const input = inputs[0];
     if (input.length > 0 && this.lufsBuffer) { // Check if SAB is available
       let sum = 0;

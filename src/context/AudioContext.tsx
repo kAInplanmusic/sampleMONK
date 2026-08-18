@@ -214,7 +214,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                 
                 // Integrate into Tone.js Signal Chain
                 const audioCtx = Tone.context.rawContext as AudioContext;
-                const sourceNode = audioCtx.createMediaStreamSource(stream);
+                audioCtx.createMediaStreamSource(stream);
                 
                 // Connect to Tone's master destination (or your custom chain)
                 const toneSource = Tone.context.createMediaStreamSource(stream);

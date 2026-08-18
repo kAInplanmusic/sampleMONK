@@ -1,8 +1,8 @@
 import React from 'react';
 import { Sliders, Volume2 } from 'lucide-react';
 
-export const MischpultTerminal = React.memo(({ plugin, currentUserId }: {plugin: any, currentUserId: string}) => {
-  const assignBus = (chId: number, bus: string) => {
+export const MischpultTerminal = React.memo(({ plugin: _plugin, currentUserId: _currentUserId }: {plugin: any, currentUserId: string}) => {
+  const assignBus = (_chId: number, _bus: string) => {
     // Interaktion mit MasterEngine API
     // console.log(`Assigning ${chId} to ${bus}`);
   };

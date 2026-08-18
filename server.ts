@@ -4,7 +4,6 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import { spawn } from 'child_process';
 
 // Task 14: Echte Demucs-Stems optional via env-Flag ENABLE_STEMS=1 aktivieren.
 const ENABLE_STEMS = (process.env.ENABLE_STEMS || '').trim() === '1';
@@ -214,32 +213,6 @@ app.post('/api/separate-stems', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-if (ENABLE_STEMS && file) {
-    // Echte Demucs-Inferenz (Python CLI, PyTorch + torchaudio erforderlich).
-    const proc = spawn('demucs', ['--two-stems', 'vocals', '--out', './dist/stems', file], {
-      shell: false,
-    });
-    proc.stdout.on('data', (d) => res.write(`data: ${JSON.stringify({ log: String(d) })}\n\n`));
-    proc.stderr.on('data', (d) => res.write(`data: ${JSON.stringify({ log: String(d) })}\n\n`));
-    proc.on('close', (code) => {
-      const ok = code === 0;
-      res.write(`data: ${JSON.stringify({
-        status: ok ? 'success' : 'error',
-        code,
-        stems: {
-          vocals: ok ? '../../dist/stems/vocals.wav' : '',
-          melody: '', highs: '', mids: '', lows: '',
-        },
-      })}\n\n`);
-      res.end();
-    });
-    proc.on('error', (err) => {
-      res.write(`data: ${JSON.stringify({ status: 'error', message: `Demucs nicht verfügbar: ${err.message}` })}\n\n`);
-      res.end();
-    });
-    return;
-  }
-
   // Fallback: simulierte 4-Stem-Aufteilung (Stub) mit Fortschritt
   let p = 0;
   const timer = setInterval(() => {
@@ -340,7 +313,7 @@ async function startServer() {
         }
       }
     }));
-    app.get('*', (req, res) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

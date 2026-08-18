@@ -16,7 +16,7 @@ export class SpatialSurroundPlugin implements Plugin {
   private isWorkletPanner: boolean = false; // To track which panner is active
   private _posX: number = 0; // Stored X position (-1 to 1)
   private _posY: number = 0; // Stored Y position (-1 to 1)
-  private _positionBuffer: SharedArrayBuffer | null = null;
+  private _positionBuffer: ArrayBuffer | SharedArrayBuffer | null = null;
   private _positionBufferView: Float32Array | null = null;
 
   async init(ctx: AudioContext) {
@@ -61,7 +61,7 @@ export class SpatialSurroundPlugin implements Plugin {
   }
 
   // Helper to map x,y to pan value for StereoPannerNode
-  private mapXYToPan(x: number, y: number): number {
+  private mapXYToPan(x: number, _y: number): number {
     // Simple mapping: x from -1 to 1 directly maps to pan from -1 (left) to 1 (right)
     // y could be used for volume adjustment if needed, but not for stereo pan.
     return x; 
@@ -94,7 +94,7 @@ export class SpatialSurroundPlugin implements Plugin {
     return { x: this._posX, y: this._posY };
   }
 
-  handleClock(timestamp: number) {
+  handleClock(_timestamp: number) {
     // Hier könnte Tempo-Synchronisation stattfinden
   }
 

@@ -22,7 +22,7 @@ export class DspEnginePlugin implements Plugin {
     this.compressor.threshold.setValueAtTime(-100, this.audioCtx.currentTime); // Off
   }
 
-  handleClock(timestamp: number) {
+  handleClock(_timestamp: number) {
     if (this.autoMode) {
       // KI-Steuerung via Hub: Hier könnte der Hub-Guardian 
       // dynamische Werte für Threshold/Ratio/Filter senden

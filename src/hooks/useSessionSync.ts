@@ -4,7 +4,7 @@ import { useSession } from '../context/SessionContext';
 import { webRTCManager } from '../utils/WebRTCManager';
 
 export const useSessionSync = () => {
-  const { scratchpadItems, addToScratchpad, removeFromScratchpad } = useSession();
+  const { addToScratchpad, removeFromScratchpad } = useSession();
 
   // Listen for remote updates
   useEffect(() => {

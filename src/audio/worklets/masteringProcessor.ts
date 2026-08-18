@@ -9,12 +9,9 @@ class MasteringProcessor extends AudioWorkletProcessor {
   private threshold = -14;  // dBFS (Kompressor-Grenze)
   private ratio = 3;
   private knee = 6;
-  private attack = 0.005;
-  private release = 0.08;
   private makeup = 1.0;
 
   private limiterCeiling = 0.98;
-  private limiterAttack = 0.001;
   private limiterRelease = 0.05;
   private peak = 0;
 
@@ -32,8 +29,6 @@ class MasteringProcessor extends AudioWorkletProcessor {
       if (typeof m.threshold === 'number') this.threshold = m.threshold;
       if (typeof m.ratio === 'number') this.ratio = Math.min(20, Math.max(1, m.ratio));
       if (typeof m.knee === 'number') this.knee = m.knee;
-      if (typeof m.attack === 'number') this.attack = m.attack;
-      if (typeof m.release === 'number') this.release = m.release;
       if (typeof m.makeup === 'number') this.makeup = m.makeup;
       if (typeof m.ceiling === 'number') this.limiterCeiling = m.limiterCeiling;
     };

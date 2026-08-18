@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import {  Component, ErrorInfo, ReactNode  } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -22,7 +22,6 @@ function resolveElementName(children: ReactNode): string {
 
 interface State {
   hasError: boolean;
-  moduleName: string;
 }
 
 export class SafeModuleBoundary extends Component<Props, State> {
@@ -30,11 +29,10 @@ export class SafeModuleBoundary extends Component<Props, State> {
   private crashedError: Error | null = null;
   private crashedStack = '';
   public state: State = {
-    hasError: false,
-    moduleName: ''
+    hasError: false
   };
 
-  public static getDerivedStateFromError(_: Error): State {
+  public static getDerivedStateFromError(_: Error): Partial<State> {
     return { hasError: true };
   }
 

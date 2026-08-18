@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 /**
  * sampleMONK-Logo – aus public/assets/logo.webp.

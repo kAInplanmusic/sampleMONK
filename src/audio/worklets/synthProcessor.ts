@@ -46,7 +46,6 @@ class MoogLadder {
   private _y2 = 0;
   private _y3 = 0;
   private _y4 = 0;
-  private _old = 0;
   process(x: number, cutoff: number, resonance: number, sampleRate: number): number {
     const f = Math.min(0.95, cutoff * 2 / sampleRate);
     const r = Math.max(0, resonance);
@@ -59,10 +58,9 @@ class MoogLadder {
     this._y4 += f * (this._y3 - this._y4);
 
     const out = this._y4;
-    this._old = out;
     return out;
   }
-  reset() { this._y1 = this._y2 = this._y3 = this._y4 = this._old = 0; }
+  reset() { this._y1 = this._y2 = this._y3 = this._y4 = 0; }
 }
 
 class SynthProcessor extends AudioWorkletProcessor {
@@ -80,7 +78,6 @@ class SynthProcessor extends AudioWorkletProcessor {
   private decay = 0.15;
   private sustain = 0.6;
   private release = 0.2;
-  private gate = false;
   private gain = 1.0;
 
   private filter = new MoogLadder();
@@ -101,11 +98,9 @@ class SynthProcessor extends AudioWorkletProcessor {
       if (typeof m.release === 'number') this.release = m.release;
       if (typeof m.resetFilter === 'boolean') this.filter.reset();
       if (typeof m.trigger === 'number') {   // Note-On mit Velocity
-        this.gate = true;
         this.envStage = 'attack';
       }
       if (m.release === true) {
-        this.gate = false;
         this.envStage = 'release';
       }
       if (m.noteOff) this.envStage = 'release';

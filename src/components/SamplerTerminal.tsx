@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Zap, Settings } from 'lucide-react';
+import { Layers } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 import { SampleModuleWrapper } from './SampleModuleWrapper';

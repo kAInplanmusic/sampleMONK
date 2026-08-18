@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 type Skin = 'oscilloscope' | 'analytic' | 'galactic';
 

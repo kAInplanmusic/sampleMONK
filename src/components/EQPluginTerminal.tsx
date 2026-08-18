@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Waves, Power, Sliders, Settings } from 'lucide-react';
+import {  useState, useEffect, useRef  } from 'react';
+import { Waves, Power } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 
@@ -86,7 +86,7 @@ export function EQPluginTerminal() {
           let y = h/2;
           
           // Influence from bands
-          bands.forEach((b, idx) => {
+          bands.forEach((_b, idx) => {
             const bandX = (idx + 0.5) * (w / 8);
             const dist = Math.abs(i - bandX);
             const influence = Math.max(0, 1 - (dist / (w/4))); // simple bell
