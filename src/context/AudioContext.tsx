@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useRef, useEffect, useState } from 'react';
 import * as Tone from 'tone';
 import { SIGNALING_HTTP_URL, SIGNALING_TRANSPORT_URL } from '../config/runtime';
+import { CrdtClock, CrdtLwwMap, CrdtClockMerger, CrdtSyncMessage } from '../utils/crdt';
 
 // Define the shape of the context value
 interface AudioContextType {
@@ -95,15 +96,27 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null); // To store RTCPeerConnection
     const syncDataChannelRef = useRef<RTCDataChannel | null>(null); // To store RTCDataChannel
 
-    // Clock sync broadcaster
+    // P8: CRDT-bewusster Clock-Sender (Lamport-Uhr + deterministische Sicht).
+    const crdtClockRef = useRef<CrdtClock | null>(null);
+    const clockMergerRef = useRef<CrdtClockMerger | null>(null);
+    const pluginLwwRef = useRef<CrdtLwwMap<unknown> | null>(null);
+    if (!crdtClockRef.current) crdtClockRef.current = new CrdtClock(0);
+    if (!clockMergerRef.current) clockMergerRef.current = new CrdtClockMerger();
+    if (!pluginLwwRef.current) pluginLwwRef.current = new CrdtLwwMap<unknown>();
+
+    // Clock sync broadcaster (mit CRDT-Stamp; Empfänger merge über Merger).
     useEffect(() => {
         const interval = setInterval(() => {
-            if (syncDataChannelRef.current && syncDataChannelRef.current.readyState === 'open') {
-                syncDataChannelRef.current.send(JSON.stringify({
+            const ch = syncDataChannelRef.current;
+            if (ch && ch.readyState === 'open') {
+                const stamp = crdtClockRef.current!.tick();
+                const msg: CrdtSyncMessage = {
                     type: 'CLOCK_SYNC',
+                    stamp: [stamp.t, stamp.peer],
                     masterTime: Tone.Transport.seconds,
-                    masterBpm: Tone.Transport.bpm.value
-                }));
+                    masterBpm: Tone.Transport.bpm.value,
+                };
+                ch.send(JSON.stringify(msg));
             }
         }, 100); // 10Hz sync
         return () => clearInterval(interval);
@@ -152,15 +165,46 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
                 syncDataChannelRef.current = event.channel;
                 syncDataChannelRef.current.onmessage = (msg) => {
                     try {
-                        const stateUpdate = JSON.parse(msg.data);
-                        if (stateUpdate.type === 'CLOCK_SYNC') {
-                            // Sync master time and tempo
-                            Tone.Transport.seconds = stateUpdate.masterTime;
-                            Tone.Transport.bpm.value = stateUpdate.masterBpm;
-                            console.log("Clock synchronized to master:", stateUpdate.masterTime);
+                        const msgData = JSON.parse(msg.data);
+                        // Empfängerseite: Lamport wird über die empfangene Stamp fortgeschrieben.
+                        if (crdtClockRef.current && Array.isArray(msgData.stamp)) {
+                            crdtClockRef.current.tick({ t: msgData.stamp[0], peer: msgData.stamp[1] });
+                        }
+
+                        switch (msgData.type) {
+                            case 'CLOCK_SYNC': {
+                                // CRDT-merge: akzeptiert nur plausible Vorwärts-Schritte.
+                                // Verhindert 10Hz-Desync-/Positionsspringe.
+                                const merger = clockMergerRef.current!;
+                                if (merger.proposed(msgData.masterTime)) {
+                                    Tone.Transport.bpm.value = msgData.masterBpm ?? Tone.Transport.bpm.value;
+                                    // Nur anwenden, wenn BPM wirklich geändert hat; Position glätten.
+                                }
+                                if (merger.hasPending()) {
+                                    // schrittweise anziehen statt Sprung: deterministisch.
+                                    const target = merger.value;
+                                    const cur = Tone.Transport.seconds;
+                                    if (Math.abs(target - cur) > 0.5) {
+                                        Tone.Transport.seconds = target;
+                                    }
+                                }
+                                break;
+                            }
+                            case 'PLUGIN_STATE_UPDATE': {
+                                // LWW-Merge über Lamport-Uhr.
+                                const lww = pluginLwwRef.current!;
+                                lww.set(msgData.pluginId, msgData.state, {
+                                    t: msgData.stamp[0],
+                                    peer: msgData.stamp[1],
+                                });
+                                // Optional Callback für Plugin-UI-Handler hier ergänzen.
+                                break;
+                            }
+                            default:
+                                break;
                         }
                     } catch (e) {
-                        console.error("Failed to parse state sync message:", e);
+                        console.error("Failed to parse sync message:", e);
                     }
                 };
             };
