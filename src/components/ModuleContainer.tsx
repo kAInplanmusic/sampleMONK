@@ -16,16 +16,19 @@ export const ModuleContainer = React.memo(({ id, name, state, children }: Module
   if (state === 'OFF') return null;
 
   return (
-    <div className={`relative border rounded-xl p-4 transition-all duration-300 ${
-      state === 'AUTO_AI' ? 'border-orange-500/50 bg-neutral-900/50 animate-pulse' : 'border-neutral-700 bg-neutral-900'
+    <div className={`monk-panel relative overflow-hidden transition-all duration-300 edge-inset ${
+      state === 'AUTO_AI' ? 'ring-1 ring-orange-400/30 animate-pulse' : state === 'PRO' ? 'ring-1 ring-purple-500/20' : ''
     }`}>
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-400">{name}</h2>
-        {isLocked && <span className="text-[10px] text-red-500 font-bold uppercase">Locked by Remote</span>}
+      <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/70 shadow-[0_0_6px_rgba(34,211,238,0.6)]" />
+          <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-300">{name}</h2>
+        </div>
+        {isLocked && <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Locked · Remote</span>}
       </div>
       
       {state === 'AUTO_AI' && (
-        <div className="absolute top-2 right-2 px-2 py-0.5 bg-orange-600 rounded text-[9px] font-bold text-white uppercase">AI Active</div>
+        <div className="absolute top-4 right-4 px-2 py-0.5 bg-orange-500/90 rounded-full text-[9px] font-bold text-white uppercase shadow-[0_0_12px_-2px_rgba(249,115,22,0.6)]">AI Active</div>
       )}
       
       <div className={isLocked ? 'pointer-events-none opacity-50' : ''}>

@@ -150,7 +150,7 @@ function AppComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-transparent text-white p-6">
       {/* 1. Header: STICKY, Logo schwarz, Titel-4-Farben, Steuerung rechts */}
       <header className="flex items-center justify-between gap-4 mb-8 sticky top-0 z-30 -mx-6 px-6 py-4 bg-black/70 backdrop-blur-xl [box-shadow:0_1px_0_rgba(34,211,238,0.06),0_20px_40px_-24px_rgba(0,0,0,0.9)]">
         <div className="flex items-center gap-3">
