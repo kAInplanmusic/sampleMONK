@@ -21,14 +21,24 @@ export function EQPluginTerminal() {
 
   const [gainValues, setGainValues] = useState(bands.map(b => b.val));
 
+  // Löst Frequenz-Label (z.B. '1kHz', '30Hz', '4kHz') sauber in Hertz auf.
+  const freqHz = (label: string): number => {
+    const m = label.match(/([\d.]+)\s*([kM]?)[Hh]z/);
+    if (!m) return 0;
+    const num = parseFloat(m[1]);
+    if (!Number.isFinite(num)) return 0;
+    const unit = (m[2] || '').toLowerCase();
+    return unit === 'k' ? Math.round(num * 1000) : unit === 'm' ? Math.round(num * 1000000) : Math.round(num);
+  };
+
   const handleGainChange = (idx: number, gain: number) => {
     const newGains = [...gainValues];
     newGains[idx] = gain;
     setGainValues(newGains);
-    
-    // Update audioEngine
+
+    // Update audioEngine (P9): echte Weiterleitung an eqProcessor + Tone-Kette.
     audioEngine.updateToneShiftEQ({
-        bands: bands.map((b, i) => ({ freq: parseFloat(b.freq) || parseInt(b.freq), gain: newGains[i], q: 1 }))
+      bands: bands.map((b, i) => ({ freq: freqHz(b.freq), gain: newGains[i], q: 1 }))
     });
   };
 

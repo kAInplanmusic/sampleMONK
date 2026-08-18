@@ -442,9 +442,61 @@ class AudioEngine {
     // ... kit logic
   }
 
+  /**
+   * P9: Echt-Verdrahtung der EQ-/Terminal-Bänder an die Audio-Kette.
+   * Mappt die bis zu 8 Terminal-Bänder (freq/gain/q) auf die vorhandenen
+   * 4 Worklet-Bänder (hp/low/mid/high) des eqProcessor sowie zusätzlich auf
+   * die ältere Tone-Filter-Kette (toneShiftEqBands) – bei aktivem Worklet
+   * via eqNode.port.postMessage, sonst via Tone-Kette (Gain-Fallback).
+   */
   public updateToneShiftEQ(params: any) {
     this.ensureInitialized();
-    // console.log("EQ Updated", params);
+    const bands: { freq: number; gain: number; q?: number }[] = params?.bands ?? [];
+    if (!Array.isArray(bands) || bands.length === 0) return;
+
+    // --- Mapping-Regeln: Frequenzbereiche -> Worklet-Band ---
+    // <60Hz  Highpass-Approx. über low mit stärkstem Cut  -> hp
+    // 60–240       -> low
+    // 240–1600     -> mid
+    // >1600        -> high
+    let acc = { low: 0, mid: 0, high: 0, hp: 0 };
+    let cnt = { low: 0, mid: 0, high: 0, hp: 0 };
+    for (const b of bands) {
+      const f = b.freq;
+      let g = b.gain;
+      if (!Number.isFinite(f)) continue;
+      if (f < 60) { acc.hp += g; cnt.hp++; }
+      else if (f < 240) { acc.low += g; cnt.low++; }
+      else if (f < 1600) { acc.mid += g; cnt.mid++; }
+      else { acc.high += g; cnt.high++; }
+    }
+    const avg = (n: number, c: number) => (c > 0 ? n / c : 0);
+
+    // --- An den eqProcessor-Worklet senden (echte Kette) ---
+    // setEqBand akzeptiert nur einzelne Bänder; wir senden die 4 Bänder direkt.
+    const s = (band: 'low' | 'mid' | 'high' | 'hp', gain: number, freq: number, q = 0.7) => {
+      try {
+        this.eqNode?.port?.postMessage({ band, gain, freq, q });
+      } catch { /* Gain-Fallback */ }
+    };
+    s('hp', avg(acc.hp, cnt.hp), 30, 0.707);
+    s('low', avg(acc.low, cnt.low), 120, 0.7);
+    s('mid', avg(acc.mid, cnt.mid), 750, 1.0);
+    s('high', avg(acc.high, cnt.high), 6000, 0.7);
+
+    // --- Zusätzlich ältere Tone-Kette anpassen (falls Worklet inaktiv) ---
+    // toneShiftEqBands[0..2] -> low, [3..5] -> low-mid, [6..8] mid, [9..11] high
+    const spread = [
+      acc.low / (cnt.low || 1), acc.low / (cnt.low || 1),
+      acc.mid / (cnt.mid || 1), acc.mid / (cnt.mid || 1),
+      acc.mid / (cnt.mid || 1), acc.mid / (cnt.mid || 1),
+      acc.high / (cnt.high || 1), acc.high / (cnt.high || 1),
+      acc.high / (cnt.high || 1), acc.high / (cnt.high || 1),
+      acc.high / (cnt.high || 1), acc.high / (cnt.high || 1),
+    ];
+    this.toneShiftEqBands.forEach((f, i) => {
+      try { f.gain.value = spread[i % spread.length]; } catch { /* ignore */ }
+    });
   }
   public updateMasterMe(params: any) {
     this.ensureInitialized();
