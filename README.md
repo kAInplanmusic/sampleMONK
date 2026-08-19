@@ -1,49 +1,48 @@
 # Sample Monk Pro Audio Workstation
 
-Sample Monk ist eine kollaborative, objektbasierte Audio-Workstation (OBA), konzipiert als hochmodulares 16-Modul-System. Sie ermöglicht Echtzeit-Musikproduktion durch eine Kombination aus KI-gestützter Generierung, physikalischem Audio-Routing, Spatial-Audio (10.0) und einer Full-Mesh WebRTC-Kollaborationsschicht.
 
-## 🚀 Live-Systeme
-*   **Applikation:** [https://sample-monk.web.app](https://sample-monk.web.app)
-*   **Backend API:** [https://audio-backend-293043362808.europe-west1.run.app](https://audio-backend-293043362808.europe-west1.run.app)
-
----
+Sample Monk ist eine kollaborative, objektbasierte Audio-Workstation (OBA), konzipiert als hochmodulares (aktuell 16 Module). Sie ermöglicht Echtzeit-Musikproduktion, Echtzeit-DJing und Echtzeit-Soundengeneering durch eine Kombination aus digitalem Musikplayer, KI-gestützter Generierung, physikalischem Audio-Routing inkl. Spatial-Audio und einer Full-Mesh WebRTC-Kollaborationsaudioengine.
+Bis zu 4 User können gleichzeitig an einem Audio Workflow arbeiten. Die dezentrale laufende Engine und die Plugins werden als Kopie für jeden einzelnen User gestreamt. 
+Die Plugins können jeweils nur von einem User gleichzeitig benutzt werden und sperren sich in der Ansicht für die anderen automatisch. Absolute Fokus liegt in User Freundlichkeit, hoher Audioqualität, extremer Vielseitigkeit und extrem nutzen. Reaktionszeiten und Delays im unteren Millisekunden Bereich.
 
 ## 🛠 Modul-Architektur
 Das System besteht aus 16 dedizierten Modulen, die über den `MischpultMONK` (I) zentral verwaltet werden.
 
 | ID | Name | Funktion |
 | :--- | :--- | :--- |
-| I | mixerMONK | Zentrales Routing, Stereo-Summe, Gain-Staging. |
-| II | controllerMONK | MIDI/HID-Integration, Hardware-Mappings. |
+| I | mixerMONK | 4-Kanal Mischpult, Zentrales Routing, Stereo-Summe, Gain-Staging. |
+| II | drumMONK | Drum-Sampler-Engine & Kit-Management. |
 | III | sequencerMONK | Touch-optimierter Lookahead-Step-Sequenzer. |
-| IV | spatialMONK | 10.0 Spatial-Audio, 2D/3D-Vektor-Panning. |
+| IV | effectMONK | Modulares FX-Rack (Hardware-Emulation). |
 | V | instrumentMONK | WAM2/iPlug2-Host für virtuelle Instrumente. |
-| VI | drumMONK | Drum-Sampler-Engine & Kit-Management. |
-| VII | effectMONK | Modulares FX-Rack (Hardware-Emulation). |
+| VI | biblioMONK | Semantischer File-Explorer & Asset-Datenbank. |
+| VII | stemMONK | KI-gestützte Echtzeit-Stem-Trennung. |
 | VIII | synthesizerMONK | Subtraktiv, FM, Wavetable Synthese-Engines. |
 | IX | voiceMONK | KI-Vocal-Synthese, TTS & Vokoder. |
-| X | samplerMONK | Granular-Synthese & Sample-Manipulation. |
-| XI | stemMONK | KI-gestützte Echtzeit-Stem-Trennung. |
-| XII | recordingMONK | Finaler Capture & Mastering-Export. |
-| XIII | biblioMONK | Semantischer File-Explorer & Asset-Datenbank. |
+| X | samplerMONK | Granular-Synthese, Soundgeneration & Sample-Manipulation. |
+| XI | spatialMONK | 2.0-18.2 Spatial-Audio, live 2D/3D-Vektor-Panning. |
+| XII | controllerMONK | MIDI/HID-Integration, Hardware-Mappings. |
+| XIII | dspMONK | Phasenkorrektur, Dynamische Filter. |
 | XIV | eqMONK | Parametrischer EQ, Frequenz-Shaping. |
-| XV | dspMONK | Phasenkorrektur, Dynamische Filter. |
-| XVI | masteringMONK | Limiter, Soft-Knee-Kompression, LUFS-Metering. |
+| XV | masteringMONK | Limiter, Soft-Knee-Kompression, LUFS-Metering. |
+| XVI | recordingMONK | Finaler Capture & Mastering-Export. |
+
 
 ### Architektur-Vertiefungen
 * `ARCHITECTURE.md` – lineare Signalfluss-Architektur
 * `ARCH_WEBRTC.md` – Kollaboration und Kontrollpfade
-* `ARCH_DIG_ANA_BRIDGE.md` – 10-Kanal-Spatial-Audio-Bridge mit Edge-DSP, Failover und Netzwerkpfaden
+* `ARCH_DIG_ANA_BRIDGE.md` – 2-18-Kanal-Spatial-Audio-Bridge mit Edge-DSP, Failover und Netzwerkpfaden
 
 ---
 
-## ☁️ Infrastruktur & Integration (Google/Firebase-frei)
-Sample Monk läuft **ohne** Google Cloud / Firebase. Der gesamte Stack wird auf einer
-eigenen Hetzner-Cloud-Instanz betrieben (stundenabgerechnet):
+## ☁️ Infrastruktur
+Die audioMONASTRY App kann zentral und als gesamter Stack ODER mit einzelnen RunDiensten/Docker auf einer
+eigenen Instanzen betrieben werden:
 
+GESAMTSTACK:
 *   **Ein Prozess / ein Port:** App (static) + REST-API + WebRTC-Signaling via `server.ts`.
-*   **Datenhaltung:** lokal (Dateisystem für Sample-Dateien, Browser localStorage/IndexedDB für Presets/Sessions) – kein Firestore, kein GCS.
-*   **KI (optional):** selbstgehostetes lokales Ollama-LLM statt Gemini/HuggingFace/DeepSeek.
+*   **Datenhaltung:** lokal (Dateisystem für Sample-Dateien, Browser localStorage/IndexedDB für Presets/Sessions) – oder SQL Datenbank.
+*   **KI:** selbstgehostetes lokales Ollama-LLM oder Gemini/HuggingFace/DeepSeek API anbindung.
 *   **Auto-Shutdown:** optionaler systemd-Timer (`scripts/hetzner/install-idle-shutdown.sh`) stoppt die Instanz nach Inaktivität, um Kosten zu sparen.
 
 ---
@@ -53,8 +52,8 @@ Das Backend stellt eine REST-API bereit (kein Google/Firebase):
 
 *   `GET /api/health`: Health-Check.
 *   `POST /api/ai/compose`: Lokaler, deterministischer Preset-Generator (kein externes LLM nötig).
-*   `POST /api/separate-stems`: Stems-Stream (lokaler SSE-Stub, bei Bedarf an lokalen Demucs-Service anbindbar).
-*   `POST /api/generate-voice`: lokaler Voice-Stub.
+*   `POST /api/separate-stems`: Stems-Stream (kostenlose API, bei Bedarf lokaler Demucs-Service).
+*   `POST /api/generate-voice`: kostenlose API, bei Bedarf lokales Voice-Stub.
 
 ---
 
@@ -121,5 +120,3 @@ Dieses Repo enthält mehrere substanzielle Audio-/Backend-Verbesserungen, die pa
   - `utils/opfs.ts` + `SampleContext` – OPFS-Cache für aufgenommene Samples.
   - `utils/LocalEmbeddingProvider.ts` – reale lokale MiniLM-Embeddings (transformers.js) mit deterministischem Hash-Fallback.
   - `MIDI` Auto-Erkennung + Hotplug + generische Canvas-Skin-Engine.
-
-Weitere Details: `MASTER_TODO.md`, `ARCHITECTURE.md`, `ARCH_WEBRTC.md`.
