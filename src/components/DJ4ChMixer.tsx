@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { audioEngine } from '../utils/audioEngine';
 import { TrackType } from '../types';
+import { MUSIC_LIBRARY, MusicTrack } from '../data/musicLibrary';
 
 /**
  * audioMONASTRY DJ-Mischpult — Optik & Funktion wie ein Allen & Heath XONE.
@@ -124,11 +125,11 @@ export function DJ4ChMixer() {
   const applyMaster = (v: number) => { setMaster(v); audioEngine.setMasterVolume(v); };
   const applyCross = (v: number) => { setXfd(v); STRIPS.forEach((_, i) => apply(i, {})); };
 
-  /** LOAD-SLOT: lädt ein Sample (Name + ggf. URL) in die AudioEngine auf diesem Kanal. */
-  const loadSong = (idx: number, name: string, url: string | null) => {
-    const next = ch.map((c, i) => (i === idx ? { ...c, loadName: name, loaded: true } : c));
+  /** LOAD-SLOT: lädt einen Musik-Track (Name + URL) in die AudioEngine auf diesem Kanal. */
+  const loadSong = (idx: number, t: MusicTrack) => {
+    const next = ch.map((c, i) => (i === idx ? { ...c, loadName: t.name, loaded: true } : c));
     setCh(next);
-    audioEngine.loadTrackSample(STRIPS[idx].track, url ?? null);
+    audioEngine.loadTrackSample(STRIPS[idx].track, t.url);
   };
 
   /** Play: triggert das geladene Sample / Standard-Material auf dem Kanal. */
@@ -156,19 +157,29 @@ export function DJ4ChMixer() {
                 <div className="ml-auto flex gap-1"><VU lit={!c.mute && c.gain > 0.05} /></div>
               </div>
 
-              {/* LOAD-SLOT: hineinlegen (klick / drop) */}
-              <div
-                onClick={() => loadSong(i, `Deck ${s.label} · SAMPLE`, null)}
-                className={`w-full rounded-md border-2 border-dashed px-2 py-1.5 text-center transition-colors cursor-pointer ${c.loaded ? 'border-cyan-500/60 bg-cyan-500/10' : 'border-zinc-700 bg-black/40 hover:border-cyan-400/60 hover:bg-cyan-500/5'}`}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const raw = e.dataTransfer.getData('text/plain');
-                  loadSong(i, raw || 'GELADEN', null);
-                }}
-              >
-                <div className="text-[9px] font-bold tracking-widest">{c.loaded ? c.loadName : '+ SAMPLE LEGEN'}</div>
-                <div className="text-[7px] font-mono text-zinc-500">{c.loaded ? 'READY' : 'DROP / CLICK'}</div>
+              {/* LOAD-SLOT: Musik aus Bibliothek waehlen / droppen */}
+              <div className="w-full flex flex-col gap-1">
+                <label className="text-[7px] font-mono text-zinc-600 tracking-widest">KANAL-LOAD / MUSIK</label>
+                <select
+                  value={c.loaded ? c.loadName : ''}
+                  onChange={(e) => {
+                    const t = MUSIC_LIBRARY.find((x) => x.name === e.target.value);
+                    if (t) loadSong(i, t);
+                  }}
+                  className={`w-full text-[8px] rounded-md border-2 border-dashed px-1 py-1 bg-black/40 ${c.loaded ? 'border-cyan-500/60 text-cyan-200' : 'border-zinc-700 text-zinc-400'} hover:border-cyan-400/60`}
+                >
+                  <option value="">{c.loaded ? c.loadName : '+ LIED WÄHLEN'}</option>
+                  <option disabled>── MUSIK-BIBLIOTHEK ──</option>
+                  {MUSIC_LIBRARY.map((t) => (
+                    <option key={t.id} value={t.name} className="text-neutral-300">{t.name}</option>
+                  ))}
+                </select>
+                <div
+                  className={`text-center text-[7px] font-mono ${c.loaded ? 'text-emerald-400' : 'text-zinc-600'}`}
+                  onDragOver={(e) => e.preventDefault()}
+                >
+                  {c.loaded ? '● READY' : 'DROP a.k. AUSWÄHLEN'}
+                </div>
               </div>
 
               <button

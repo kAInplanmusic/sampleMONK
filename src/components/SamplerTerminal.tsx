@@ -3,6 +3,7 @@ import { Activity, Power, CircleDot as Rec } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 import { TrackType } from '../types';
+import { MUSIC_LIBRARY } from '../data/musicLibrary';
 
 /**
  * audioMONASTRY samplerMONK — Echter 16-Pad-Sample-Sampler.
@@ -117,6 +118,21 @@ export const SamplerTerminal: React.FC = () => {
                 onChange={(e) => updatePad(sel, { pitch: Number(e.target.value) })}
                 className="w-24 accent-indigo-500" />
             </div>
+            <select
+              onChange={(e) => {
+                const t = MUSIC_LIBRARY.find((x) => x.name === e.target.value);
+                if (t) {
+                  updatePad(sel, { filled: true, name: t.name });
+                  audioEngine.loadTrackSample(SAMPLE_TRACKS[sel % SAMPLE_TRACKS.length], t.url);
+                }
+              }}
+              className="bg-black text-[8px] text-neutral-300 px-1 py-1 rounded border border-neutral-700"
+            >
+              <option value="">+ MUSIK LADEN</option>
+              {MUSIC_LIBRARY.map((t) => (
+                <option key={t.id} value={t.name}>{t.name}</option>
+              ))}
+            </select>
             <button onClick={() => updatePad(sel, { filled: false })}
               className="ml-auto text-[9px] font-bold text-red-400 px-2 py-1 rounded border border-red-500/40 hover:bg-red-500/10">CLEAR</button>
           </div>

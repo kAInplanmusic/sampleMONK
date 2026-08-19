@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Database, Play, Download, Clipboard, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
+import { MUSIC_LIBRARY, MusicTrack } from '../data/musicLibrary';
+import { audioEngine } from '../utils/audioEngine';
 import { SemanticSampleSearch } from './SemanticSampleSearch';
 import { Scratchpad } from './Scratchpad';
 
@@ -65,10 +67,48 @@ export function LibraryTerminal() {
             <option value="bass">Bass</option>
             <option value="mids">Mids</option>
             <option value="highs">Highs</option>
+            <option value="music">🎵 Musik</option>
         </select>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
+        {category === 'music' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {MUSIC_LIBRARY.map((t: MusicTrack) => (
+              <div key={t.id} className="bg-[#161616] border border-neutral-800 rounded-lg p-4 flex flex-col gap-2 hover:border-amber-500/50 transition-colors group">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]" />
+                    <div>
+                      <h4 className="font-bold text-sm text-neutral-200 line-clamp-1">{t.name}</h4>
+                      <span className="text-[10px] font-mono text-amber-400 uppercase">{t.artist}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => audioEngine.previewSample('channel5', undefined, t.url)}
+                    className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center hover:bg-amber-600 transition-colors"
+                  >
+                    <Play className="w-4 h-4 text-neutral-400 hover:text-white fill-current" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-neutral-500 font-mono">Track aus deiner Musik-Bibliothek</p>
+                <div className="mt-auto pt-4 flex justify-between items-center">
+                  <span className="text-[9px] font-mono text-neutral-600 bg-black px-2 py-1 rounded truncate">{t.url}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => audioEngine.previewSample('channel5', undefined, t.url)}
+                      className="text-[10px] font-bold text-neutral-400 hover:text-white"
+                    >LOAD</button>
+                    <button
+                      title="In Mischpult-Kanal legen (Kanal 1)"
+                      className="text-[10px] font-bold text-neutral-400 hover:text-amber-300"
+                    >ADD</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {paginatedSamples.map((sample: AudioSample) => (
             <div 
@@ -107,14 +147,18 @@ export function LibraryTerminal() {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* Pagination Controls */}
       <div className="px-6 py-4 bg-[#111] border-t border-neutral-800 flex justify-between items-center">
         <div className="text-[10px] text-neutral-500 font-mono">
-            SHOWING {paginatedSamples.length} OF {filteredSamples.length} SAMPLES
+            {category === 'music'
+              ? `SHOWING ${MUSIC_LIBRARY.length} MUSIC TRACKS`
+              : `SHOWING ${paginatedSamples.length} OF ${filteredSamples.length} SAMPLES`}
         </div>
         <div className="flex items-center gap-4">
+            {category !== 'music' && (<>
             <button 
                 onClick={() => changePage(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -132,6 +176,7 @@ export function LibraryTerminal() {
             >
                 <ChevronRight className="w-5 h-5" />
             </button>
+            </>)}
         </div>
       </div>
     </div>
