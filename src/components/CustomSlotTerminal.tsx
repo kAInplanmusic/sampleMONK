@@ -89,7 +89,7 @@ export function CustomSlotTerminal() {
             </div>
             <div className="flex-1 p-4 font-mono text-xs text-neutral-400 overflow-y-auto">
               <pre className="opacity-70">
-{`import { definePlugin, useOrchestraState } from '@samplemonk/core';
+{`import { definePlugin, useOrchestraState } from '@audiomonastry/core';
 
 export default definePlugin({
   id: 'custom_user_module',

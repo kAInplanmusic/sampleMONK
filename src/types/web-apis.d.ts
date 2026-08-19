@@ -1,4 +1,4 @@
-// Globale Web-API-Deklarationen für das sampleMONK-Projekt (AudioWorklet, HID, GPU).
+// Globale Web-API-Deklarationen für das audioMONASTRY-Projekt (AudioWorklet, HID, GPU).
 // Alles unter `declare global` → für alle Module implizit sichtbar.
 
 declare global {

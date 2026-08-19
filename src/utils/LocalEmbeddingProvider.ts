@@ -5,7 +5,7 @@
 // Warum KEIN `@xenova/transformers` als Pflicht-Abhängigkeit?
 //  - Das Paket ist sehr schwer (>2MB) und lädt das ONNX-Modell (MiniLM-L6-v2,
 //    ~80MB) beim ersten Lauf vom HuggingFace-Hub nach. Das widerspricht dem
-//    Firebase-frei / Latenz / Offline-first-Mandat von sampleMONK.
+//    Firebase-frei / Latenz / Offline-first-Mandat von audioMONASTRY.
 //  - Stattdessen wird ein DETERMINISTISCHER offline-fähiger Kern genutzt:
 //      * Token-Normalisierung + Wortstamm-Light
 //      * Fachwort-Synonyme für Audio/DJ/Techno (erweiterbar)

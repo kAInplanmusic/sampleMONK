@@ -105,7 +105,7 @@ function AppComponent() {
 
               <button
                 onClick={startApp}
-                aria-label="sampleMONK starten"
+                aria-label="audioMONASTRY starten"
                 className="group relative flex flex-col items-center gap-6 outline-none"
               >
                   {/* Logo mit sanftem Glow + Hover-Orbit */}
@@ -119,7 +119,7 @@ function AppComponent() {
 
                   <span className="text-[9px] font-mono tracking-[0.5em] text-neutral-500 uppercase">Audio Workstation</span>
                   <span className="text-4xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-linear-to-r from-cyan-300 via-teal-200 to-fuchsia-400">
-                    SAMPLE MONK
+                    AUDIO MONASTRY
                   </span>
                   <span className="px-5 py-2.5 rounded-full border border-cyan-400/40 text-cyan-200 text-xs font-bold tracking-[0.3em] uppercase
                                  bg-cyan-500/8 hover:bg-cyan-500/18 hover:border-cyan-300/70 hover:shadow-[0_0_30px_-6px_var(--monk-glow-teal)]
@@ -174,7 +174,7 @@ function AppComponent() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-linear-to-r from-cyan-300 via-teal-200 to-fuchsia-400 leading-none">
-                SAMPLE MONK
+                AUDIO MONASTRY
             </h1>
             <p className="text-[9px] text-neutral-500 font-mono tracking-[0.3em] uppercase mt-1">4-Person Studio</p>
           </div>

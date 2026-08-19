@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: SettingsStore = {
 
 const getStored = (): SettingsStore => {
   try {
-    const raw = localStorage.getItem('samplemonk_audio_settings');
+    const raw = localStorage.getItem('audiomonastry_audio_settings');
     if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
   } catch { /* ignore */ }
   return DEFAULT_SETTINGS;
@@ -43,7 +43,7 @@ export const useAudioSettings = () => {
   const [settings, setSettings] = useState<SettingsStore>(getStored);
   const persist = (next: SettingsStore) => {
     setSettings(next);
-    try { localStorage.setItem('samplemonk_audio_settings', JSON.stringify(next)); } catch { /* ignore */ }
+    try { localStorage.setItem('audiomonastry_audio_settings', JSON.stringify(next)); } catch { /* ignore */ }
   };
   return { settings, update: persist };
 };

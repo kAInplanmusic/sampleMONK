@@ -1,4 +1,4 @@
-# Sample Monk Signal Chain Architecture
+# audioMONASTRY Signal Chain Architecture
 
 Die Architektur folgt einem strikten, linearen Signalfluss von der Quelle bis zur finalen Archivierung/Ausgabe.
 

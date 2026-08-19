@@ -1,12 +1,12 @@
 import React from 'react';
 
-interface SampleMonkLogoProps {
+interface AudioMonastryLogoProps {
   className?: string;
   size?: number;
   showText?: boolean;
 }
 
-export const SampleMonkLogo: React.FC<SampleMonkLogoProps> = ({
+export const AudioMonastryLogo: React.FC<AudioMonastryLogoProps> = ({
   className = '',
   size = 48,
   showText = false,

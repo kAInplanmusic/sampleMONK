@@ -1,5 +1,5 @@
 // ============================================================================
-// WebRTC-Konfiguration für sampleMONK (P2: TURN/STUN-Routing)
+// WebRTC-Konfiguration für audioMONASTRY (P2: TURN/STUN-Routing)
 // ----------------------------------------------------------------------------
 // - Robustes fallback-basiertes ICE mit mehreren öffentlichen STUN-Diensten.
 // - Optionaler eigener TURN-Server (z.B. Hetzner / `services/turn/`), per

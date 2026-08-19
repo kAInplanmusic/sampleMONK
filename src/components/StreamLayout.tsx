@@ -42,7 +42,7 @@ export const StreamLayout: React.FC<StreamLayoutProps> = ({ children, roomId, us
     <div className="flex flex-col h-screen bg-gray-900 text-white overflow-hidden">
       <nav className="h-16 border-b border-gray-700 flex items-center justify-between px-4">
         <div className="flex items-center space-x-2 overflow-x-auto">
-          <span className="text-[10px] font-black tracking-widest text-purple-400">SAMPLEMONK LIVE</span>
+          <span className="text-[10px] font-black tracking-widest text-purple-400">AUDIOMONASTRY LIVE</span>
           <span className="text-[10px] font-mono text-gray-500 text-xs">Rollen: {MONITOR_ROLES.join(' · ')}</span>
         </div>
 

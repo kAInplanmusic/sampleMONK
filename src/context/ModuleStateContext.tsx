@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 export type ModuleState = 'OFF' | 'AUTO_AI' | 'PRO';
 
-const STORAGE_KEY = 'samplemonk_module_states';
+const STORAGE_KEY = 'audiomonastry_module_states';
 
 interface ModuleContextType {
   moduleStates: Record<string, ModuleState>;

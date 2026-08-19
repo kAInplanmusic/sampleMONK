@@ -1,4 +1,4 @@
-# sampleMONK High-Speed Performance Roadmap
+# audioMONASTRY High-Speed Performance Roadmap
 
 ## Phase 1: Performance-Monitoring
 - Implement `PerformanceMonitorTerminal` (New Plugin Slot 17)

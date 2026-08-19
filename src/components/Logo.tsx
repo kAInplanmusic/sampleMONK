@@ -1,7 +1,7 @@
 
 
 /**
- * sampleMONK-Logo – aus public/assets/logo.webp.
+ * audioMONASTRY-Logo – aus public/assets/logo.webp.
  * `size` steuert die Ausdehnung; optional `glow` für den Start-Effekt.
  */
 export function Logo({
@@ -20,7 +20,7 @@ export function Logo({
       src="/assets/logo.webp"
       width={size}
       height={size}
-      alt="sampleMONK"
+      alt="audioMONASTRY"
       className={`object-contain bg-black ${rounded ? 'rounded-xl' : ''} ${glow ? 'teal-glow' : 'shadow-[0_4px_20px_-6px_rgba(20,184,201,0.4)]'} ${className}`}
       style={{ width: size, height: size }}
       draggable={false}

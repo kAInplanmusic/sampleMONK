@@ -1,5 +1,5 @@
 // ============================================================================
-// sampleMONK – Einheitliches Datenmodell
+// audioMONASTRY – Einheitliches Datenmodell
 // ----------------------------------------------------------------------------
 // `TrackType` bleibt als Signal-Bus-Codierung (channel1..8) erhalten, damit alle
 // bestehenden Presets, Komponenten und die Thread-/Harware-Verkabelung weiter

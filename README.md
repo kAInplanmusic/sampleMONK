@@ -1,125 +1,289 @@
-# Sample Monk Pro Audio Workstation
+# 🎛️ audioMONASTRY — Pro Audio Workstation für bis zu 4 Personen
 
-Sample Monk ist eine kollaborative, objektbasierte Audio-Workstation (OBA), konzipiert als hochmodulares 16-Modul-System. Sie ermöglicht Echtzeit-Musikproduktion durch eine Kombination aus KI-gestützter Generierung, physikalischem Audio-Routing, Spatial-Audio (10.0) und einer Full-Mesh WebRTC-Kollaborationsschicht.
+**audioMONASTRY** (vormals *sampleMONK*) ist eine kollaborative, objektbasierte Audio-Workstation (OBA). Sie ist konzipiert als hochmodulares **16‑Modul‑System** für Echtzeit‑Musikproduktion, Live‑DJ‑Setups und Sound‑Engineering. Das System kombiniert KI‑gestützte Generierung, physikalisches Audio‑Routing, Spatial‑Audio und eine Low‑Latency‑Kollaborationsschicht für **bis zu 4 gleichzeitig aktive Benutzer**.
 
-## 🚀 Live-Systeme
-*   **Applikation:** [https://sample-monk.web.app](https://sample-monk.web.app)
-*   **Backend API:** [https://audio-backend-293043362808.europe-west1.run.app](https://audio-backend-293043362808.europe-west1.run.app)
+> **Google/firebase-frei:** Der gesamte Stack läuft in **einem Node-Prozess** (static App + REST‑API + WebRTC‑Signaling). Kein Firestore, kein GCS, keine Google‑Cloud‑AI. Optional wird ein selbstgehostetes Ollama‑LLM verwendet.
 
 ---
 
-## 🛠 Modul-Architektur
-Das System besteht aus 16 dedizierten Modulen, die über den `MischpultMONK` (I) zentral verwaltet werden.
+## 📘 Inhaltsverzeichnis
 
-| ID | Name | Funktion |
+1. [Überblick & Architektur](#🚀-überblick--architektur)
+2. [Das "Orchestra"-Prinzip & Low-Latency-Mandat](#🎼-das-orchestra-prinzip--low-latency-mandat)
+3. [Dienste (Services)](#🖥️-dienste-services)
+4. [Die 16 Plugins im Detail](#🧩-die-16-plugins-im-detail)
+5. [Datenformat & Persistenz](#💾-datenformat--persistenz)
+6. [Programmierung & Signalpfade](#⚙️-programmierung--signalpfade)
+7. [REST-API-Referenz](#🔌-rest-api-referenz)
+8. [WebRTC-Signaling & Kollaboration](#🤝-webrtc-signaling--kollaboration)
+9. [RBAC & Audit-Logging](#🛡️-rbac--audit-logging)
+10. [Deployment](#🚢-deployment)
+11. [Projekt-Skripte](#🛠️-projekt-skripte)
+12. [Konfiguration per Umgebungsvariablen](#⚙️-konfiguration-per-umgebungsvariablen)
+
+---
+
+## 🚀 Überblick & Architektur
+
+| Ebene | Technologie | Aufgabe |
 | :--- | :--- | :--- |
-| I | mixerMONK | Zentrales Routing, Stereo-Summe, Gain-Staging. |
-| II | controllerMONK | MIDI/HID-Integration, Hardware-Mappings. |
-| III | sequencerMONK | Touch-optimierter Lookahead-Step-Sequenzer. |
-| IV | spatialMONK | 10.0 Spatial-Audio, 2D/3D-Vektor-Panning. |
-| V | instrumentMONK | WAM2/iPlug2-Host für virtuelle Instrumente. |
-| VI | drumMONK | Drum-Sampler-Engine & Kit-Management. |
-| VII | effectMONK | Modulares FX-Rack (Hardware-Emulation). |
-| VIII | synthesizerMONK | Subtraktiv, FM, Wavetable Synthese-Engines. |
-| IX | voiceMONK | KI-Vocal-Synthese, TTS & Vokoder. |
-| X | samplerMONK | Granular-Synthese & Sample-Manipulation. |
-| XI | stemMONK | KI-gestützte Echtzeit-Stem-Trennung. |
-| XII | recordingMONK | Finaler Capture & Mastering-Export. |
-| XIII | biblioMONK | Semantischer File-Explorer & Asset-Datenbank. |
-| XIV | eqMONK | Parametrischer EQ, Frequenz-Shaping. |
-| XV | dspMONK | Phasenkorrektur, Dynamische Filter. |
-| XVI | masteringMONK | Limiter, Soft-Knee-Kompression, LUFS-Metering. |
+| **Frontend** | React + TypeScript + Vite + Tailwind CSS | Einheitliche Stream-Screen-Arbeitsfläche (Icon-Leiste oben, Workspace unten) |
+| **Audio-Engine (Main Sound)** | Tone.js + Web Audio (AudioWorklets) | Kompiliert/mixt/rendert das finale Master-Signal, unter 10 ms Latenz-Ziel |
+| **Backend "Orchestra"** | Node.js + Express + `tsx` | State-Synchronisation, REST-API, Rollen, Plugin-Lock (B2B) |
+| **Signaling** | Socket.io (`/webrtc-signaling`) | WebRTC-Offer/Answer/ICE für Echtzeit-Kollaboration |
+| **Datenhaltung** | localStorage / IndexedDB / Dateisystem | Presets, Sessions, Samples, Audit-Log |
 
-### Architektur-Vertiefungen
-* `ARCHITECTURE.md` – lineare Signalfluss-Architektur
-* `ARCH_WEBRTC.md` – Kollaboration und Kontrollpfade
-* `ARCH_DIG_ANA_BRIDGE.md` – 10-Kanal-Spatial-Audio-Bridge mit Edge-DSP, Failover und Netzwerkpfaden
+**Struktur:**
+```
+services/          # Optional isolierte Dienste (funktional entkoppelt)
+  backend-core/    # Node+Python Backend-Kern, Session & Asset Schemas
+  library-ai/      # Semantische Sample-Suche / Embedding
+  master-player/   # Master-Abspielpfad
+  mixer/           # Mischpult-Service
+  signaling/       # Standalone-Signaling (Express + Socket.io)
+  stem-ai/         # Stem-Trennung (Demucs-artig)
+  turn/            # TURN-Server-Konfig
+src/
+  audio/           # worklets, dsp-engine
+  components/      # Terminals (UI der 16 Plugins), Layouts, Dialoge
+  config/          # runtime, feature-flags, webrtc, midi, rbac-roles
+  context/         # ModuleState, PluginManager, AudioContext
+  data/            # Standard-Samples-Metadaten
+  hooks/           # useHID, useRoom, useAudioAI, etc.
+  plugins/         # registry.ts + Modul-Basis (PluginBase, types)
+  utils/           # audioEngine, db, rbac, collab, AuditLogger, webrtc, …
+server.ts          # Einstiegspunkt: App + API + Signaling + Worklets
+```
 
----
-
-## ☁️ Infrastruktur & Integration (Google/Firebase-frei)
-Sample Monk läuft **ohne** Google Cloud / Firebase. Der gesamte Stack wird auf einer
-eigenen Hetzner-Cloud-Instanz betrieben (stundenabgerechnet):
-
-*   **Ein Prozess / ein Port:** App (static) + REST-API + WebRTC-Signaling via `server.ts`.
-*   **Datenhaltung:** lokal (Dateisystem für Sample-Dateien, Browser localStorage/IndexedDB für Presets/Sessions) – kein Firestore, kein GCS.
-*   **KI (optional):** selbstgehostetes lokales Ollama-LLM statt Gemini/HuggingFace/DeepSeek.
-*   **Auto-Shutdown:** optionaler systemd-Timer (`scripts/hetzner/install-idle-shutdown.sh`) stoppt die Instanz nach Inaktivität, um Kosten zu sparen.
+**Start-Screen → Workspace:** Beim Betreten lädt `server.ts` + `audioEngine` einen vorkonfigurierten Tech‑Preset (synthetische Drums), sodass **Play sofort Musik liefert** — ohne dass Sample‑Dateien vorliegen müssen.
 
 ---
 
-## 🔌 API-Referenz (Google-frei)
-Das Backend stellt eine REST-API bereit (kein Google/Firebase):
+## 🎼 Das "Orchestra"-Prinzip & Low-Latency-Mandat
 
-*   `GET /api/health`: Health-Check.
-*   `POST /api/ai/compose`: Lokaler, deterministischer Preset-Generator (kein externes LLM nötig).
-*   `POST /api/separate-stems`: Stems-Stream (lokaler SSE-Stub, bei Bedarf an lokalen Demucs-Service anbindbar).
-*   `POST /api/generate-voice`: lokaler Voice-Stub.
+1. **Der Backend-Orchestrator** verwaltet State, Routing, Synchronisation und Multi-User-Eingaben.
+2. **Der Main Sound** (Audio-Engine) lebt im Core und produziert/kompiliert das finale Master-Signal.
+3. **Plugins** sind entkoppelte Module mit standardisierter Schnittstelle (`PluginBase`, `registry.ts`); die Engine interessiert sich nicht für den internen Stack eines Plugins.
+4. **B2B-Lock (Busy Mode):** Sobald ein Benutzer ein Plugin bedient, wird es für die anderen 3 Benutzer gesperrt (UI gedimmt). Diese können nur die lokale Ansicht (Icon/Terminal) toggeln, keine Parameter ändern.
+5. **4 identische Screens:** Jeder Benutzer sieht in Echtzeit eine 100 % identische Haupt-UI.
+
+**Latency-Regel:** Alle Routing-Entscheidungen, Pakete und Buffer-Berechnungen zielen auf **sub‑Millisekunden**. Der **Mastering-Tool**-Knoten hat höchste Priorität; Latenz-Akkumulation über Plugins ist eine kritische Fehlbedingung.
 
 ---
 
-## 🚀 Entwicklung & Start
+## 🖥️ Dienste (Services)
 
-### Lokale Entwicklung
+Die Dienste unter `services/` sind optional isoliert betreibbare Teile der Orchestra-Architektur. Die App funktioniert aber auch ohne sie (lokal eingebettet).
+
+| Dienst | Technologie | Aufgabe |
+| :--- | :--- | :--- |
+| **backend-core** | Node + Python | Session-/Asset-Schema, Kernlogik (siehe `SESSION_DB_SCHEMA.md`, `ASSET_DB_SCHEMA.md`) |
+| **library-ai** | Node/Python | Semantische Suche über Samples, lokale Embeddings |
+| **master-player** | Node | Master-Abspielpfad / Waveform |
+| **mixer** | Node | Zentrales Routing- und Misch-Modul |
+| **signaling** | Express + Socket.io | Standalone-WebRTC-Signaling (Fallback zu `server.ts`) |
+| **stem-ai** | FastAPI/Demucs-artig | Echtzeit-Stem-Trennung (5 Stems) |
+| **turn** | TURN-Server | NAT-Traversal für Peer-Verbindungen |
+
+---
+
+## 🧩 Die 16 Plugins im Detail
+
+Alle Plugins nutzen die gemeinsame Registry (`src/plugins/registry.ts`) mit Komponenten-, Icon- und Metadaten-Mapping. Jede Anzeige kann `OFF`, `AUTO_AI` oder `PRO` sein.
+
+| # | ID | Name | Funktion |
+| :-: | :--- | :--- | :--- |
+| 1 | `mixer` | **Mischpult (DJ-Mixer)** | 10‑Kanal-Pro-Mixer à la Pioneer-Hardware; Fader/Pan steuern echte Per-Kanal-Gains/Pans der AudioEngine; LUFS-Metering |
+| 2 | `controller` | **MIDI-Controller** | Plug‑&-Play-Mapping für Standard-MIDI-Controller, Profil-Spiegelung |
+| 3 | `sequencer` | **Sequenzer** | Touch-optimierter Step-Sequenzer, 16 Steps × 8 Tracks; lookahead-basiert, mit der AudioEngine synchronisiert |
+| 4 | `spatial` | **Spatial Surround** | 2D/3D-Vektor-Panning-Array für mehrkanalige Ausgabe |
+| 5 | `instrument` | **Instrumente** | 50+ akustische Instrumente (additiv per Oszillatoren) |
+| 6 | `drum` | **Drum-Machine** | TR-808/909-artige Drums, leistungsstarke synthetische Kick/Hat/Clap |
+| 7 | `effect` | **FX-Engine** | Multifx-Rack, hardware-artige Algorithmen (Worklet-basiert) |
+| 8 | `synth` | **Synthesizer** | Subtraktiv/FM/Wavetable-Synthese (`synth-processor` Worklet) |
+| 9 | `voice` | **KI-Vocalist** | TTS/Text-to-Sing; lokaler Web-Speech-Fallback |
+| 10 | `visualizer` | **Vis/Beat-Waveform** | Wellenform-/Analyzer-Anzeige des Masters |
+| 11 | `stem` | **Stem-Extractor** | Import & Aufteilung in Gesang/Lows/Mids/Highs/Melodie; Auto-Warp/BPM-Match |
+| 12 | `recording` | **Recorder** | Capture & Mastering-Export |
+| 13 | `library` | **Sample-/Sound-Bibliothek** | Zentrale Asset-Verwaltung; semantische Suche |
+| 14 | `eq` | **Equalizer** | Parametrischer EQ, Frequenz-Shaping (an Audio-Kette verdrahtet) |
+| 15 | `dsp` | **DSP-Engine** | Phasenkorrektur, dynamische Filter, Worklet-Verarbeitung |
+| 16 | `mastering` | **Mastering-Tool** | Limiter, Soft-Knee-Kompressor, Multiband, LUFS — höchste Latenz-Priorität |
+
+> **Konsolidierung (Metamodule):** Einige Module sind per `METAMODULE_GROUPS` zusammenführbar (z. B. `dsp + eq + effect` → primär `effect`), sodass nur ein Terminal gerendert wird, während die Funktionen erhalten bleiben.
+
+---
+
+## 💾 Datenformat & Persistenz
+
+### Session-Zustand (localStorage + `ModuleStateContext`)
+- Key: `audiomonastry_module_states`
+- Form: `Record<ModulID, 'OFF' | 'AUTO_AI' | 'PRO'>`
+
+### Session/User-Daten (`src/utils/collab.ts`)
+- `audiomonastry_user_id` / `user_name` / `user_color` (localStorage)
+- Session-Host: `SESSION_HOST_USER`
+
+### Asset-Datenbank (`src/utils/db.ts`, IndexedDB `AudioMonastryDB`)
+- ObjectStore `scratchpad` mit Key-Path `id`, Feld `lastModified`.
+- `saveToDB(item)` / Load für Staging-Inhalte.
+
+### Presets (`src/utils/firebase.ts`)
+- Key `audiomonastry_local_presets` (localStorage) für benutzerdefinierte Presets.
+
+### Audit-Log (`src/utils/AuditLogger.ts`)
+- Key `audiomonastry_audit_log` (localStorage) — protokolliert Sicherheits-/Zugriffsereignisse.
+
+### Sequenzer- und Preset-Datenformat (`src/presets.ts`, `src/types.ts`)
+```ts
+{
+  id: string;        // z.B. "industrial"
+  name: string;      // z.B. "Industrial Force"
+  genre: string;
+  bpm: number;       // z.B. 142
+  key: string;       // z.B. "E Minor"
+  description: string;
+  patterns: {
+    channel1: boolean[16]; // kick
+    channel2: boolean[16]; // hat
+    channel3: boolean[16]; // clap
+    channel4..8: boolean[16]; // samples / lead
+  };
+  synthNotes: number[16]; // Tonhöhen-Index pro Step
+  cutoff: number; resonance: number; delayTime: number; decay: number;
+}
+```
+
+### AudioEngine-Patterns (`src/utils/audioEngine.ts`)
+- `patterns: Record<TrackType, boolean[]>` → `channel1..channel8`.
+- Rollen-Zuordnung: `TRACK_ROLE_MAP` (kick/hat/clap/bass/…).
+- Drum-Synthese ohne Sample-Dateien (MembraneSynth, MetalSynth, NoiseSynth, MonoSynth).
+
+---
+
+## ⚙️ Programmierung & Signalpfade
+
+### Audio-Kette (Master)
+```
+Per-Track-Synth/Sampler
+   → channelGains[track]  (Tone.Volume)
+   → channelPans[track]   (Tone.Panner)
+   → GLOBAL_MASTER-Bus
+   → masterMe… (Highpass → Compressor → Multiband → Limiter)
+   → masterVolume → Destination (Output)
+   → (paralleler Cue-Mix → MON1..4 für bis zu 4 Benutzer)
+```
+
+### Per-Kanal-APIs der AudioEngine
+- `setChannelGain(track, gain01)`, `setChannelPan(track, pan)` — echte Knoten-Steuerung.
+- `loadPatterns(patterns, synthNotes?, bpm?)` — lädt Sequenzer-Inhalte in die Engine.
+- `ensureDemoPattern()` — liefert einen eingebauten Drum-Loop, falls keine Patterns gesetzt sind.
+- `play()/stop()` — startet/stoppt Transport + Scheduler.
+- Worklet-Clock (`clock-processor`) mit PLL-Drift-Kompensation für jitterfreien Takt.
+
+### UI → Audio-Bindung (App.tsx)
+- **Play-/Stop-Buttons** rufen `audioEngine.play()/stop()` und synchronisieren `isPlaying`.
+- **Sequenzer-Toggles** rufen `audioEngine.loadPatterns(...)` → hörbar synchron.
+- **Mischpult-Fader** rufen `setChannelGain`/`setChannelPan` pro Track.
+
+---
+
+## 🔌 REST-API-Referenz
+
+Alle Endpunkte unter `/api` sind durch `express-rate-limit` (60 req/min pro IP) geschützt.
+
+| Methode | Pfad | Funktion |
+| :--- | :--- | :--- |
+| GET | `/api/health` | Health-Check (`{ status: 'ok' }`) |
+| POST | `/api/ai/compose` | Deterministischer lokaler Preset-Generator `{ prompt }` (kein externes LLM) |
+| POST | `/api/ai/generate` | Ollama-gestützte KI-Komposition mit lokalem Fallback |
+| POST | `/api/ai/describe` | Ollama-Text (max 2 Sätze), Fallback bei Nicht-Erreichbarkeit |
+| POST | `/api/separate-stems` | SSE-Stem-Stream; bei `ENABLE_STEMS=1` Proxy an lokales `stem-ai` |
+| POST | `/api/generate-voice` | Lokale Voice-Synthese; falls `VOICE_ENGINE`+`VOICE_CLI` gesetzt, sonst Web-Speech |
+
+**Worklets-Serving:** `/worklets/*.js` werden explizit als `application/javascript` ausgeliefert (Dev: `public/worklets` + `dist/worklets`), damit AudioWorklets korrekt geladen werden.
+
+---
+
+## 🤝 WebRTC-Signaling & Kollaboration
+
+- Pfad: `/webrtc-signaling` (Socket.io), Same-Origin in Dev & Prod.
+- Events: `offer`, `answer`, `ice-candidate`, `activity`.
+- Idle-Timeout (Default 20 min, steuerbar via `SIGNALING_IDLE_TIMEOUT_MS`): Client wird getrennt, wenn zu lange inaktiv.
+- `ALLOWED_ORIGINS` (CSV) verhindern Cross-Origin-Zugriff; leer = nur Same-Origin.
+- `WebRTCManager.ts` baut pro Peer eine `RTCPeerConnection` mit Data-Channel (`plugin-sync`) für State- und Clock-/Latency-Ping/Pong.
+
+> **Mediasoup (optional):** `mediasoup`/`mediasoup-client` sind als Dependencies installiert (nativer `mediasoup-worker` via postinstall). Für eine SFU-Zentralisierung (anstatt Full-Mesh) kann ein Mediasoup-Router ergänzt werden — die Signaling-Achse ist bereits vorbereitet.
+
+---
+
+## 🛡️ RBAC & Audit-Logging
+
+- **Rollen:** `admin` (3), `producer` (2), `engineer` (1), `guest` (0). Numerisch absteigende Rechte.
+- `can(role, action)` prüft die Hierarchie; `roleForUser(userId, roomHostId)` ermittelt die Rolle (Host-Quellen aus `SESSION_HOST_USER` oder optionalem Storage).
+- **Audit-Logger** (`AuditLogger.ts`) schreibt Berechtigungs-/Sicherheitsereignisse in den lokalen Audit-Log (localStorage).
+
+---
+
+## 🚢 Deployment
+
+Ziel-Umgebung: **eigene Cloud-Instanz (z. B. Hetzner)**, stundenabgerechnet, ein Prozess pro Port.
+
 ```bash
-# 1. Backend-Dependencies
-cd services/backend-core && npm install
+# Produktions-Build (Vite + Worklets + Server-Bundle)
+npm run build
 
-# 2. Main App Start (Vite Dev Server)
+# Produktions-Server starten (node dist/server.cjs)
+PORT=8080 NODE_ENV=production node dist/server.cjs
+# oder
+npm run start
+
+# Entwicklungsmodus (tsx server.ts, Hot-Reload)
 npm run dev
 ```
 
-### Deployment (Hetzner)
-```bash
-# Option A: Automatisiert via Skript
-./deploy.sh          # baut + kopiert Build + startet remote
-
-# Option B: Direkt auf der Instanz
-cp .env.hetzner.example .env   # füllen
-./scripts/hetzner/start-prod.sh
-# oder
-docker compose -f docker-compose.hetzner.yml up -d --build
-```
-
-Vollständige Anleitung siehe `.env.hetzner.example` und `scripts/hetzner/`.
+- **Static-Delivery:** `dist/` wird ausgeliefert; SPA-Fallback auf `index.html`.
+- **Optionaler Auto-Shutdown:** `scripts/hetzner/install-idle-shutdown.sh` stoppt die Instanz nach Inaktivität (Kostenschutz).
 
 ---
 
-## ⚖️ Copyright & Branding
-**audioMONASTRY** by **monkMONASTRY**
-*(inspiriert vom PRAIN Cluster; alle Rechte AnunnakiTools 2026 by Patrick Hilf)*
+## 🛠️ Projekt-Skripte
 
-****
+| Skript | Befehl | Aktion |
+| :--- | :--- | :--- |
+| `dev` | `tsx server.ts` | Dev-Server (App + API + Signaling) |
+| `build` | `vite build && node build-worklets.mjs && esbuild server.ts …` | Produktions-Build (Bundle + Worklets + `dist/server.cjs`) |
+| `start` | `node dist/server.cjs` | Startet Produktions-Bundle |
+| `worker` | `tsx services/taskWorker.ts` | Hintergrund-Task-Worker |
+| `lint` | `tsc --noEmit` | TypeScript-Check (0 Fehler-Ziel) |
+| `clean` | `rm -rf dist server.js` | Build-Artefakte löschen |
 
 ---
 
-## ✨ Implementierungs-Highlights (Technical Refresh)
+## ⚙️ Konfiguration per Umgebungsvariablen
 
-Dieses Repo enthält mehrere substanzielle Audio-/Backend-Verbesserungen, die parallel zu den Modulen eingebaut wurden:
+| Variable | Default | Bedeutung |
+| :--- | :--- | :--- |
+| `PORT` | `8080` | HTTP-Port des Servers |
+| `NODE_ENV` | — | `production` = static `dist/`, sonst Vite-Dev |
+| `ENABLE_STEMS` | leer | `1` aktiviert den echten `stem-ai`-Proxy |
+| `STEM_AI_URL` | `http://stem-ai:8000` | Adresse des Stem-AI-Service |
+| `OLLAMA_URL` | `http://127.0.0.1:11434` | Lokales Ollama-LLM für KI-Generierung |
+| `OLLAMA_MODEL` | `qwen2.5:7b` | Ollama-Modell-Name |
+| `VOICE_ENGINE` | leer | `rvc`/`vits` — lokaler Voice-CLI bevorzugt |
+| `VOICE_CLI` | leer | Pfad zum Voice-Vorhersage-CLI |
+| `SIGNALING_IDLE_TIMEOUT_MS` | `1200000` (20 min) | Idle-Timeout für Signaling-Clients |
+| `SIGNALING_ALLOWED_ORIGINS` | leer | Erlaubte CORS-Origins (CSV), leer = Same-Origin |
 
-- **AudioWorklet-DSP-Erweiterungen (T7–T12)**
-  - `synthProcessor.ts` – PolyBLEP-Oszillator (Saw/Square/Triangle/Sine), ADSR-Hüllkurve + Moog-Ladder-Tiefpass im AudioWorklet.
-  - `eqProcessor.ts` – 4-Band parametrischer EQ (HP/Lowshelf/Peaking/Highshelf, RBJ-Koeffizienten).
-  - `dspProcessor.ts` – Phase-Tilt (Allpass) + Envelope-Follower-getriebenes dynamisches Filter + Soft-Clipper.
-  - `masteringProcessor.ts` – Lookahead-Limiter (5 ms) + Soft-Knee-Kompression als AudioWorklet.
-  - `effectProcessor.ts` – diffuser FDN-Reverb, Chorus/Flanger und Bitcrusher als Effekt-Worklet.
-  - `clockProcessor.ts` – präziser AudioWorklet-Thread-Clock-Generator mit Swing/Gate (PLL-Drifts).
+---
 
-- **Audio-Engine (T2, T4, T8, T17, T20)**
-  - Lookahead-Scheduler mit Swing/Gate und optionalem AudioWorklet-Clock-Quantizer.
-  - 4 Monitor-/Cue-Busse (`MON1..MON4`) mit pro-Person-Track-Mix-Matrix und Rollen-Voreinstellungen.
-  - Zipper-freie Fader via `setMixChannelParam` (`setTargetAtTime`).
-  - HRTF-Berechnung für Kopfhörer-/Stereo-Cue (`calculateHRTF` → ITD/ILD).
+## ✅ Status-Übersicht
 
-- **Hetzner-Einzelcontainer-Deployment (environment)**
-  - `Dockerfile.hetzner`, `docker-compose.hetzner.yml`, `scripts/hetzner/*`,
-    `.env.hetzner.example` – gleiche Prozess liefert Frontend + REST + WebRTC-Signaling.
-  - `server.ts` umfasst Socket.io-Signaling (defensive `await import`) + optionale Demucs-Stems (`ENABLE_STEMS=1`).
+- **TypeScript:** `tsc --noEmit` = **0 Fehler**; kein `--noUnusedLocals`-Rauschen.
+- **Build:** `npm run build` bündelt Frontend, 8 Arbeitlets (Worklets) und `dist/server.cjs` fehlerfrei.
+- **Hörbare Kernroute:** Play/Stop, Sequenzer-Toggles, Mischpult-Fader sind an die AudioEngine verdrahtet und liefern sofort synthetischen Drum-Sound.
+- **Offen (Infrastruktur):** Mediasoup-SFU-Serverlogik (#12), WASM-DSP (#6), offener Erweiterungs-Slot (#13).
 
-- **UX/Rollen & Daten**
-  - `config/rolePresets.ts` – DJ / Producer / Engineer / STEM_Host Startprofile (Modul-Snapshots pro Rolle).
-  - `utils/opfs.ts` + `SampleContext` – OPFS-Cache für aufgenommene Samples.
-  - `utils/LocalEmbeddingProvider.ts` – reale lokale MiniLM-Embeddings (transformers.js) mit deterministischem Hash-Fallback.
-  - `MIDI` Auto-Erkennung + Hotplug + generische Canvas-Skin-Engine.
+---
 
-Weitere Details: `MASTER_TODO.md`, `ARCHITECTURE.md`, `ARCH_WEBRTC.md`.
+*Dokumentation für **audioMONASTRY**. Frühere Bezeichnung *sampleMONK* ist veraltet.*

@@ -1,7 +1,7 @@
-# WebRTC High-Performance Audio Blueprint (sampleMONK)
+# WebRTC High-Performance Audio Blueprint (audioMONASTRY)
 
 ## Ziel
-Transformation der `sampleMONK` Plattform in ein High-Speed-Audio-Produktions-Monster mit <10ms Latenz und professioneller Audio-Qualität für bis zu 4 User gleichzeitig.
+Transformation der `audioMONASTRY` Plattform in ein High-Speed-Audio-Produktions-Monster mit <10ms Latenz und professioneller Audio-Qualität für bis zu 4 User gleichzeitig.
 
 ## 1. Architektur-Änderungen (Signaling & Transport)
 - **Alt:** HTTP/REST (API) + WebSocket (Monitor).

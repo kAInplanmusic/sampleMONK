@@ -1,13 +1,13 @@
 # DB1: Asset DB Schema (Lokal – Google-frei)
 
-> Frueher war dies eine Firestore-Schema-Beschreibung. sampleMONK laeuft jetzt
+> Frueher war dies eine Firestore-Schema-Beschreibung. audioMONASTRY laeuft jetzt
 > OHNE Google/Firestore komplett lokal. Assets werden auf dem Hetzner-Dateisystem
 > bzw. im Browser (localStorage/IndexedDB) gespeichert.
 
 ## Lokale Speicherorte
 
 - `public/samples/` – lokale WAV-Sample-Dateien (werden vom Server direkt ausgeliefert)
-- `localStorage` (Browser) – Benutzer-Presets (`samplemonk_local_presets`)
+- `localStorage` (Browser) – Benutzer-Presets (`audiomonastry_local_presets`)
 - `indexedDB` (Browser) – Scratchpad-/Projekt-Daten
 
 ## Objektstruktur (unveraendert, nur Speicherort abweichend)

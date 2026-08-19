@@ -11,30 +11,30 @@ import { useState, useEffect, useCallback } from 'react';
 
 // Lokale Identitaet (persistiert im Browser)
 const getLocalUserId = () => {
-  let id = localStorage.getItem('samplemonk_user_id');
+  let id = localStorage.getItem('audiomonastry_user_id');
   if (!id) {
     id = 'user_' + Math.random().toString(36).substring(2, 11);
-    localStorage.setItem('samplemonk_user_id', id);
+    localStorage.setItem('audiomonastry_user_id', id);
   }
   return id;
 };
 
 const getLocalUserName = () => {
-  let name = localStorage.getItem('samplemonk_user_name');
+  let name = localStorage.getItem('audiomonastry_user_name');
   if (!name) {
     const names = ['Alpha', 'Beta', 'Gamma', 'Delta'];
     name = 'Operator ' + names[Math.floor(Math.random() * names.length)] + ' ' + Math.floor(Math.random()*100);
-    localStorage.setItem('samplemonk_user_name', name);
+    localStorage.setItem('audiomonastry_user_name', name);
   }
   return name;
 };
 
 const getLocalUserColor = () => {
-  let color = localStorage.getItem('samplemonk_user_color');
+  let color = localStorage.getItem('audiomonastry_user_color');
   if (!color) {
     const colors = ['#38bdf8', '#fbbf24', '#e879f9', '#34d399', '#f43f5e', '#a78bfa'];
     color = colors[Math.floor(Math.random() * colors.length)];
-    localStorage.setItem('samplemonk_user_color', color);
+    localStorage.setItem('audiomonastry_user_color', color);
   }
   return color;
 };

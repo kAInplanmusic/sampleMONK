@@ -9,7 +9,7 @@ import rateLimit from 'express-rate-limit';
 const ENABLE_STEMS = (process.env.ENABLE_STEMS || '').trim() === '1';
 
 /**
- * sampleMONK Server – GOOGLE/FIRESTORE-ENTKOPPELT.
+ * audioMONASTRY Server – GOOGLE/FIRESTORE-ENTKOPPELT.
  *
  * Diese Datei enthaelt KEINERLEI Verbindung zu Google Firebase, Firestore,
  * Google Storage, Secret Manager oder Google GenAI. Der gesamte Stack (static
@@ -366,7 +366,7 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`sampleMONK (Google-frei) running on http://0.0.0.0:${PORT}`);
+    console.log(`audioMONASTRY (Google-frei) running on http://0.0.0.0:${PORT}`);
   });
 }
 

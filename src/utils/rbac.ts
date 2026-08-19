@@ -1,5 +1,5 @@
 // ============================================================================
-// RBAC – Zentrales Rollen-Berechtigungssystem für sampleMONK-Sessions
+// RBAC – Zentrales Rollen-Berechtigungssystem für audioMONASTRY-Sessions
 // ----------------------------------------------------------------------------
 // Host + bis zu 4 User. Rollen: admin | producer | engineer | guest.
 // Konfiguration über Umgebungsvariablen (Vite) bzw. localStorage-Fallback:

@@ -122,7 +122,7 @@ App → 5G (8 ms) → Gateway (0,5 ms) → Cluster (1 ms)
 3. Multiplexer schaltet auf Standby-Pfad um
 4. Nur ein aktiver Pfad bleibt hörbar, wodurch Klicks und Phasensummen vermieden werden
 
-## Umsetzung in sampleMONK
+## Umsetzung in audioMONASTRY
 
 ### Bestehende Anknüpfungspunkte
 
@@ -150,4 +150,4 @@ App → 5G (8 ms) → Gateway (0,5 ms) → Cluster (1 ms)
 
 ## Fazit
 
-Für sampleMONK ist ein **hybrides Edge-/Cluster-/MUX-System** die realistischste Zielarchitektur für ein netzwerkbasiertes 10-Kanal-Spatial-Audio-Interface. Es verbindet App-gesteuerte Spatial-Metadaten, ausfallsichere DSP-Pfade und eine digitale/analoge Bridge, ohne die zentrale Anforderung an niedrige Latenz, Master-Priorität und kollaborative Echtzeit-Synchronisation aufzugeben.
+Für audioMONASTRY ist ein **hybrides Edge-/Cluster-/MUX-System** die realistischste Zielarchitektur für ein netzwerkbasiertes 10-Kanal-Spatial-Audio-Interface. Es verbindet App-gesteuerte Spatial-Metadaten, ausfallsichere DSP-Pfade und eine digitale/analoge Bridge, ohne die zentrale Anforderung an niedrige Latenz, Master-Priorität und kollaborative Echtzeit-Synchronisation aufzugeben.

@@ -1,4 +1,4 @@
-# sampleMONK – Aktueller Arbeitsstatus (CURRENT_TODO)
+# audioMONASTRY – Aktueller Arbeitsstatus (CURRENT_TODO)
 
 ## Stand
 ✅ Stufe-1 Punkte 1-5 · ✅ P7-P14 · ✅ Logo-Einbindung + UI/UX

@@ -1,4 +1,4 @@
-# Sample Monk - Refinement & Production Readiness Plan
+# audioMONASTRY - Refinement & Production Readiness Plan
 
 ## 1. System & Audio Pipeline
 - [ ] **Worklet-Pipeline:** Migrate remaining DSP modules (`EQ`, `Mastering`) into the `AudioWorklet` architecture for sub-millisecond latency.

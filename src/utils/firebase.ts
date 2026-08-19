@@ -14,7 +14,7 @@ import type { TrackPreset } from '../types';
 export const db: unknown = null;
 
 // Lokale Liste gespeicherter Presets (Persistenz im Browser)
-const LOCAL_PRESETS_KEY = 'samplemonk_local_presets';
+const LOCAL_PRESETS_KEY = 'audiomonastry_local_presets';
 
 function readLocalPresets(): any[] {
   try {

@@ -1,5 +1,5 @@
 // ============================================================================
-// sampleMONK – MIDI Device-Registry (Auto-Erkennung)
+// audioMONASTRY – MIDI Device-Registry (Auto-Erkennung)
 // ----------------------------------------------------------------------------
 // Jedes bekannte MIDI-Gerät wird über einen Fingerprint (Herstellername + Name)
 // erkannt und einem 'profile' sowie einem 'type' zugeordnet. So kann das UI

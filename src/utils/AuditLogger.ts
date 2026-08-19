@@ -5,7 +5,7 @@
  * Jetzt werden sie nur noch in der Browser-Konsole (und optional localStorage) geloggt.
  */
 
-const LOCAL_AUDIT_KEY = 'samplemonk_audit_log';
+const LOCAL_AUDIT_KEY = 'audiomonastry_audit_log';
 
 export const logAuditEvent = async (userId: string, action: string, details: any) => {
   try {

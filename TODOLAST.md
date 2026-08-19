@@ -1,4 +1,4 @@
-# TODOLAST.md – Umsetzungsliste Sample MONK Professionalization
+# TODOLAST.md – Umsetzungsliste audioMONASTRY Professionalization
 
 **Bewertungsprinzip:** Prozentwert = **Aufwand-zu-Ertrag-Verhältnis** (höher = bessere Effizienz, implementiere zuerst).
 

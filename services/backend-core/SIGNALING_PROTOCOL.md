@@ -1,4 +1,4 @@
-# Signaling Protocol (Sample Monk)
+# Signaling Protocol (audioMONASTRY)
 
 Das Signaling-Protokoll definiert die Kommunikation zwischen Clients und dem Signaling-Server zur Etablierung von WebRTC-Verbindungen und zur Synchronisation des Anwendungszustands (Locking).
 
