@@ -17,6 +17,7 @@ import { VoiceGenTerminal } from '../components/VoiceGenTerminal';
 import { RecorderTerminal } from '../components/RecorderTerminal';
 import { DSPTerminal } from '../components/DSPTerminal';
 import { VisualizerTerminal } from '../components/VisualizerTerminal';
+import { SamplerTerminal } from '../components/SamplerTerminal';
 import { SynthesizerTerminal } from '../components/SynthesizerTerminal';
 
 const ICON_MAP: Record<string, any> = {
@@ -35,6 +36,7 @@ const COMPONENT_MAP: Record<string, any> = {
   synth: SynthesizerTerminal,
   voice: VoiceGenTerminal,
   visualizer: VisualizerTerminal,
+  sampler: SamplerTerminal,
   stem: StemExtractorTerminal,
   recording: RecorderTerminal,
   library: LibraryTerminal,
@@ -82,12 +84,12 @@ const DEFAULT_PLUGIN_METADATA: Record<string, { name: string; short: string; ico
   effect: { name: 'effectMONK', short: 'FX', icon: 'Sparkles' },
   synth: { name: 'synthesizerMONK', short: 'SYN', icon: 'Waves' },
   voice: { name: 'voiceMONK', short: 'VOX', icon: 'Mic' },
-  visualizer: { name: 'samplerMONK', short: 'SAM', icon: 'Activity' },
+  visualizer: { name: 'visMONK', short: 'VIS', icon: 'Activity' },
+  sampler: { name: 'samplerMONK', short: 'SAM', icon: 'Speaker' },
   stem: { name: 'stemMONK', short: 'RMX', icon: 'Radio' },
   recording: { name: 'recordingMONK', short: 'REC', icon: 'Activity' },
   library: { name: 'biblioMONK', short: 'LIB', icon: 'Database' },
   eq: { name: 'eqMONK', short: 'EQ', icon: 'Activity' },
-  dsp: { name: 'dspMONK', short: 'DSP', icon: 'Zap' },
   mastering: { name: 'masteringMONK', short: 'MST', icon: 'Square' },
 };
 

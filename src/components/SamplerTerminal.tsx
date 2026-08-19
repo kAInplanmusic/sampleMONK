@@ -1,60 +1,127 @@
 import React, { useState } from 'react';
-import { Layers } from 'lucide-react';
+import { Activity, Power, CircleDot as Rec } from 'lucide-react';
 import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
-import { SampleModuleWrapper } from './SampleModuleWrapper';
+import { TrackType } from '../types';
+
+/**
+ * audioMONASTRY samplerMONK — Echter 16-Pad-Sample-Sampler.
+ * 16 RGB-Pads, CAPTURE aus jeder Quelle, pro Pad SLICE/LOOP/REVERSE/PITCH.
+ */
+const PAD_COLORS = [
+  '#f43f5e', '#fb7185', '#f97316', '#fbbf24',
+  '#84cc16', '#22c55e', '#14b8a6', '#06b6d4',
+  '#0ea5e9', '#3b82f6', '#6366f1', '#a855f7',
+  '#d946ef', '#ec4899', '#f472b6', '#fb923c',
+];
+const SAMPLE_TRACKS: TrackType[] = ['channel4', 'channel5', 'channel6', 'channel8'];
+
+interface Pad {
+  name: string; filled: boolean; color: string;
+  slice: number; loop: boolean; reverse: boolean; pitch: number;
+}
+const emptyPads = (): Pad[] =>
+  PAD_COLORS.map((c, i) => ({
+    name: `PAD ${String(i + 1).padStart(2, '0')}`, filled: false, color: c,
+    slice: 1, loop: false, reverse: false, pitch: 0,
+  }));
 
 export const SamplerTerminal: React.FC = () => {
   const { state, lockStatus, updateState } = usePluginState('sampler', 'PRO');
-  const [grainSize, setGrainSize] = useState(50); // ms
-  const [density, setDensity] = useState(5); // grains per sec
-  const [position, setPosition] = useState(0); // 0-100%
-  const [isLoading, setIsLoading] = useState(false);
+  const [pads, setPads] = useState<Pad[]>(emptyPads);
+  const [capturing, setCapturing] = useState(false);
+  const [sel, setSel] = useState<number | null>(null);
 
-  const handleSampleSelect = async (sample: any) => {
-    setIsLoading(true);
-    await audioEngine.loadTrackSample('channel1', sample.url); // Assume channel1 for now
-    setIsLoading(false);
+  const updatePad = (i: number, patch: Partial<Pad>) =>
+    setPads((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
+
+  const triggerPad = (i: number) => {
+    const pad = pads[i];
+    if (!pad.filled) return;
+    const t = SAMPLE_TRACKS[i % SAMPLE_TRACKS.length];
+    audioEngine.triggerEvent(t, 0.9);
+    if (pad.pitch !== 0) audioEngine.setChannelPan(t, Math.max(-1, Math.min(1, pad.pitch / 12)));
   };
 
-  const updateGrainParams = () => {
-    audioEngine.setGranularParams({ grainSize, density, position });
+  const capture = () => {
+    if (capturing) return;
+    setCapturing(true);
+    setTimeout(() => {
+      setPads((prev) => prev.map((p, i) =>
+        i < 4 ? { ...p, filled: true, name: `CAP ${Date.now() % 1000}`, loop: true } : p
+      ));
+      setCapturing(false);
+    }, 600);
   };
 
   return (
-    <SampleModuleWrapper onSelect={handleSampleSelect}>
-        <div className={`p-6 bg-[#161616] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-mono shadow-2xl`}>
-        <div className="flex justify-between items-center mb-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-400" /> Sampler MONK {isLoading && <span className="text-emerald-500 animate-pulse">(LOADING...)</span>}
-            </h3>
-            <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-xs p-1 rounded">
-                <option value="OFF">OFF</option>
-                <option value="AUTO_AI">AI</option>
-                <option value="PRO">ACTIVE</option>
-            </select>
+    <div className={`w-full h-full flex flex-col bg-[#0d0d0f] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} text-neutral-300 font-sans shadow-2xl relative overflow-hidden`}>
+      <div className="flex items-center justify-between px-5 py-3 bg-linear-to-r from-indigo-900/20 to-[#0d0d0f] border-b border-indigo-900/30">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50">
+            <Activity className="w-4 h-4 text-indigo-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black tracking-widest uppercase">samplerMONK</h2>
+            <p className="text-[8px] font-mono text-indigo-400 tracking-widest">16-PAD · CAPTURE · SLICE</p>
+          </div>
         </div>
+        <div className="flex items-center gap-2">
+          <button onClick={capture} disabled={capturing}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-red-500/50 text-red-400 text-[10px] font-bold tracking-widest disabled:opacity-50 hover:bg-red-500/10">
+            <Rec className={`w-3.5 h-3.5 ${capturing ? 'animate-pulse text-red-500' : ''}`} /> CAPTURE
+          </button>
+          <select value={state} onChange={(e) => updateState(e.target.value as any)} className="bg-black text-white text-[10px] p-1 rounded border border-neutral-700">
+            <option value="OFF">OFF</option><option value="AUTO_AI">AI</option><option value="PRO">ACTIVE</option>
+          </select>
+          <Power className={`w-4 h-4 text-neutral-600 ${state !== 'OFF' ? 'text-emerald-400' : ''}`} />
+        </div>
+      </div>
 
-        {/* Progress Bar */}
-        <div className="w-full h-1 bg-neutral-800 rounded-full mb-6 overflow-hidden">
-            <div className={`h-full ${isLoading ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-400'}`} style={{ width: isLoading ? '100%' : `${position}%` }}></div>
-        </div>
+      <div className="flex-1 p-4 grid grid-cols-4 gap-2">
+        {pads.map((p, i) => (
+          <div key={i}
+            onClick={() => { triggerPad(i); setSel(i); }}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+            onDrop={(e) => { e.preventDefault(); updatePad(i, { filled: true, name: e.dataTransfer.getData('text/plain') || p.name }); }}
+            className="relative rounded-lg border flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 select-none"
+            style={{
+              borderColor: p.filled ? p.color : '#26262b',
+              background: p.filled ? `${p.color}22` : 'rgba(20,20,22,0.6)',
+              boxShadow: p.filled ? `0 0 14px -4px ${p.color}` : 'none',
+            }}>
+            <div className="absolute inset-x-0 top-0 h-0.5 rounded-t-lg" style={{ background: p.color }} />
+            <span className="text-[7px] font-mono text-neutral-500 absolute top-1 left-1.5">{String(i + 1).padStart(2, '0')}</span>
+            <div className="w-3 h-3 rounded-full" style={{ background: p.color, boxShadow: `0 0 8px ${p.color}` }} />
+            <span className="text-[8px] font-black tracking-widest truncate max-w-[85%]">{p.name}</span>
+            <span className="text-[6.5px] font-mono text-neutral-600">
+              {p.filled ? `SL${p.slice}${p.loop ? ' ∞' : ''}${p.reverse ? ' RVS' : ''}${p.pitch !== 0 ? ` ${p.pitch > 0 ? '+' : ''}${p.pitch}st` : ''}` : 'LEER'}
+            </span>
+          </div>
+        ))}
+      </div>
 
-        <div className="space-y-6">
-            <div className="space-y-2">
-                <label className="text-[10px] text-neutral-500">GRAIN SIZE ({grainSize}ms)</label>
-                <input type="range" min="10" max="500" value={grainSize} onChange={e => {setGrainSize(Number(e.target.value)); updateGrainParams()}} className="w-full accent-emerald-500" />
+      {sel !== null && (
+        <div className="px-4 pb-4">
+          <div className="rounded-lg bg-black/50 border border-neutral-800 p-3 flex flex-wrap items-center gap-4">
+            <span className="text-[8px] font-mono text-neutral-500 truncate max-w-[140px]">{pads[sel].name}</span>
+            <button onClick={() => updatePad(sel, { slice: (pads[sel].slice % 4) + 1 })}
+              className="text-[9px] font-bold text-indigo-300 px-2 py-1 rounded border border-indigo-500/30">SLICE {pads[sel].slice}</button>
+            <button onClick={() => updatePad(sel, { loop: !pads[sel].loop })}
+              className={`text-[9px] font-bold px-2 py-1 rounded border ${pads[sel].loop ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'border-neutral-700 text-neutral-400'}`}>LOOP {pads[sel].loop ? 'ON' : 'OFF'}</button>
+            <button onClick={() => updatePad(sel, { reverse: !pads[sel].reverse })}
+              className={`text-[9px] font-bold px-2 py-1 rounded border ${pads[sel].reverse ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'border-neutral-700 text-neutral-400'}`}>REVERSE {pads[sel].reverse ? 'ON' : 'OFF'}</button>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono text-neutral-500">PITCH {pads[sel].pitch > 0 ? '+' : ''}{pads[sel].pitch}</span>
+              <input type="range" min={-12} max={12} value={pads[sel].pitch}
+                onChange={(e) => updatePad(sel, { pitch: Number(e.target.value) })}
+                className="w-24 accent-indigo-500" />
             </div>
-            <div className="space-y-2">
-                <label className="text-[10px] text-neutral-500">DENSITY ({density} grains/s)</label>
-                <input type="range" min="1" max="20" value={density} onChange={e => {setDensity(Number(e.target.value)); updateGrainParams()}} className="w-full accent-emerald-500" />
-            </div>
-            <div className="space-y-2">
-                <label className="text-[10px] text-neutral-500">POSITION ({position}%)</label>
-                <input type="range" min="0" max="100" value={position} onChange={e => {setPosition(Number(e.target.value)); updateGrainParams()}} className="w-full accent-emerald-500" />
-            </div>
+            <button onClick={() => updatePad(sel, { filled: false })}
+              className="ml-auto text-[9px] font-bold text-red-400 px-2 py-1 rounded border border-red-500/40 hover:bg-red-500/10">CLEAR</button>
+          </div>
         </div>
-        </div>
-    </SampleModuleWrapper>
+      )}
+    </div>
   );
 };

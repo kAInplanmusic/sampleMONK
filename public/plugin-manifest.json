@@ -103,7 +103,7 @@
     },
     {
       "id": "visualizer",
-      "name": "samplerMONK",
+      "name": "visMONK",
       "short": "VIS",
       "icon": "Activity"
     },
@@ -132,10 +132,10 @@
       "icon": "Activity"
     },
     {
-      "id": "dsp",
-      "name": "dspMONK",
-      "short": "DSP",
-      "icon": "Zap"
+      "id": "sampler",
+      "name": "samplerMONK",
+      "short": "SAM",
+      "icon": "Speaker"
     },
     {
       "id": "mastering",
