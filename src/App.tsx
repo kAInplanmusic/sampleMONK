@@ -17,6 +17,7 @@ import { SettingsDialog } from './components/SettingsDialog';
 import { ROLE_PRESETS, moduleStateForRole, StudioRole } from './config/rolePresets';
 import { Settings } from 'lucide-react';
 import { Logo } from './components/Logo';
+import { DJ4ChMixer } from './components/DJ4ChMixer';
 
 
 export default function App() {
@@ -202,6 +203,11 @@ function AppComponent() {
           </button>
         </div>
       </header>
+
+      {/* 1b. FESTES DJ-MISCHPULT (oberstes Plugin, immer sichtbar) – Allen & Heath XONE-Style */}
+      <div className="mb-8 -mx-6">
+        <DJ4ChMixer />
+      </div>
 
       {/* 2. Module Selection + Icon Grid (2 x 8) */}
       <div className="mb-8">

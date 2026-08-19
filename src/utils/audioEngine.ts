@@ -85,6 +85,8 @@ class AudioEngine {
    */
   private channelGains: Partial<Record<TrackType, Tone.Volume>> = {};
   private channelPans: Partial<Record<TrackType, Tone.Panner>> = {};
+  // #DJ: Pro-Kanal 3-Band-EQ (Low/Mid/High) für DJ-Mischpult-Regler.
+  private channelEQs: Partial<Record<TrackType, { low: Tone.Filter; mid: Tone.Filter; high: Tone.Filter }>> = {};
   
   private samplePlayers: Record<string, Tone.Player> = {};
   private trackSampleUrl: Record<TrackType, string | null> = {
@@ -526,16 +528,44 @@ class AudioEngine {
   /**
    * Stellt den per-Kanal-Gain/Pan für einen Track bereit (zwischenspeichert
    * die Tone-Nodes und verdrahtet sie auf den GLOBAL_MASTER-Bus).
+   * #DJ: zusätzlich 3-Band-EQ (Low-Shelf → Peaking Mid → High-Shelf) inline.
    */
   private ensureChannelNode(track: TrackType): void {
     if (!this.channelGains[track]) {
       const g = new Tone.Volume(0);
+      // Pro-Kanal-EQ nach dem Gain, vor dem Pan.
+      const low = new Tone.Filter(220, 'lowshelf');
+      const mid = new Tone.Filter(1000, 'peaking');
+      const high = new Tone.Filter(4000, 'highshelf');
+      low.gain.value = 0; mid.gain.value = 0; high.gain.value = 0;
+      low.connect(mid); mid.connect(high);
+      this.channelEQs[track] = { low, mid, high };
       const p = new Tone.Panner(0);
-      g.connect(p);
+      g.connect(low);        // Gain -> EQ
+      high.connect(p);       // EQ -> Pan
       p.connect(this.masterBuses['GLOBAL_MASTER']);
       this.channelGains[track] = g;
       this.channelPans[track] = p;
     }
+  }
+
+  /** #DJ: Pro-Kanal 3-Band-EQ. gain in dB, band: 'low'|'mid'|'high'. */
+  public setChannelEQ(track: TrackType, band: 'low' | 'mid' | 'high', gain: number): void {
+    this.ensureInitialized();
+    this.ensureChannelNode(track);
+    const eq = this.channelEQs[track];
+    if (!eq) return;
+    const v = Math.max(-Infinity, Math.min(12, gain));
+    try { eq[band].gain.rampTo(v, 0.03); } catch { /* ignore */ }
+  }
+
+  /** #DJ: Master-Gain-Fader (0..1). */
+  public setMasterVolume(gain01: number): void {
+    this.ensureInitialized();
+    if (!this.masterVolume) return;
+    const v = Math.max(0, Math.min(1.5, gain01));
+    const db = v <= 0.001 ? -Infinity : 20 * Math.log10(v);
+    this.masterVolume.volume.rampTo(db, 0.03);
   }
 
   /** Echtes Kanal-Gain (Fader): volume 0..1 → dB. */
