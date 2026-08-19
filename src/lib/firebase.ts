@@ -1,1 +1,1 @@
-export { db } from '../utils/firebase';
+// Leerer Shimm-File (entfernt).

@@ -21,7 +21,7 @@ export const PRESET_SAMPLE_DATABASE: AudioSample[] = [
     name: 'TR-909 Classic Kick',
     category: 'bass',
     type: 'Kick',
-    url: 'https://actions.google.com/sounds/v1/science_fiction/alien_hum.ogg', // Free fallback sound preview
+    // Synthetisch über Parameter erzeugt (kein externer Sample-Link nötig)
     description: 'The legendary punchy analog kick drum that defined the early Detroit and Berlin techno soundscapes.',
     parameters: { frequency: 55, decay: 0.4, pitchDecay: 0.05, oscillatorType: 'sine' }
   },

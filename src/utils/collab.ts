@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 /**
- * Kollaboration – GOOGLE/FIRESTORE-ENTKOPPELT.
+ * Kollaboration – VENDOR-/CLOUD-FREI.
  *
  * Frueher synchronisierte dieses Modul eine Multiplayer-Session ueber Firestore.
  * Jetzt laeuft alles ausschliesslich LOKAL im Browser (keine Cloud-Verbindung).

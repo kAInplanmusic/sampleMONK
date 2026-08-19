@@ -90,6 +90,25 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
 
   const voices = ['FEMALE_ROBOTIC', 'MALE_GRITTY', 'ETHEREAL_CHOIR', 'DISTORTED_DEMON', 'AI_NEWSCASTER'];
 
+  // #12 Fertigstellung: Generierte Stimme hörbar abspielen (Web-Speech, offline).
+  const playResult = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      // Fallback: kurzer hörbarer Test-Oszillator über die AudioEngine.
+      audioEngine.triggerEvent('channel5', 0.6);
+      setTimeout(() => audioEngine.triggerEvent('channel5', 0.4), 180);
+      return;
+    }
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(prompt);
+    const match = synth.getVoices().find(v => v.lang === voice) || synth.getVoices()[0];
+    if (match) utter.voice = match;
+    utter.rate = style === 'SINGING' ? 0.7 : style === 'CHANT' ? 0.85 : 0.95;
+    utter.pitch = style === 'SINGING' ? 1.2 : 1;
+    utter.volume = 1;
+    synth.speak(utter);
+  };
+
   return (
     <div className={`w-full h-full flex flex-col bg-[#111] rounded-xl border ${lockStatus.active ? 'border-red-500' : 'border-neutral-800'} overflow-hidden text-neutral-300 font-sans shadow-2xl relative ${lockStatus.active && lockStatus.lockedBy !== 'localUser' ? 'opacity-50 grayscale' : ''}`}>
       
@@ -211,7 +230,7 @@ export function VoiceGenTerminal({ enabled = true }: { enabled?: boolean }) {
                <div className="bg-[#1a1a1a] rounded-xl border border-neutral-800 p-6 shadow-inner relative overflow-hidden group">
                  <div className="relative z-10 flex items-center justify-between">
                    <div className="flex items-center gap-4">
-                     <button className="w-16 h-16 rounded-full bg-orange-600 flex items-center justify-center text-white shadow-[0_0_15px_rgba(249,115,22,0.5)] hover:scale-105 transition-transform">
+                     <button onClick={playResult} className="w-16 h-16 rounded-full bg-orange-600 flex items-center justify-center text-white shadow-[0_0_15px_rgba(249,115,22,0.5)] hover:scale-105 transition-transform">
                        <Play className="w-6 h-6 ml-1 fill-current" />
                      </button>
                      <div>

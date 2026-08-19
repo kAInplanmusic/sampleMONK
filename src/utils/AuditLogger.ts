@@ -1,5 +1,5 @@
 /**
- * Audit-Logger – GOOGLE/FIRESTORE-ENTKOPPELT.
+ * Audit-Logger – VENDOR-/CLOUD-FREI.
  *
  * Frueher wurden Audit-Events in die Firestore-Collection `audit_log` geschrieben.
  * Jetzt werden sie nur noch in der Browser-Konsole (und optional localStorage) geloggt.

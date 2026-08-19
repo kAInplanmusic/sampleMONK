@@ -39,6 +39,32 @@ export function SpatialPluginTerminal() {
     });
   }, [nodes]);
 
+  // #6 Fertigstellung: 2D-LFO-Pfad-Bewegung tatsächlich an die AudioEngine leiten.
+  // Bei aktivem LFO wandern die aktiven Nodes entlang des gewählten Pfads und
+  // aktualisieren laufend deren Spatial-Position (statt nur statisch zu stehen).
+  const [motionPath, setMotionPath] = useState<'CIRCLE' | 'LISS' | 'PINGPONG' | 'CHAOS'>('CIRCLE');
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    let frame = 0;
+    const path =
+      motionPath === 'CIRCLE' ? generateCircularPath(0.6, 128)
+      : motionPath === 'LISS' ? generateLissajousPath(3, 2, 128)
+      : motionPath === 'PINGPONG' ? generatePingPongPath(0.8, 128)
+      : Array.from({ length: 128 }, () => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 }));
+    const id = setInterval(() => {
+      frame = (frame + 1) % path.length;
+      const p = path[frame];
+      setNodes(prev => prev.map(n => n.active ? { ...n, x: p.x, y: p.y } : n));
+      // Direkt an die Engine senden (unabhängig vom State-Updates-Zyklus).
+      nodes.forEach(n => {
+        if (n.active) audioEngine.setSpatialPosition(n.id.toLowerCase() as TrackType, p.x, p.y);
+      });
+    }, 30); // ~33fps
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, motionPath]);
+
   if (!setup) {
     return (
         <div className="w-full h-full flex items-center justify-center bg-[#111]">
@@ -65,7 +91,11 @@ export function SpatialPluginTerminal() {
   };
 
   const triggerMacro = (pattern: string) => {
-    // Generatoren werden aufgerufen, um zukünftige Automations-Sequenzen vorzubereiten.
+    // #6: Gewähltes Pfad-Muster als aktive LFO-Bewegung setzen (wirkt sofort).
+    if (pattern === 'CIRCLE' || pattern === 'LISS' || pattern === 'PINGPONG' || pattern === 'CHAOS') {
+      setMotionPath(pattern);
+    }
+    // Generatoren werden zusätzlich vorbereitet (für aktive Automation).
     if (pattern === 'CIRCLE') generateCircularPath(0.5, 100);
     else if (pattern === 'LISS') generateLissajousPath(3, 2, 100);
     else if (pattern === 'PINGPONG') generatePingPongPath(0.8, 100);

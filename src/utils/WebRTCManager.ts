@@ -85,7 +85,9 @@ class WebRTCManager {
 
   private createPeerConnection(targetId: string): RTCPeerConnection {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.services.mozilla.com'] }
+      ]
     });
 
     // Add local tracks

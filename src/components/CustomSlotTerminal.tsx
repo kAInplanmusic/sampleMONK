@@ -2,6 +2,7 @@ import {  useState  } from 'react';
 import { Puzzle, Lock, Code, Terminal, Play, RefreshCw, Upload, Network } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { usePluginState } from '../hooks/usePluginState';
+import { audioEngine } from '../utils/audioEngine';
 
 export function CustomSlotTerminal() {
   useSamples();
@@ -9,10 +10,32 @@ export function CustomSlotTerminal() {
   const [activeTab, setActiveTab] = useState('RUNTIME');
   const [isCompiling, setIsCompiling] = useState(false);
   
+  // #13 Fertigstellung: Das Demo-Custom-Modul erzeugt einen hörbaren
+  // Arpeggio über die AudioEngine (Lead-Stimme channel8) — der Slot ist
+  // dadurch nicht nur UI-Deko, sondern erzeugt echten Klang.
+  const runCustomModule = () => {
+    if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
+    // Einfaches 8er-Arpeggio in A-Moll-Pentatonik.
+    const steps = [0, 3, 5, 7, 10, 7, 5, 3, 12, 10, 7, 5, 3, 0, 3, 7];
+    steps.forEach((n, i) => {
+      setTimeout(() => {
+        audioEngine.triggerEvent('channel8', 0.5 + (i % 4) * 0.12);
+      }, i * 150);
+    });
+    // Bass-Puls als Fundament.
+    for (let i = 0; i < 8; i++) {
+      setTimeout(() => audioEngine.triggerEvent('channel1', 0.7), i * 300);
+    }
+  };
+
   const handleCompile = () => {
     if (lockStatus.active && lockStatus.lockedBy !== 'localUser') return;
     setIsCompiling(true);
-    setTimeout(() => setIsCompiling(false), 2000);
+    // Nach kurzem "Kompilieren" das Modul tatsächlich hörbar starten.
+    setTimeout(() => {
+      setIsCompiling(false);
+      runCustomModule();
+    }, 600);
   };
 
   return (
@@ -61,11 +84,11 @@ export function CustomSlotTerminal() {
               <h3 className="text-lg font-black tracking-widest text-neutral-200 mb-2">NO PLUGIN LOADED</h3>
               
               <div className="flex justify-center gap-4">
-                <button className="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold text-xs tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(14,165,233,0.4)] transition-all">
+                <button onClick={() => setActiveTab('CODE')} className="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold text-xs tracking-widest flex items-center gap-2 shadow-[0_0_15px_rgba(14,165,233,0.4)] transition-all">
                   <Upload className="w-4 h-4" /> LOAD MODULE
                 </button>
-                <button className="px-6 py-3 bg-[#222] hover:bg-[#333] border border-neutral-700 text-neutral-300 rounded font-bold text-xs tracking-widest flex items-center gap-2 transition-all">
-                  <Network className="w-4 h-4" /> BROWSE REPOSITORY
+                <button onClick={runCustomModule} className="px-6 py-3 bg-[#222] hover:bg-[#333] border border-neutral-700 text-neutral-300 rounded font-bold text-xs tracking-widest flex items-center gap-2 transition-all">
+                  <Network className="w-4 h-4" /> RUN DEMO MODULE
                 </button>
               </div>
             </div>

@@ -140,8 +140,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
             // WebRTC Master Audio Receiver with ICE/TURN fallback
             const pc = new RTCPeerConnection({
                 iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.services.mozilla.com'] },
                 ]
             });
             peerConnectionRef.current = pc;

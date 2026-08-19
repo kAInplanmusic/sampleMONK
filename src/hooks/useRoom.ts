@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { assertCan, roleForUser, Role, logAuditEvent } from '../utils/rbac';
 
 /**
- * Room-Hook – GOOGLE/FIRESTORE-ENTKOPPELT.
+ * Room-Hook – VENDOR-/CLOUD-FREI.
  *
  * Frueher wurden B2B-Raeume ueber Firestore (Collection `rooms`) verwaltet.
  * Jetzt arbeiten Raeume rein LOKAL im Browser (in-memory). Die Export-Oberflaeche

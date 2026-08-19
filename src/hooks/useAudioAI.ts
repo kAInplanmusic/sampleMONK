@@ -101,7 +101,7 @@ export const useAudioAI = () => {
     // P5: Zuerst den (verbesserten) lokalen Server-Endpunkt /api/generate-voice
     // anfragen. Der Server liefert 'ok' (RVC/VITS-Engine via env) oder
     // 'local' (dann Web-Speech). Bei Netzwerk-/Serverfehler fällt auf
-    // Browser-Web-Speech zurück (kein Cloud-Google-TTS nötig).
+    // Browser-Web-Speech zurück (kein Cloud-TTS nötig).
     try {
       const data = await fetchWithRetry(async () => {
           const response = await axios.post(`${API_BASE_URL}/generate-voice`, {

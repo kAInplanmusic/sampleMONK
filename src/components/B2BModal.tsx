@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { localHostRoom, localJoinRoom } from '../hooks/useRoom';
 
 /**
- * B2B-Collaboration-Modal – GOOGLE/FIRESTORE-ENTKOPPELT.
+ * B2B-Collaboration-Modal – VENDOR-/CLOUD-FREI.
  *
  * Host/Join von Kollaborations-Raeumen laeuft jetzt rein LOKAL im Browser
  * (keine Firestore-Collection `rooms` mehr). Die Export-Oberflaeche und das

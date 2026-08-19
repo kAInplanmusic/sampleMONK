@@ -2,7 +2,7 @@
 
 **audioMONASTRY** (vormals *sampleMONK*) ist eine kollaborative, objektbasierte Audio-Workstation (OBA). Sie ist konzipiert als hochmodulares **16‑Modul‑System** für Echtzeit‑Musikproduktion, Live‑DJ‑Setups und Sound‑Engineering. Das System kombiniert KI‑gestützte Generierung, physikalisches Audio‑Routing, Spatial‑Audio und eine Low‑Latency‑Kollaborationsschicht für **bis zu 4 gleichzeitig aktive Benutzer**.
 
-> **Google/firebase-frei:** Der gesamte Stack läuft in **einem Node-Prozess** (static App + REST‑API + WebRTC‑Signaling). Kein Firestore, kein GCS, keine Google‑Cloud‑AI. Optional wird ein selbstgehostetes Ollama‑LLM verwendet.
+> **Cloud-/anbieterfrei:** Der gesamte Stack läuft in **einem Node-Prozess** (static App + REST‑API + WebRTC‑Signaling). Kein externer Cloud-Anbieter, kein Firestore, kein GCS, keine Cloud‑KI. Optional wird ein selbstgehostetes Ollama‑LLM verwendet.
 
 ---
 
@@ -127,8 +127,7 @@ Alle Plugins nutzen die gemeinsame Registry (`src/plugins/registry.ts`) mit Komp
 ### Asset-Datenbank (`src/utils/db.ts`, IndexedDB `AudioMonastryDB`)
 - ObjectStore `scratchpad` mit Key-Path `id`, Feld `lastModified`.
 - `saveToDB(item)` / Load für Staging-Inhalte.
-
-### Presets (`src/utils/firebase.ts`)
+### Presets (`src/utils/presetStore.ts`)
 - Key `audiomonastry_local_presets` (localStorage) für benutzerdefinierte Presets.
 
 ### Audit-Log (`src/utils/AuditLogger.ts`)

@@ -9,10 +9,10 @@ import rateLimit from 'express-rate-limit';
 const ENABLE_STEMS = (process.env.ENABLE_STEMS || '').trim() === '1';
 
 /**
- * audioMONASTRY Server – GOOGLE/FIRESTORE-ENTKOPPELT.
+ * audioMONASTRY Server – VENDOR-/CLOUD-FREI.
  *
- * Diese Datei enthaelt KEINERLEI Verbindung zu Google Firebase, Firestore,
- * Google Storage, Secret Manager oder Google GenAI. Der gesamte Stack (static
+ * Diese Datei enthaelt KEINERLEI Verbindung zu externen Cloud-Anbietern.
+ * Storage, Secret Manager oder GenAI. Der gesamte Stack (static
  * App + REST-API + WebRTC-Signaling) laeuft in einem Node-Prozess.
  *
  * Fuer Hetzner:  PORT=8080, NODE_ENV=production, `node dist/server.cjs`
@@ -42,9 +42,9 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ===========================================================================
-// Lokale, Google-freie Endpunkte
+// Lokale, cloud-freie Endpunkte
 // Diese Endpunkte halten die Frontend-Funktionen (KI-Komposition, Stems,
-// Voice) am Laufen, ohne sich zu Google/Firebase zu verbinden.
+// Voice) am Laufen, ohne externe Cloud-Anbieter zu nutzen.
 //
 // Hinweis: Falls spaeter ein echter Backend-Service (z.B. services/backend-core
 // mit eigenem Host) betrieben wird, kann hier ein Proxy eingebaut werden.
@@ -261,7 +261,7 @@ app.post('/api/generate-voice', async (req, res) => {
   }
 
   // Kein lokaler Engine-CLI: hinterlasse status 'local', das Frontend nutzt dann
-  // Web-Speech-Synthese (kein Google-Cloud-TTS, keine Server-Cloudabhängigkeit).
+  // Web-Speech-Synthese (kein Cloud-TTS, keine Server-Cloudabhängigkeit).
   return res.json({
     status: 'local',
     url: '',
@@ -366,7 +366,7 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`audioMONASTRY (Google-frei) running on http://0.0.0.0:${PORT}`);
+    console.log(`audioMONASTRY (cloud-frei) running on http://0.0.0.0:${PORT}`);
   });
 }
 

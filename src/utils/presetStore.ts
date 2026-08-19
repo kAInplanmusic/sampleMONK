@@ -1,11 +1,11 @@
 /**
- * Firebase/Firestore-ENTKOPPELT.
+ * Lokaler Preset-Store (Cloud-/Anbieter-ENTKOPPELT).
  *
- * Dieses Modul bietet KEINERLEI Verbindung zu Google Firebase/Firestore/Storage.
+ * Dieses Modul bietet KEINERLEI Verbindung zu externen Cloud-Anbietern.
  * Es ist ein reiner lokaler Adapter, der die bisherige Export-Oberflaeche
  * (`db`, `savePresetToCloud`, `fetchPresetsFromCloud`, ...) beibehält, damit
  * andere Module weiterhin importieren koennen, ohne dass irgendeine
- * Google-Verbindung aufgebaut wird.
+ * Cloud-/Anbieter-Verbindung aufgebaut wird.
  *
  * Speicherung erfolgt ausschliesslich im Browser (localStorage).
  */

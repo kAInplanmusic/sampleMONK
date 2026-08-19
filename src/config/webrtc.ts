@@ -33,13 +33,8 @@ function readEnv(key: string): string | undefined {
   return undefined;
 }
 
-// --- Öffentliche STUN-Fallback-Server (mindestens 3 für Redundanz) ---
+// --- Öffentliche, neutral betriebene STUN-Fallback-Server (Redundanz) ---
 const PUBLIC_STUN = [
-  'stun:stun.l.google.com:19302',
-  'stun:stun1.l.google.com:19302',
-  'stun:stun2.l.google.com:19302',
-  'stun:stun3.l.google.com:19302',
-  'stun:stun4.l.google.com:19302',
   'stun:stun.services.mozilla.com',
   'stun:stun.cloudflare.com:3478',
 ];
