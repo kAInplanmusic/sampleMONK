@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Database, Play, Download, Clipboard, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSamples } from '../context/SampleContext';
 import { AudioSample } from '../data/samples';
 import { MUSIC_LIBRARY, MusicTrack } from '../data/musicLibrary';
 import { audioEngine } from '../utils/audioEngine';
+import { analyzeMusic } from '../utils/audioAnalyzer';
 import { SemanticSampleSearch } from './SemanticSampleSearch';
 import { Scratchpad } from './Scratchpad';
 
@@ -40,6 +41,20 @@ export function LibraryTerminal() {
       setCurrentPage(newPage);
     }
   };
+
+  // --- Automatische Musik-Analyse (BPM/Key, offline) ---
+  const [analysis, setAnalysis] = useState<Record<string, { bpm?: number; key?: string }>>({});
+  useEffect(() => {
+    if (category !== 'music') return;
+    let cancelled = false;
+    MUSIC_LIBRARY.forEach((t) => {
+      analyzeMusic(t.url).then((a) => {
+        if (cancelled || !a) return;
+        setAnalysis((prev) => ({ ...prev, [t.url]: { bpm: a.bpm, key: a.key } }));
+      });
+    });
+    return () => { cancelled = true; };
+  }, [category]);
 
   return (
     <div className="w-full h-full flex flex-col bg-[#111] rounded-xl border border-neutral-800 overflow-hidden text-neutral-300 font-sans shadow-2xl">
@@ -92,6 +107,14 @@ export function LibraryTerminal() {
                   </button>
                 </div>
                 <p className="text-[11px] text-neutral-500 font-mono">Track aus deiner Musik-Bibliothek</p>
+                <div className="flex gap-3 text-[9px] font-mono">
+                  <span className="flex items-center gap-1"><span className="text-amber-500">BPM</span>
+                    {analysis[t.url]?.bpm ?? <span className="text-neutral-600 animate-pulse">…</span>}
+                  </span>
+                  <span className="flex items-center gap-1"><span className="text-amber-500">KEY</span>
+                    {analysis[t.url]?.key ?? <span className="text-neutral-600">--</span>}
+                  </span>
+                </div>
                 <div className="mt-auto pt-4 flex justify-between items-center">
                   <span className="text-[9px] font-mono text-neutral-600 bg-black px-2 py-1 rounded truncate">{t.url}</span>
                   <div className="flex gap-2">

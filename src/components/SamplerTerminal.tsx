@@ -4,6 +4,7 @@ import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
 import { TrackType } from '../types';
 import { MUSIC_LIBRARY } from '../data/musicLibrary';
+import { analyzeMusic } from '../utils/audioAnalyzer';
 
 /**
  * audioMONASTRY samplerMONK — Echter 16-Pad-Sample-Sampler.
@@ -20,6 +21,7 @@ const SAMPLE_TRACKS: TrackType[] = ['channel4', 'channel5', 'channel6', 'channel
 interface Pad {
   name: string; filled: boolean; color: string;
   slice: number; loop: boolean; reverse: boolean; pitch: number;
+  bpm?: number; key?: string; analyzing?: boolean;
 }
 const emptyPads = (): Pad[] =>
   PAD_COLORS.map((c, i) => ({
@@ -98,6 +100,11 @@ export const SamplerTerminal: React.FC = () => {
             <span className="text-[6.5px] font-mono text-neutral-600">
               {p.filled ? `SL${p.slice}${p.loop ? ' ∞' : ''}${p.reverse ? ' RVS' : ''}${p.pitch !== 0 ? ` ${p.pitch > 0 ? '+' : ''}${p.pitch}st` : ''}` : 'LEER'}
             </span>
+            {p.filled && (
+              <span className="text-[6.5px] font-mono text-neutral-500">
+                {p.analyzing ? 'ANALYSE…' : `${p.bpm ?? ''}${p.bpm && p.key ? ' · ' : ''}${p.key ?? ''}`}
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -122,8 +129,11 @@ export const SamplerTerminal: React.FC = () => {
               onChange={(e) => {
                 const t = MUSIC_LIBRARY.find((x) => x.name === e.target.value);
                 if (t) {
-                  updatePad(sel, { filled: true, name: t.name });
+                  updatePad(sel, { filled: true, name: t.name, analyzing: true });
                   audioEngine.loadTrackSample(SAMPLE_TRACKS[sel % SAMPLE_TRACKS.length], t.url);
+                  analyzeMusic(t.url).then((a) =>
+                    updatePad(sel, { bpm: a?.bpm, key: a?.key, analyzing: false }),
+                  );
                 }
               }}
               className="bg-black text-[8px] text-neutral-300 px-1 py-1 rounded border border-neutral-700"

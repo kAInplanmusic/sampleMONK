@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { audioEngine } from '../utils/audioEngine';
+import { analyzeMusic } from '../utils/audioAnalyzer';
 import { TrackType } from '../types';
 import { MUSIC_LIBRARY, MusicTrack } from '../data/musicLibrary';
 
@@ -100,7 +101,7 @@ export function DJ4ChMixer() {
   const [ch, setCh] = useState(() =>
     STRIPS.map(() => ({
       low: 1, mid: 1, high: 1, gain: 0.85, pan: 0.5, mute: false,
-      loadName: '', loaded: false,
+      loadName: '', loaded: false, bpm: undefined as number | undefined, key: undefined as string | undefined, analyzing: false,
     })),
   );
   const [xfd, setXfd] = useState(0.5);
@@ -125,11 +126,23 @@ export function DJ4ChMixer() {
   const applyMaster = (v: number) => { setMaster(v); audioEngine.setMasterVolume(v); };
   const applyCross = (v: number) => { setXfd(v); STRIPS.forEach((_, i) => apply(i, {})); };
 
-  /** LOAD-SLOT: lädt einen Musik-Track (Name + URL) in die AudioEngine auf diesem Kanal. */
+  /** LOAD-SLOT: lädt einen Musik-Track, analysiert BPM/Key automatisch und
+   *  synchronisiert den Session-Transport auf den Track-BPM. */
   const loadSong = (idx: number, t: MusicTrack) => {
-    const next = ch.map((c, i) => (i === idx ? { ...c, loadName: t.name, loaded: true } : c));
+    const next = ch.map((c, i) => (i === idx ? { ...c, loadName: t.name, loaded: true, analyzing: true } : c));
     setCh(next);
     audioEngine.loadTrackSample(STRIPS[idx].track, t.url);
+
+    // Automatische, lokale Analyse (offline im Browser, kein API).
+    analyzeMusic(t.url).then((a) => {
+      setCh((prev) =>
+        prev.map((c, i) =>
+          i === idx
+            ? { ...c, bpm: a?.bpm, key: a?.key ?? a?.camelot, analyzing: false }
+            : c
+        ),
+      );
+    });
   };
 
   /** Play: triggert das geladene Sample / Standard-Material auf dem Kanal. */
@@ -186,6 +199,16 @@ export function DJ4ChMixer() {
                 onClick={() => trigger(i)}
                 className="w-full py-2 rounded-md border border-zinc-700 bg-gradient-to-b from-zinc-800 to-zinc-900 text-[10px] font-black tracking-widest hover:border-cyan-400/50 active:scale-[0.98]"
               >▶ PLAY</button>
+
+              {/* Automatische Analyse (BPM/Key) */}
+              <div className="w-full flex items-center justify-between rounded-md border border-zinc-800 bg-black/40 px-2 py-1">
+                <span className="text-[7px] font-mono text-zinc-500">BPM</span>
+                <span className="text-[9px] font-black text-cyan-300">
+                  {c.analyzing ? <span className="text-zinc-500 animate-pulse">…</span> : (c.bpm ?? '--')}
+                </span>
+                <span className="text-[7px] font-mono text-zinc-500">KEY</span>
+                <span className="text-[9px] font-black text-fuchsia-300">{c.key ?? '--'}</span>
+              </div>
 
               <Knob label="HI"  value={c.high} onChange={(v) => apply(i, { high: v })} />
               <Knob label="MID" value={c.mid}  onChange={(v) => apply(i, { mid: v })} />
