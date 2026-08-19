@@ -82,7 +82,7 @@ const DEFAULT_PLUGIN_METADATA: Record<string, { name: string; short: string; ico
   effect: { name: 'effectMONK', short: 'FX', icon: 'Sparkles' },
   synth: { name: 'synthesizerMONK', short: 'SYN', icon: 'Waves' },
   voice: { name: 'voiceMONK', short: 'VOX', icon: 'Mic' },
-  visualizer: { name: 'visMONK', short: 'VIS', icon: 'Activity' },
+  visualizer: { name: 'samplerMONK', short: 'SAM', icon: 'Activity' },
   stem: { name: 'stemMONK', short: 'RMX', icon: 'Radio' },
   recording: { name: 'recordingMONK', short: 'REC', icon: 'Activity' },
   library: { name: 'biblioMONK', short: 'LIB', icon: 'Database' },

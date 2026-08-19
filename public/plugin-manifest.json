@@ -103,7 +103,7 @@
     },
     {
       "id": "visualizer",
-      "name": "visMONK",
+      "name": "samplerMONK",
       "short": "VIS",
       "icon": "Activity"
     },
