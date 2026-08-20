@@ -361,6 +361,109 @@ async function startServer() {
       });
       socket.on('activity', refreshIdleTimer);
     });
+
+    // ---------------------------------------------------------------------
+    // SFU (Mediasoup) – skalierbarer Kollaborations-Transport für 10+ Nutzer
+    // Aktiviert mit ENABLE_SFU=1. Baut einen Mediasoup-Router pro Session auf
+    // und bedient die RTC-Capabilities-/Transport-/Produce-/Consume-Anfragen
+    // des Frontend-`MediasoupTransport`.
+    // ---------------------------------------------------------------------
+    if ((process.env.ENABLE_SFU || '').trim() === '1') {
+      try {
+        const mediasoup = (await import('mediasoup')) as any;
+        const sfuIo = new Server(server, {
+          cors: {
+            origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : false,
+            methods: ['GET', 'POST'],
+          },
+          path: '/sfu-signaling',
+        });
+
+        // Globale (für diese Prozessinstanz) Worker/Router-Registry je Session.
+        const mWorker = await mediasoup.createWorker({ rtcMinPort: 40000, rtcMaxPort: 49999 });
+        const routers = new Map<string, any>();
+
+        const ensureRouter = async (sessionId: string) => {
+          if (!routers.has(sessionId)) {
+            const router = await mWorker.createRouter({
+              mediaCodecs: [
+                { kind: 'audio', mimeType: 'audio/opus', clockRate: 48000, channels: 2 },
+              ],
+            });
+            routers.set(sessionId, router);
+          }
+          return routers.get(sessionId);
+        };
+
+        sfuIo.on('connection', (socket: any) => {
+          const sessionId = (socket.handshake?.query?.sessionId || 'main').toString();
+          socket.on('getRouterRtpCapabilities', async (_d: any, cb: any) => {
+            try {
+              const router = await ensureRouter(sessionId);
+              cb?.({ rtpCapabilities: router.rtpCapabilities });
+            } catch (e) { cb?.({ error: (e as Error).message }); }
+          });
+          socket.on('createTransport', async (data: any, cb: any) => {
+            try {
+              const router = await ensureRouter(sessionId);
+              const transport = await router.createWebRtcTransport({
+                listenIps: [{ ip: process.env.SFU_LISTEN_IP || '0.0.0.0', announcedIp: process.env.SFU_ANNOUNCED_IP } as any],
+                enableUdp: true, enableTcp: true, preferUdp: true,
+              });
+              transport.on('dtlsstatechange', (s: string) => { if (s === 'closed') transport.close(); });
+              (socket as any).__transport = transport;
+              cb?.({
+                id: transport.id,
+                iceParameters: transport.iceParameters,
+                iceCandidates: transport.iceCandidates,
+                dtlsParameters: transport.dtlsParameters,
+              });
+            } catch (e) { cb?.({ error: (e as Error).message }); }
+          });
+          socket.on('connectTransport', async (data: any, cb: any) => {
+            try {
+              const t = (socket as any).__transport;
+              if (!t) throw new Error('kein transport');
+              await t.connect({ dtlsParameters: data.dtlsParameters });
+              cb?.({});
+            } catch (e) { cb?.({ error: (e as Error).message }); }
+          });
+          socket.on('produce', async (data: any, cb: any) => {
+            try {
+              const t = (socket as any).__transport;
+              if (!t) throw new Error('kein transport');
+              const producer = await t.produce({
+                kind: data.kind, rtpParameters: data.rtpParameters, appData: data.appData,
+              });
+              (socket as any).__producer = producer;
+              cb?.({ id: producer.id });
+            } catch (e) { cb?.({ error: (e as Error).message }); }
+          });
+          socket.on('consume', async (data: any, cb: any) => {
+            try {
+              const t = (socket as any).__transport;
+              const router = await ensureRouter(sessionId);
+              const producer = (socket as any).__producer;
+              if (!producer) throw new Error('kein producer');
+              const consumer = await t.consume({
+                producerId: producer.id, rtpCapabilities: data.rtpCapabilities,
+              });
+              cb?.({
+                id: consumer.id, kind: consumer.kind,
+                rtpParameters: consumer.rtpParameters, producerId: producer.id,
+              });
+            } catch (e) { cb?.({ error: (e as Error).message }); }
+          });
+          socket.on('disconnect', () => {
+            const t = (socket as any).__transport;
+            if (t) { try { t.close(); } catch { /* ignore */ } }
+          });
+        });
+        console.log('SFU (Mediasoup) aktiviert: /sfu-signaling');
+      } catch (e) {
+        console.warn('Mediasoup SFU nicht gestartet (ENABLE_SFU):', (e as Error).message);
+      }
+    }
   } catch (e) {
     console.warn('Socket.io signaling disabled:', (e as Error).message);
   }

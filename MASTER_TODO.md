@@ -61,6 +61,16 @@ Legende:
 - Backend-Wechsel ohne Audio-Engine-Refactoring möglich
 - Interface-Dokumentation für alle 6 Abstraktionsschichten vorhanden
 
+> **✅ TEILWISE UMGESETZT (Phase 1, Stand neueste):** Alle 6 Interfaces
+> (`IAudioBackend`, `IAIRuntime`, `IComputeBackend`, `ISpatialRenderer`,
+> `IHardwareAdapter`, `ITransport`) sind in `src/core/interfaces.ts` definiert,
+> je mit funktionaler Referenzimplementierung (WebAudioBackend, AIRuntime w/
+> deterministischer Fallback, ComputeBackend w/ Worker-Pool, SpatialRenderer,
+> WebMIDIAdapter, WebRTCTransport + MediasoupTransport). Dokumentation:
+> `src/core/README.md`. **Ausstehend:** die 16 Kernmodule auf ausschließlich
+> diese Interface-Kommunikation umzustellen (Validierung per Import-Analyse).
+
+
 ---
 
 ### [ ] Aufgabe 1.2 – Session-Objektmodell Versionierung implementieren
@@ -104,6 +114,18 @@ Legende:
 ## 🔴 Phase 2: Audio-Engine Optimierungen
 **Priorität:** Kritisch 
 **Ziel:** Performance und Zuverlässigkeit
+
+### [ ] Aufgabe 2.0 – Synthese-Engine & 50-Instrumenten-Pool (synthesizerMONK / instrumentMONK)
+**Ziel:** Hybriden Synthese-Kern (Analog, FM, Drum, Akustik, FX) als
+sample-genauen AudioWorklet-Prozessor definieren und einen Pool von **50
+programmatisch definierten Instrumenten/Presets** bereitstellen (Asset-Vorlage
+nach Kategorien: Analog-Synth 1–10, FM 11–20, Drum 21–30, Akustisch 31–40,
+FX/AI 41–50).
+- **Referenz-Assets & vollständige Spezifikation:** `docs/DAW_50_INSTRUMENTS_SPEC.md`
+- **Umsetzung:** Instanzlierung ausschließlich über `IAudioBackend`
+  (`src/core/WebAudioBackend`), DSP-Kern in AudioWorklet statt `window.AudioContext`.
+- **Erfolgskriterium:** Alle 50 Instrumente hörbar via `playNote(id, midi, …)`,
+  Auswahl im `Instrumenten-Plugins`-Modul, Backend-austauschbar.
 
 ### [ ] Aufgabe 2.1 – AudioWorklet-Architektur verfeinern
 **Ziel:** Optimierung der bestehenden AudioWorklet-Prozessoren für maximale Performance.
