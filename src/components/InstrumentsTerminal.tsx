@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Music, Piano, Guitar, Layers, Loader2 } from 'lucide-react';
+import { Music, Piano, Guitar, Layers, Loader2, Cpu, Radio, Drum, Sparkles } from 'lucide-react';
 import { DropTarget } from './DropTarget';
 import { AudioSample } from '../data/samples';
 import { usePluginState } from '../hooks/usePluginState';
 import { audioEngine } from '../utils/audioEngine';
+import { SYNTHESIS_INSTRUMENTS, listByCategory } from '../core/instrument/catalog';
+import { instrumentBackend } from '../core/instrument/InstrumentBackend';
 
 // --- WAM2 / Instrument Standards ---
-type InstrumentType = 'sampler' | 'synth' | 'soundfont';
+type InstrumentType = 'sampler' | 'synth' | 'soundfont' | 'synth2';
 
 interface Instrument {
   id: number;
@@ -20,7 +22,11 @@ const INSTRUMENT_CATEGORIES = [
   { name: 'Streichinstrumente', icon: Music },
   { name: 'Zupfinstrumente', icon: Guitar },
   { name: 'Blasinstrumente', icon: Music },
-  { name: 'Weltmusik & Chor', icon: Layers }
+  { name: 'Weltmusik & Chor', icon: Layers },
+  { name: 'Analog-Synth', icon: Cpu },
+  { name: 'FM-Synth', icon: Radio },
+  { name: 'Drums & Perc', icon: Drum },
+  { name: 'FX & Experimental', icon: Sparkles },
 ];
 
 const PRESET_INSTRUMENTS: Instrument[] = [
@@ -76,11 +82,28 @@ const PRESET_INSTRUMENTS: Instrument[] = [
   { id: 50, name: 'Tubular Bells', category: 'Weltmusik & Chor', type: 'soundfont' },
 ];
 
+// --- Synthese-Instrumente (Analog/FM/Drum/FX) aus dem instrumentMONK-Katalog ---
+// Kategorie-Values des Kern-Katalogs auf die UI-Kategorien mappen.
+const UI_CAT_MAP: Record<string, string> = {
+  'analog-synth': 'Analog-Synth',
+  'fm-synth': 'FM-Synth',
+  'drums-percussion': 'Drums & Perc',
+  'fx-experimental': 'FX & Experimental',
+  acoustic: 'Tasteninstrumente',
+};
+
+const SYNTH_PRESET_INSTRUMENTS: Instrument[] = SYNTHESIS_INSTRUMENTS.map(d => ({
+  id: d.id,
+  name: d.name,
+  category: UI_CAT_MAP[d.category] ?? 'Analog-Synth',
+  type: 'synth2',
+}));
+
 export function InstrumentsTerminal() {
   const { state, lockStatus, updateState } = usePluginState('instruments', 'PRO');
   const [activeCategory, setActiveCategory] = useState('Tasteninstrumente');
   const [search, setSearch] = useState('');
-  const [instruments] = useState<Instrument[]>(PRESET_INSTRUMENTS);
+  const [instruments] = useState<Instrument[]>([...PRESET_INSTRUMENTS, ...SYNTH_PRESET_INSTRUMENTS]);
   const [activeInstrument, setActiveInstrument] = useState<Instrument | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [droppedSample, setDroppedSample] = useState<AudioSample | null>(null);
@@ -99,13 +122,22 @@ export function InstrumentsTerminal() {
     setActiveInstrument(inst);
     
     try {
-      await audioEngine.loadInstrument(inst.id);
-      // console.log('Routing through instrument:', inst.name);
+      // Instruktionen über den instrumentMONK-Backend (Interface) laden –
+      // akustische Patches (1..50) und Synthese-Presets (Analog/FM/Drum/FX).
+      await instrumentBackend.load(inst.id);
     } catch (error) {
       console.error(`Failed to load instrument: ${inst.name}`, error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /** Spielt eine Note am geladenen Instrument (akustisch oder Synthese). */
+  const previewNote = (note: string) => {
+    instrumentBackend.noteOn(note, 0.9);
+  };
+  const releaseNote = () => {
+    instrumentBackend.noteOff();
   };
 
   const filtered = instruments.filter(inst => {
@@ -175,9 +207,9 @@ export function InstrumentsTerminal() {
                     {['C4','D4','E4','F4','G4','A4','B4','C5'].map(note => (
                         <button
                             key={note}
-                            onMouseDown={(e) => { e.preventDefault(); audioEngine.instrumentNote(note); }}
-                            onMouseUp={() => audioEngine.instrumentRelease()}
-                            onMouseLeave={() => audioEngine.instrumentRelease()}
+                            onMouseDown={(e) => { e.preventDefault(); previewNote(note); }}
+                            onMouseUp={releaseNote}
+                            onMouseLeave={releaseNote}
                             className="flex-1 min-w-[28px] h-16 rounded shadow-inner bg-linear-to-b from-neutral-300 to-neutral-400 text-neutral-900 text-xs font-bold hover:from-neutral-200 active:from-purple-300"
                         >
                             {note}

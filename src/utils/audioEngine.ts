@@ -5,6 +5,9 @@ import { TrackType, TRACK_ROLE_MAP, MUSIC_SCALES } from '../types';
 
 import { calculateChannelPan, calculateHRTF, SPATIAL_SETUPS, SpatialSetup } from './spatialMath';
 import { getPatch, INSTRUMENT_PATCHES, InstrumentPatch } from '../data/instrumentSynths';
+import type {
+  InstrumentDefinition, SynthDef, FmDef, DrumDef, FxDef,
+} from '../core/instrument/types';
 import { ClockSync } from './ClockSync';
 import { PhaseLockedLoop } from './PhaseLockedLoop';
 import { validateRouting } from './routingValidator';
@@ -1048,6 +1051,153 @@ class AudioEngine {
     this.instrumentVibrato = null;
     this.instrumentFilter = null;
     this.instrumentEnvOut = null;
+  }
+
+  /**
+   * Spielt ein Synthese-Instrument aus dem erweiterten Katalog (`instrumentMONK`):
+   * Analog-Synth (subtraktiv), FM, Drum/Perc, FX. Nutzt dieselbe Dispose-Gruppe
+   * wie die akustischen Patches, läuft aber über eigene Tone-JS-Ketten.
+   * `kind==='acoustic'` bleibt über `loadInstrument`/`instrumentNote` laufen.
+   */
+  public playSynthesisInstrument(def: InstrumentDefinition, note: string | number, velocity = 1) {
+    this.ensureInitialized();
+    this.disposeInstrumentSynth();
+    const freq = typeof note === 'number'
+      ? Tone.Frequency(note, 'midi').toFrequency()
+      : Tone.Frequency(note).toFrequency();
+    const t = this.ctx?.currentTime ?? 0;
+    const master = this.masterBuses['GLOBAL_MASTER'];
+
+    try {
+      switch (def.kind) {
+        case 'synth': {
+          const d = def as SynthDef;
+          const osc = new Tone.Oscillator(freq, d.osc);
+          const env = new Tone.AmplitudeEnvelope(d.attack, 0.2, 0.2, d.release);
+          const filt = new Tone.Filter(d.cutoff, d.filter, -12);
+          (filt as any).Q.value = d.resonance;
+          const out = new Tone.Gain(velocity * 0.8);
+          osc.connect(env).connect(filt).connect(out);
+          out.connect(master);
+          env.triggerAttackRelease(0.5, t);
+          osc.start(t);
+          osc.stop(t + d.attack + 0.5 + d.release + 0.1);
+          this.instrumentOscs = [osc];
+          this.instrumentFilter = filt;
+          this.instrumentEnvOut = new Tone.Gain(1);
+          break;
+        }
+        default: {
+          // acoustic (nicht im getPatch-Katalog, z.B. id 131) – additive Kette.
+          const d = def as import('../core/instrument/types').AcousticDef;
+          const partialNodes: Tone.Oscillator[] = [];
+          const ratios: number[] = [];
+          const out = new Tone.Gain(velocity * 0.8);
+          out.connect(master);
+          d.partials.forEach((p) => {
+            const o = new Tone.Oscillator(freq * (p.ratio || 1), d.osc);
+            const g = new Tone.Gain(p.amp / Math.max(1, d.partials.length));
+            o.connect(g).connect(out);
+            o.start(t);
+            o.stop(t + 1.5);
+            partialNodes.push(o);
+            ratios.push(p.ratio || 1);
+          });
+          this.instrumentOscs = partialNodes;
+          this.instrumentPartialRatios = ratios;
+          this.instrumentEnvOut = out;
+          break;
+        }
+        case 'fm': {
+          const d = def as FmDef;
+          const carrier = new Tone.Oscillator(freq, d.carrier);
+          const modulator = new Tone.Oscillator(freq * 2, d.modulator);
+          const modGain = new Tone.Gain(freq * d.modIndex);
+          const env = new Tone.AmplitudeEnvelope(d.attack, 0.1, 0.1, d.release);
+          const filt = new Tone.Filter(6000, 'lowpass');
+          const out = new Tone.Gain(velocity * 0.7);
+          modulator.connect(modGain).connect(carrier.frequency);
+          carrier.connect(env).connect(filt).connect(out);
+          out.connect(master);
+          env.triggerAttackRelease(0.5, t);
+          modulator.start(t); carrier.start(t);
+          const stop = t + d.attack + 0.5 + d.release + 0.1;
+          modulator.stop(stop); carrier.stop(stop);
+          this.instrumentOscs = [carrier, modulator];
+          this.instrumentFilter = filt;
+          break;
+        }
+        case 'drum': {
+          const d = def as DrumDef;
+          if (d.noise) {
+            // Rauschbasierte Percussion (Snare/Hat) via Tone.Noise + kurze Hülle.
+            const noise = new Tone.Noise('white');
+            const filt = new Tone.Filter(d.filterFreq ?? 2000, 'bandpass', -12);
+            const env = new Tone.Gain(velocity);
+            noise.connect(filt).connect(env);
+            env.connect(master);
+            env.gain.setValueAtTime(velocity, t);
+            env.gain.exponentialRampToValueAtTime(0.001, t + (d.decay ?? 0.2));
+            noise.start(t);
+            noise.stop(t + (d.decay ?? 0.2) + 0.05);
+            this.instrumentNoise = noise;
+            this.instrumentFilter = filt;
+          } else {
+            const osc = new Tone.Oscillator(freq * 0.5, 'sine');
+            const startF = (d.freqStart ?? 150) + (freq > 200 ? freq * 0.5 : 0);
+            const endF = d.freqEnd ?? 40;
+            osc.frequency.setValueAtTime(startF, t);
+            osc.frequency.exponentialRampToValueAtTime(Math.max(30, endF), t + (d.decay ?? 0.3));
+            const env = new Tone.Gain(velocity);
+            env.connect(master);
+            env.gain.setValueAtTime(velocity, t);
+            env.gain.exponentialRampToValueAtTime(0.001, t + (d.decay ?? 0.3));
+            osc.connect(env);
+            osc.start(t); osc.stop(t + (d.decay ?? 0.3) + 0.05);
+            this.instrumentOscs = [osc];
+          }
+          break;
+        }
+        case 'fx': {
+          const d = def as FxDef;
+          const base = d.freq ?? (d.freqStart ?? freq);
+          const osc = new Tone.Oscillator(base, d.wave);
+          const out = new Tone.Gain(velocity * 0.5);
+          const filt = new Tone.Filter(d.resonance ? 3000 : 1200, 'lowpass');
+          (filt as any).Q.value = d.resonance ?? 1;
+          osc.connect(filt).connect(out);
+          out.connect(master);
+          // Frequency-Sweep falls definiert.
+          if (d.freqStart && d.freqEnd) {
+            osc.frequency.setValueAtTime(d.freqStart, t);
+            osc.frequency.exponentialRampToValueAtTime(Math.max(20, d.freqEnd), t + d.attack + 0.3);
+          }
+          // LFO-Modulation.
+          if (d.lfoRate) {
+            const lfo = new Tone.Oscillator(d.lfoRate, 'sine');
+            const lfoGain = new Tone.Gain((osc.frequency.value as unknown as number) * 0.5);
+            lfo.connect(lfoGain).connect((osc as any).frequency);
+            lfo.start(t);
+            const stopT = t + d.attack + 0.5 + d.release + 0.1;
+            lfo.stop(stopT);
+            this.instrumentVibrato = lfo;
+          }
+          osc.start(t);
+          osc.stop(t + d.attack + 0.5 + d.release + 0.1);
+          // Envelope.
+          out.gain.setValueAtTime(0.0001, t);
+          out.gain.exponentialRampToValueAtTime(velocity * 0.5, t + Math.max(0.01, d.attack));
+          out.gain.exponentialRampToValueAtTime(0.0001, t + d.attack + 0.5 + d.release);
+          this.instrumentOscs = [osc];
+          this.instrumentFilter = filt;
+          this.instrumentEnvOut = out;
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn('playSynthesisInstrument fehlgeschlagen:', e);
+      this.disposeInstrumentSynth();
+    }
   }
 
   public previewSample(track: TrackType, time?: number, url?: string) {

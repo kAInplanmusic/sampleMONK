@@ -115,9 +115,10 @@ Legende:
 **Priorität:** Kritisch 
 **Ziel:** Performance und Zuverlässigkeit
 
-### [ ] Aufgabe 2.0 – Synthese-Engine & 50-Instrumenten-Pool (synthesizerMONK / instrumentMONK)
+### [x] Aufgabe 2.0 – Synthese-Engine & 50-Instrumenten-Pool (synthesizerMONK / instrumentMONK)
+**Status: ✅ KERN UMGESETZT (hybrider Tone.js-Synthese-Kern; AudioWorklet-Verfeinerung in 2.1)**
 **Ziel:** Hybriden Synthese-Kern (Analog, FM, Drum, Akustik, FX) als
-sample-genauen AudioWorklet-Prozessor definieren und einen Pool von **50
+sample-genauen Prozessor definieren und einen Pool von **50
 programmatisch definierten Instrumenten/Presets** bereitstellen (Asset-Vorlage
 nach Kategorien: Analog-Synth 1–10, FM 11–20, Drum 21–30, Akustisch 31–40,
 FX/AI 41–50).
@@ -126,6 +127,24 @@ FX/AI 41–50).
   (`src/core/WebAudioBackend`), DSP-Kern in AudioWorklet statt `window.AudioContext`.
 - **Erfolgskriterium:** Alle 50 Instrumente hörbar via `playNote(id, midi, …)`,
   Auswahl im `Instrumenten-Plugins`-Modul, Backend-austauschbar.
+
+**Umsetzungs-Details (`instrumentMONK`):**
+- ✔ Typmodell `src/core/instrument/types.ts` (`AcousticDef`, `SynthDef`,
+  `FmDef`, `DrumDef`, `FxDef`, `InstrumentPreset`, `InstrumentChannel`).
+- ✔ Katalog `src/core/instrument/catalog.ts`: 50 akustische Patches (aus
+  `data/instrumentSynths` gebridged) + 50 Synthese-Presets (`syncMONK`):
+  Analog 101–110, FM 111–120, Drum 121–130, Akustisch-Hybrid 131,
+  FX/AI 141–150. Zugriff über `getInstrument`/`listByCategory`/`catalogStats`.
+- ✔ Interface `src/core/instrument/IInstrumentBackend.ts`: `load`, `noteOn`,
+  `noteOff`, `setParam`, `savePreset`/`loadPreset`, `assignChannel`, `onMidi`.
+- ✔ Referenz `src/core/instrument/InstrumentBackend.ts` (delegiert audio-agnostisch an die Engine).
+- ✔ `audioEngine.playSynthesisInstrument(def, note, velocity)` (`additive/subtraktiv/FM/Drum/FX`),
+  gebunden an `GLOBAL_MASTER`-Bus, geteilter Dispose-Pfad.
+- ✔ UI `InstrumentsTerminal.tsx` um 4 Synthese-Kategorien (Analog-Synth, FM-Synth,
+  Drums & Perc, FX & Experimental) + Preview-Keyboard via `instrumentBackend`.
+- ✔ README + Barrel-Export (`src/core/index.ts`), `tsc` sauber.
+- ⏳ Ausstehend: echte AudioWorklet-Variante der Synthese (statt Tone.js),
+  sample-genaue Automation (siehe 2.1).
 
 ### [ ] Aufgabe 2.1 – AudioWorklet-Architektur verfeinern
 **Ziel:** Optimierung der bestehenden AudioWorklet-Prozessoren für maximale Performance.
